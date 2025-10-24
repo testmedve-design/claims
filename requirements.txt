@@ -1,0 +1,5 @@
+# Hospital Claims Management System - Root Requirements
+# This file points to the backend requirements for Render deployment
+
+# Install backend requirements
+-r backend/requirements.txt
