@@ -1,5 +1,5 @@
-# Hospital Claims Management System - Root Requirements
-# Simplified requirements for Python 3.13 compatibility
+# Hospital Claims Management System - Simplified Requirements for Python 3.13
+# Core dependencies only for production deployment
 
 # Flask Framework
 Flask>=2.3.3
