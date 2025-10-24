@@ -15,4 +15,15 @@ echo "🔌 Port: $PORT"
 
 # Start Gunicorn
 echo "🚀 Starting Gunicorn server..."
-exec gunicorn wsgi:application
+echo "📁 Current directory: $(pwd)"
+echo "📄 Files in current directory:"
+ls -la
+echo "🔍 Looking for wsgi.py..."
+if [ -f "wsgi.py" ]; then
+    echo "✅ Found wsgi.py"
+else
+    echo "❌ wsgi.py not found in current directory"
+fi
+
+# Start Gunicorn with explicit path
+exec gunicorn --bind 0.0.0.0:$PORT wsgi:application
