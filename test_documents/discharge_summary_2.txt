@@ -1,0 +1,37 @@
+DISCHARGE SUMMARY
+
+Patient Name: Emily Davis
+Patient ID: PAT005
+Date of Admission: 2025-10-19
+Date of Discharge: 2025-10-22
+Length of Stay: 3 days
+
+DIAGNOSIS:
+Primary: Cholecystitis (K81.9)
+Secondary: None
+
+PROCEDURE PERFORMED:
+Laparoscopic Cholecystectomy
+
+HISTORY:
+38-year-old female presented with severe right upper quadrant pain, fever, and nausea. Physical examination revealed positive Murphy's sign. Ultrasound confirmed acute cholecystitis with gallstones.
+
+TREATMENT:
+Patient underwent successful laparoscopic cholecystectomy. Post-operative course was uncomplicated with excellent recovery.
+
+DISCHARGE MEDICATIONS:
+1. Acetaminophen 650mg PO q6h PRN pain
+2. Continue home medications as prescribed
+
+FOLLOW-UP:
+- Follow up with General Surgery in 10-14 days
+- Return to ER if fever, increased pain, or signs of infection
+- Resume normal activities as tolerated
+- Low-fat diet recommended
+
+DISCHARGE CONDITION:
+Patient is stable for discharge home with good understanding of post-operative care instructions.
+
+Dr. Robert Chen, MD
+General Surgery
+NANO HOSPITAL

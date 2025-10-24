@@ -1,0 +1,44 @@
+MEDICAL RECORDS - MICHAEL BROWN
+
+PATIENT INFORMATION:
+Name: Michael Brown
+DOB: 1980-05-15
+MRN: MRN004
+Admission Date: 2025-10-18
+Discharge Date: 2025-10-21
+
+VITAL SIGNS ON ADMISSION:
+Blood Pressure: 140/85 mmHg
+Heart Rate: 95 bpm
+Temperature: 99.2°F
+Respiratory Rate: 18/min
+Oxygen Saturation: 98% on room air
+
+CLINICAL COURSE:
+Day 1: Patient admitted with acute appendicitis. Started on IV antibiotics and NPO status. Prepped for surgery.
+Day 2: Underwent laparoscopic appendectomy. Procedure completed successfully without complications.
+Day 3: Post-operative day 1. Patient ambulating well, tolerating clear liquids, pain well controlled.
+Day 4: Patient ready for discharge. Tolerating regular diet, ambulating independently.
+
+LABORATORY RESULTS:
+- WBC: 12.5 (elevated on admission, normalized post-operatively)
+- Hemoglobin: 14.2 g/dL
+- Creatinine: 0.9 mg/dL
+- All other labs within normal limits
+
+IMAGING:
+- CT Abdomen/Pelvis: Confirmed acute appendicitis with no evidence of perforation
+- Post-operative X-ray: Normal
+
+MEDICATIONS ADMINISTERED:
+- Cefazolin 1g IV q8h (pre-op and post-op)
+- Metronidazole 500mg IV q8h
+- Morphine PCA for pain control
+- Ondansetron 4mg IV q8h PRN nausea
+
+PROCEDURE NOTES:
+Laparoscopic appendectomy performed using 3-port technique. Appendix was inflamed but not perforated. Hemostasis achieved. Ports closed with absorbable sutures.
+
+Dr. Sarah Wilson, MD
+General Surgery
+NANO HOSPITAL

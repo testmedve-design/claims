@@ -1,0 +1,37 @@
+PRESCRIPTION
+
+Patient Name: Emily Davis
+Patient ID: PAT005
+Date: 2025-10-22
+
+PRESCRIPTION DETAILS:
+
+1. Acetaminophen 650mg
+   - Take 1 tablet every 6 hours as needed for pain
+   - Maximum 4 tablets per day
+   - Duration: 7 days
+
+2. Ibuprofen 400mg
+   - Take 1 tablet every 8 hours as needed for pain
+   - Take with food
+   - Duration: 5 days
+
+3. Omeprazole 20mg
+   - Take 1 capsule once daily in the morning
+   - Take before breakfast
+   - Duration: 14 days
+
+SPECIAL INSTRUCTIONS:
+- Take pain medications as needed
+- If pain persists beyond 7 days, contact surgeon
+- Return to ER if fever >101°F or severe pain
+- Follow low-fat diet as discussed
+
+Dr. Robert Chen, MD
+General Surgery
+License #: MD123456
+NANO HOSPITAL
+Phone: (555) 123-4567
+
+Refills: 0
+Generic substitution permitted: Yes

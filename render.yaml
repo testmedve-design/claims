@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: hospital-claims-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && python app.py
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: DEBUG
+        value: false
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: FIREBASE_PROJECT_ID
+        value: mv20-a1a09
+      - key: FIREBASE_STORAGE_BUCKET
+        value: mv20-a1a09.firebasestorage.app
+      - key: CORS_ORIGINS
+        value: https://your-frontend-domain.onrender.com,http://localhost:3000,http://localhost:3001,http://localhost:3004

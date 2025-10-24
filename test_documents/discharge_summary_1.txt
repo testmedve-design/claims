@@ -1,0 +1,37 @@
+DISCHARGE SUMMARY
+
+Patient Name: Michael Brown
+Patient ID: PAT004
+Date of Admission: 2025-10-18
+Date of Discharge: 2025-10-21
+Length of Stay: 3 days
+
+DIAGNOSIS:
+Primary: Acute Appendicitis (K35.9)
+Secondary: None
+
+PROCEDURE PERFORMED:
+Laparoscopic Appendectomy
+
+HISTORY:
+45-year-old male presented with acute onset of right lower quadrant pain, nausea, and vomiting. Physical examination revealed tenderness and guarding in the right lower quadrant. CT scan confirmed acute appendicitis.
+
+TREATMENT:
+Patient underwent successful laparoscopic appendectomy. Post-operative course was uncomplicated with good pain control and early mobilization.
+
+DISCHARGE MEDICATIONS:
+1. Acetaminophen 500mg PO q6h PRN pain
+2. Ibuprofen 400mg PO q8h PRN pain
+3. Continue home medications as prescribed
+
+FOLLOW-UP:
+- Follow up with General Surgery in 7-10 days
+- Return to ER if fever, increased pain, or signs of infection
+- Resume normal activities as tolerated
+
+DISCHARGE CONDITION:
+Patient is stable for discharge home with good understanding of post-operative care instructions.
+
+Dr. Sarah Wilson, MD
+General Surgery
+NANO HOSPITAL

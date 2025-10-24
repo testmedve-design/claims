@@ -1,0 +1,43 @@
+NANO HOSPITAL
+BILL STATEMENT
+
+Patient Name: Michael Brown
+Patient ID: PAT004
+Bill Number: BILL004
+Bill Date: 2025-10-21
+Admission Date: 2025-10-18
+Discharge Date: 2025-10-21
+
+ITEMIZED CHARGES:
+
+Room & Board (General Ward - 3 days):           ₹15,000
+Laparoscopic Appendectomy:                      ₹45,000
+Anesthesia Services:                            ₹8,000
+Laboratory Services:                            ₹3,500
+Radiology Services (CT Scan):                   ₹12,000
+Pharmacy Charges:                               ₹4,500
+Surgical Supplies:                              ₹6,000
+Professional Fees (Surgery):                    ₹15,000
+
+SUBTOTAL:                                       ₹109,000
+
+Insurance Discount (15%):                       ₹16,350
+Patient Discount:                               ₹2,650
+
+TOTAL BILL AMOUNT:                              ₹90,000
+
+PAYMENT SUMMARY:
+Security Deposit:                               ₹10,000
+Amount Paid by Patient:                         ₹15,000
+Total Patient Paid:                             ₹25,000
+
+AMOUNT CHARGED TO PAYER:                        ₹65,000
+MOU Discount:                                   ₹5,000
+
+CLAIMED AMOUNT:                                 ₹60,000
+
+Payment Terms: Net 30 days
+For billing inquiries, contact: billing@nanohospital.com
+
+NANO HOSPITAL
+Accounts Receivable Department

@@ -1,0 +1,59 @@
+LABORATORY REPORTS - EMILY DAVIS
+
+Patient Name: Emily Davis
+Patient ID: PAT005
+Date of Service: 2025-10-19
+Laboratory ID: LAB005
+
+COMPLETE BLOOD COUNT:
+- White Blood Cells: 14.2 K/μL (High)
+- Red Blood Cells: 4.1 M/μL (Normal)
+- Hemoglobin: 12.8 g/dL (Normal)
+- Hematocrit: 38.2% (Normal)
+- Platelets: 285 K/μL (Normal)
+
+COMPREHENSIVE METABOLIC PANEL:
+- Glucose: 95 mg/dL (Normal)
+- BUN: 12 mg/dL (Normal)
+- Creatinine: 0.8 mg/dL (Normal)
+- Sodium: 140 mEq/L (Normal)
+- Potassium: 4.2 mEq/L (Normal)
+- Chloride: 102 mEq/L (Normal)
+- CO2: 24 mEq/L (Normal)
+- Total Protein: 7.2 g/dL (Normal)
+- Albumin: 4.1 g/dL (Normal)
+- Bilirubin Total: 1.8 mg/dL (High)
+- Bilirubin Direct: 0.9 mg/dL (High)
+- ALT: 45 U/L (Normal)
+- AST: 38 U/L (Normal)
+- Alkaline Phosphatase: 125 U/L (Normal)
+
+LIVER FUNCTION TESTS:
+- ALT: 45 U/L (Normal)
+- AST: 38 U/L (Normal)
+- Total Bilirubin: 1.8 mg/dL (High)
+- Direct Bilirubin: 0.9 mg/dL (High)
+- Alkaline Phosphatase: 125 U/L (Normal)
+
+COAGULATION STUDIES:
+- PT: 12.5 seconds (Normal)
+- PTT: 28 seconds (Normal)
+- INR: 1.1 (Normal)
+
+URINALYSIS:
+- Color: Yellow
+- Appearance: Clear
+- Specific Gravity: 1.015
+- pH: 6.0
+- Protein: Negative
+- Glucose: Negative
+- Blood: Negative
+- Leukocyte Esterase: Negative
+- Nitrites: Negative
+
+INTERPRETATION:
+Elevated white blood cell count and bilirubin levels consistent with acute cholecystitis. All other values within normal limits.
+
+Dr. Lisa Rodriguez, MD
+Pathology Department
+NANO HOSPITAL
