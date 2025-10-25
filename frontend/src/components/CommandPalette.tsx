@@ -23,14 +23,6 @@ interface CommandItem {
 
 const commands: CommandItem[] = [
   {
-    id: 'dashboard',
-    title: 'Dashboard',
-    description: 'View overview and analytics',
-    icon: BarChart3,
-    href: '/dashboard',
-    keywords: ['home', 'overview', 'main', 'analytics']
-  },
-  {
     id: 'new-claim',
     title: 'Submit New Claim',
     description: 'Create a new insurance claim',

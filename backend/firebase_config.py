@@ -25,9 +25,14 @@ def initialize_firebase():
             cred_dict = json.loads(firebase_credentials)
             cred = credentials.Certificate(cred_dict)
         else:
-            # Development: Use file path
-            print("🔧 Using Firebase credentials from file")
-            cred = credentials.Certificate(Config.FIREBASE_CREDENTIALS_PATH)
+            # Development: Check if credentials file exists
+            if os.path.exists(Config.FIREBASE_CREDENTIALS_PATH):
+                print("🔧 Using Firebase credentials from file")
+                cred = credentials.Certificate(Config.FIREBASE_CREDENTIALS_PATH)
+            else:
+                # Development mode: Use default credentials (for local testing)
+                print("🔧 Development mode: Using default Firebase credentials")
+                cred = credentials.ApplicationDefault()
         
         # Initialize Firebase Admin SDK
         firebase_admin.initialize_app(cred, {

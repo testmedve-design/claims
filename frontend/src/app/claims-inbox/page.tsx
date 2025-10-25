@@ -176,6 +176,7 @@ export default function ClaimsInboxPage() {
     window.open(`/claims/${claimId}?action=answer_query`, '_blank')
   }
 
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">

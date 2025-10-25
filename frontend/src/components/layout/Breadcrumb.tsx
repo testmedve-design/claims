@@ -18,15 +18,12 @@ export default function BreadcrumbNavigation() {
     const paths = pathname.split('/').filter(path => path !== '')
 
     const breadcrumbs = [
-      { name: 'Dashboard', href: '/dashboard' }
+      { name: 'Home', href: '/' }
     ]
 
     let currentPath = ''
     paths.forEach((path, index) => {
       currentPath += `/${path}`
-
-      // Skip the first 'dashboard' if it's already included
-      if (path === 'dashboard' && index === 0) return
 
       const name = formatPathName(path)
       breadcrumbs.push({
@@ -47,14 +44,14 @@ export default function BreadcrumbNavigation() {
 
   const breadcrumbs = generateBreadcrumbs()
 
-  if (pathname === '/dashboard' || pathname === '/') {
+  if (pathname === '/') {
     return (
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
             <div className="flex items-center gap-2">
               <Home size={16} className="text-primary" />
-              <BreadcrumbPage>Dashboard</BreadcrumbPage>
+              <BreadcrumbPage>Home</BreadcrumbPage>
             </div>
           </BreadcrumbItem>
         </BreadcrumbList>

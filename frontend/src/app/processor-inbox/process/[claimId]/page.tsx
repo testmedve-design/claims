@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Save, Plus, X } from 'lucide-react'
 import { toast } from '@/lib/toast'
+import { claimsApi } from '@/services/claimsApi'
 
 interface ClaimDetails {
   claim_id: string
@@ -21,6 +22,73 @@ interface ClaimDetails {
   updated_at?: string
   hospital_name: string
   created_by_email?: string
+  
+  // Structured data sections from backend
+  patient_details?: {
+    patient_name?: string
+    age?: number
+    gender?: string
+    id_card_type?: string
+    id_card_number?: string
+    patient_contact_number?: string
+    patient_email_id?: string
+    beneficiary_type?: string
+    relationship?: string
+  }
+  
+  payer_details?: {
+    payer_name?: string
+    payer_type?: string
+    insurer_name?: string
+    policy_number?: string
+    authorization_number?: string
+    total_authorized_amount?: number
+    payer_patient_id?: string
+    sponsorer_corporate_name?: string
+    sponsorer_employee_id?: string
+    sponsorer_employee_name?: string
+  }
+  
+  provider_details?: {
+    patient_registration_number?: string
+    specialty?: string
+    doctor?: string
+    treatment_line?: string
+    claim_type?: string
+    service_start_date?: string
+    service_end_date?: string
+    inpatient_number?: string
+    admission_type?: string
+    hospitalization_type?: string
+    ward_type?: string
+    admission_date?: string
+    discharge_date?: string
+    patient_id?: string
+  }
+  
+  treatment_details?: {
+    diagnosis?: string
+    final_diagnosis?: string
+    icd_10_code?: string
+    pcs_code?: string
+    treatment?: string
+    treatment_done?: string
+  }
+  
+  financial_details?: {
+    total_bill_amount?: number
+    total_patient_paid_amount?: number
+    total_amount?: number
+    claimed_amount?: number
+    amount_charged_to_payer?: number
+    amount_paid_by_patient?: number
+    mou_discount_amount?: number
+    patient_discount_amount?: number
+    security_deposit?: number
+    total_authorized_amount?: number
+  }
+  
+  // Legacy form_data for backward compatibility
   form_data: {
     // Patient details
     patient_name?: string
@@ -110,6 +178,14 @@ interface ClaimDetails {
   query_answered_by_name?: string
   query_answered_at?: string
   query_response_files?: string[]
+  
+  // Dispatch information
+  dispatched_by?: string
+  dispatched_by_email?: string
+  dispatched_by_name?: string
+  dispatched_at?: string
+  dispatch_remarks?: string
+  dispatch_tracking_number?: string
 }
 
 interface Query {
@@ -134,6 +210,12 @@ interface ProcessingForm {
 
 const API_BASE_URL = 'http://localhost:5002'
 
+// Helper function to determine if a claim is already processed
+const isClaimProcessed = (claimStatus: string): boolean => {
+  const processedStatuses = ['qc_query', 'qc_clear', 'claim_approved', 'claim_denial']
+  return processedStatuses.includes(claimStatus)
+}
+
 export default function ProcessClaimPage() {
   const { claimId } = useParams<{ claimId: string }>()
   const router = useRouter()
@@ -143,6 +225,12 @@ export default function ProcessClaimPage() {
   const [error, setError] = useState<string | null>(null)
   const [processing, setProcessing] = useState(false)
   const [availableQueries, setAvailableQueries] = useState<string[]>([])
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [transactionsLoading, setTransactionsLoading] = useState(false)
+  
+  console.log('🔍 ProcessClaimPage component mounted')
+  console.log('🔍 claimId:', claimId)
+  console.log('🔍 user:', user)
   
   const [formData, setFormData] = useState<ProcessingForm>({
     status: '',
@@ -159,17 +247,48 @@ export default function ProcessClaimPage() {
   useEffect(() => {
     // Check if user has processor access
     console.log('🔍 User role check:', user?.role)
-    if (user && !user.role?.includes('processor')) {
-      console.log('🔍 Redirecting - user role does not include processor:', user.role)
+    console.log('🔍 User object:', user)
+    
+    // Only redirect if user is loaded and doesn't have processor role
+    if (user && user.role !== 'claim_processor' && (user.role as string) !== 'claim_processor_l4') {
+      console.log('🔍 Redirecting - user role is not claim_processor:', user.role)
       router.push('/processor-inbox')
       return
     }
     
+    // If user is not loaded yet, wait
+    if (!user) {
+      console.log('🔍 User not loaded yet, waiting...')
+      return
+    }
+    
     if (claimId) {
+      console.log('🔍 Fetching claim details for:', claimId)
       fetchClaimDetails()
       fetchAvailableQueries()
     }
   }, [claimId, user, router])
+
+  const fetchTransactions = async () => {
+    if (transactionsLoading) {
+      console.log('⏳ Transactions already loading, skipping...')
+      return
+    }
+    
+    try {
+      setTransactionsLoading(true)
+      console.log('🔍 Fetching transactions for claim:', claimId)
+      const transactionData = await claimsApi.getClaimTransactions(claimId)
+      console.log('📊 Transactions received:', transactionData.length, 'transactions')
+      setTransactions(transactionData)
+    } catch (error) {
+      console.error('❌ Error fetching transactions:', error)
+      console.log('💡 This might be due to authentication issues')
+      setTransactions([])
+    } finally {
+      setTransactionsLoading(false)
+    }
+  }
 
   const fetchClaimDetails = async () => {
     try {
@@ -192,6 +311,9 @@ export default function ProcessClaimPage() {
       }
 
       const data = await response.json()
+      
+      // Fetch transactions after getting claim details
+      await fetchTransactions()
       
       console.log('🔍 Claim Details API Response:', data)
       console.log('🔍 Form Data Structure:', data.claim?.form_data)
@@ -219,6 +341,14 @@ export default function ProcessClaimPage() {
         console.log('  processed_by_name:', data.claim.processed_by_name)
         console.log('  processing_remarks:', data.claim.processing_remarks)
         console.log('  processed_at:', data.claim.processed_at)
+        
+        // Debug: Print lock information
+        console.log('🔍 DEBUG: Lock info received:')
+        console.log('  locked_by_processor:', data.claim.locked_by_processor)
+        console.log('  locked_by_processor_email:', data.claim.locked_by_processor_email)
+        console.log('  locked_by_processor_name:', data.claim.locked_by_processor_name)
+        console.log('  locked_at:', data.claim.locked_at)
+        console.log('  lock_expires_at:', data.claim.lock_expires_at)
         
         // Check if claim is locked by another processor
         if (data.claim.locked_by_processor && data.claim.locked_by_processor !== user?.uid) {
@@ -266,6 +396,13 @@ export default function ProcessClaimPage() {
       payer_branch_location: '',
       cqc_clear_date: '',
       queries: []
+    }))
+  }
+
+  const handleFieldChange = (field: keyof ProcessingForm, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
     }))
   }
 
@@ -391,6 +528,44 @@ export default function ProcessClaimPage() {
     }
   }
 
+  const handleUnlockClaim = async () => {
+    try {
+      setProcessing(true)
+      const token = localStorage.getItem('auth_token')
+      
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
+      console.log('🔍 Unlocking claim:', claimId)
+      const response = await fetch(`${API_BASE_URL}/api/processor-routes/unlock-claim/${claimId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to unlock claim')
+      }
+
+      const data = await response.json()
+      console.log('🔍 Claim unlocked successfully:', data)
+      
+      toast.success('Claim unlocked successfully')
+      
+      // Refresh the claim data to update the lock status
+      await fetchClaimDetails()
+    } catch (err: any) {
+      console.error('Error unlocking claim:', err)
+      toast.error(err.message || 'An error occurred while unlocking the claim')
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800'
@@ -453,380 +628,38 @@ export default function ProcessClaimPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <Button variant="outline" onClick={() => router.back()} className="mb-6">
-        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Processor Inbox
-      </Button>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Claim Details */}
-        <div className="lg:col-span-2">
-          <Card className="mb-6">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div>
-                <CardTitle className="text-2xl font-bold">Claim Details</CardTitle>
-                <p className="text-lg text-gray-600 mt-1">Claim ID: {claim.claim_id}</p>
-              </div>
-              <div className="text-right">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(claim.claim_status)}`}>
-                  {claim.claim_status?.toUpperCase()}
-                </span>
-                <p className="text-sm text-gray-500 mt-1">
-                  Submitted: {new Date(claim.submission_date).toLocaleDateString('en-IN')}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Time: {new Date(claim.submission_date).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
-                </p>
-              </div>
-            </CardHeader>
-          </Card>
-
-          {/* Patient Details */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>👤 Patient Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Patient Name</Label>
-                  <p className="font-medium">{claim.form_data?.patient_name || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Age</Label>
-                  <p>{claim.form_data?.age || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Gender</Label>
-                  <p>{claim.form_data?.gender || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Contact</Label>
-                  <p>{claim.form_data?.patient_contact_number || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Email</Label>
-                  <p>{claim.form_data?.patient_email_id || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Beneficiary Type</Label>
-                  <p>{claim.form_data?.beneficiary_type || 'N/A'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payer Details */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>💳 Payer Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Payer Name</Label>
-                  <p className="font-medium">{claim.form_data?.payer_name || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Payer Type</Label>
-                  <p>{claim.form_data?.payer_type || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Authorization</Label>
-                  <p>{claim.form_data?.authorization_number || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Policy Number</Label>
-                  <p>{claim.form_data?.policy_number || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Total Authorized Amount</Label>
-                  <p>₹{claim.form_data?.total_authorized_amount?.toLocaleString() || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Claimed Amount</Label>
-                  <p className="font-bold">₹{claim.form_data?.claimed_amount?.toLocaleString() || 'N/A'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Provider Details */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>🏥 Provider Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Hospital</Label>
-                  <p className="font-medium">{claim.hospital_name || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Specialty</Label>
-                  <p>{claim.form_data?.specialty || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Diagnosis</Label>
-                  <p>{claim.form_data?.final_diagnosis || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Treatment</Label>
-                  <p>{claim.form_data?.treatment_done || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Admission</Label>
-                  <p>{claim.form_data?.admission_type || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Doctor</Label>
-                  <p>{claim.form_data?.doctor || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Ward</Label>
-                  <p>{claim.form_data?.ward_type || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Service Period</Label>
-                  <p>{claim.form_data?.service_start_date || 'N/A'} to {claim.form_data?.service_end_date || 'N/A'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Bill Details */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>💰 Bill Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Bill Number</Label>
-                  <p className="font-medium">{claim.form_data?.bill_number || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Bill Date</Label>
-                  <p>{claim.form_data?.bill_date || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Total Bill Amount</Label>
-                  <p>₹{claim.form_data?.total_bill_amount?.toLocaleString() || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Claimed Amount</Label>
-                  <p className="font-bold">₹{claim.form_data?.claimed_amount?.toLocaleString() || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Patient Paid</Label>
-                  <p>₹{claim.form_data?.amount_paid_by_patient?.toLocaleString() || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Charged to Payer</Label>
-                  <p>₹{claim.form_data?.amount_charged_to_payer?.toLocaleString() || 'N/A'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Submission Information */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>📋 Submission Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Submitted by</Label>
-                  <p>{claim.created_by_email || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label>Submission Date</Label>
-                  <p>{new Date(claim.submission_date).toLocaleDateString('en-IN')}, {new Date(claim.submission_date).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</p>
-                </div>
-                <div>
-                  <Label>Created</Label>
-                  <p>{new Date(claim.created_at).toLocaleDateString('en-IN')}, {new Date(claim.created_at).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</p>
-                </div>
-                <div>
-                  <Label>Status</Label>
-                  <p className="font-medium">{claim.claim_status || 'N/A'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-        {/* Documents Section */}
-        {claim.documents && claim.documents.length > 0 && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                📄 Attached Documents ({claim.documents.length})
-              </CardTitle>
-              <CardDescription>
-                Documents that were uploaded and attached to this claim
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {claim.documents.map((doc: any, index: number) => (
-                  <div key={doc.document_id || index} className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-sm text-gray-900 mb-1">{doc.document_name}</h4>
-                        <p className="text-xs text-gray-600 capitalize mb-2">
-                          {doc.document_type?.replace('_', ' ')}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : 'Unknown size'}
-                        </p>
-                      </div>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        doc.status === 'uploaded' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {doc.status}
-                      </span>
-                    </div>
-                    
-                    <div className="text-xs text-gray-400 mb-3 space-y-1">
-                      <div>ID: {doc.document_id}</div>
-                      {doc.uploaded_at && (
-                        <div>Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}</div>
-                      )}
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => handleViewDocument(doc)}
-                      >
-                        📥 View
-                      </Button>
-                      {doc.download_url && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => window.open(doc.download_url, '_blank')}
-                        >
-                          ⬇️ Download
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Transaction History */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>📋 Transaction History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Creator Information */}
-              {(claim.created_by || claim.submitted_by || claim.created_by_email || claim.submitted_by_email) ? (
-                <div className="border-l-4 border-green-500 pl-4 py-2 bg-green-50">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-semibold text-green-900">
-                        Created by: {claim.created_by_name || claim.submitted_by_name || claim.created_by_email || claim.submitted_by_email || claim.created_by || claim.submitted_by || 'Unknown User'}
-                      </p>
-                      <p className="text-sm text-green-700">Status: Created</p>
-                    </div>
-                    {claim.created_at && (
-                      <p className="text-sm text-green-600">
-                        {new Date(claim.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="border-l-4 border-gray-300 pl-4 py-2 bg-gray-50">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-semibold text-gray-700">
-                        Created by: Information not available
-                      </p>
-                      <p className="text-sm text-gray-600">Status: Created</p>
-                    </div>
-                    {claim.created_at && (
-                      <p className="text-sm text-gray-500">
-                        {new Date(claim.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Hospital Response Information */}
-              {claim.query_response && (
-                <div className="border-l-4 border-purple-500 pl-4 py-2 bg-purple-50">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-semibold text-purple-900">Answered by: {claim.query_answered_by_name || claim.query_answered_by_email || claim.query_answered_by || 'Hospital User'}</p>
-                      <p className="text-sm text-purple-700">Status: QC Answered</p>
-                    </div>
-                    {claim.query_answered_at && (
-                      <p className="text-sm text-purple-600">
-                        {new Date(claim.query_answered_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
-                      </p>
-                    )}
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-sm font-medium text-purple-900">Response:</p>
-                    <p className="text-sm text-purple-800 mt-1">{claim.query_response}</p>
-                  </div>
-                  {claim.query_response_files && claim.query_response_files.length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-sm font-medium text-purple-900">Supporting Documents:</p>
-                      <p className="text-sm text-purple-800 mt-1">{claim.query_response_files.length} file(s) uploaded</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Processor Information */}
-              {claim.processed_by && (
-                <div className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-semibold text-blue-900">Processed by: {claim.processed_by_name || claim.processed_by_email || claim.processed_by}</p>
-                      <p className="text-sm text-blue-700">Status: {claim.claim_status}</p>
-                    </div>
-                    {claim.processed_at && (
-                      <p className="text-sm text-blue-600">
-                        {new Date(claim.processed_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
-                      </p>
-                    )}
-                  </div>
-                  {claim.processing_remarks && (
-                    <div className="mt-2">
-                      <p className="text-sm font-medium text-blue-900">Remarks:</p>
-                      <p className="text-sm text-blue-800 mt-1">{claim.processing_remarks}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.back()}>
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Process Claim</h1>
+            <p className="text-gray-600">Claim ID: {claim.claim_id}</p>
+          </div>
         </div>
+        <div className="text-right">
+          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(claim.claim_status)}`}>
+            {claim.claim_status?.toUpperCase()}
+          </span>
+          <p className="text-sm text-gray-500 mt-1">
+            Submitted: {new Date(claim.submission_date || claim.created_at).toLocaleDateString('en-IN')}
+          </p>
+        </div>
+      </div>
 
-        {/* Processing Form */}
-        <div className="lg:sticky lg:top-6 lg:self-start">
-          <Card>
-            <CardHeader>
-              <CardTitle>⚙️ Process Claim</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Status Selection */}
+      {/* Processing Form - Only show for unprocessed claims */}
+      {claim && !isClaimProcessed(claim.claim_status) && (
+        <Card className="mb-6 border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="text-blue-800">⚙️ Process Claim</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="status">Status *</Label>
                 <Select value={formData.status} onValueChange={handleStatusChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
@@ -840,162 +673,432 @@ export default function ProcessClaimPage() {
                   </SelectContent>
                 </Select>
               </div>
-
-              {/* Query Management */}
-              {(formData.status === 'qc_query' || formData.status === 'need_more_info') && (
-                <div className="space-y-4">
-                  <div>
-                    <Label>Add New Query Type</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={formData.new_query}
-                        onChange={(e) => setFormData(prev => ({ ...prev, new_query: e.target.value }))}
-                        placeholder="Enter new query type"
-                      />
-                      <Button onClick={addQuery} size="sm">
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Existing Queries */}
-                  {formData.queries.map((query) => (
-                    <Card key={query.id} className="p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <h4 className="font-medium">{query.query_type}</h4>
-                        <Button
-                          onClick={() => removeQuery(query.id)}
-                          variant="ghost"
-                          size="sm"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label>Amount</Label>
-                          <Input
-                            type="number"
-                            value={query.amount}
-                            onChange={(e) => updateQuery(query.id, 'amount', parseFloat(e.target.value) || 0)}
-                            placeholder="0"
-                          />
-                        </div>
-                        <div>
-                          <Label>Department</Label>
-                          <Input
-                            value={query.department}
-                            onChange={(e) => updateQuery(query.id, 'department', e.target.value)}
-                            placeholder="Department"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="mt-3">
-                        <Label>Query Status</Label>
-                        <Select value={query.status} onValueChange={(value) => updateQuery(query.id, 'status', value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="deny">Deny</SelectItem>
-                            <SelectItem value="delay">Delay</SelectItem>
-                            <SelectItem value="disallowed">Disallowed</SelectItem>
-                            <SelectItem value="others">Others</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-
-              {/* Claim Approved Fields */}
-              {formData.status === 'claim_approved' && (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="estimated_cost">Estimated Cost</Label>
-                    <Input
-                      id="estimated_cost"
-                      type="number"
-                      value={formData.estimated_cost}
-                      onChange={(e) => setFormData(prev => ({ ...prev, estimated_cost: parseFloat(e.target.value) || 0 }))}
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="approved_amount">Approved Amount</Label>
-                    <Input
-                      id="approved_amount"
-                      type="number"
-                      value={formData.approved_amount}
-                      onChange={(e) => setFormData(prev => ({ ...prev, approved_amount: parseFloat(e.target.value) || 0 }))}
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="disallowed_amount">Disallowed Amount</Label>
-                    <Input
-                      id="disallowed_amount"
-                      type="number"
-                      value={formData.disallowed_amount}
-                      onChange={(e) => setFormData(prev => ({ ...prev, disallowed_amount: parseFloat(e.target.value) || 0 }))}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Clear Fields */}
-              {formData.status === 'qc_clear' && (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="payer_branch_location">Payer Branch Location</Label>
-                    <Input
-                      id="payer_branch_location"
-                      value={formData.payer_branch_location}
-                      onChange={(e) => setFormData(prev => ({ ...prev, payer_branch_location: e.target.value }))}
-                      placeholder="Enter branch location"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="cqc_clear_date">CQC Clear Date</Label>
-                    <Input
-                      id="cqc_clear_date"
-                      type="date"
-                      value={formData.cqc_clear_date}
-                      onChange={(e) => setFormData(prev => ({ ...prev, cqc_clear_date: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Remarks */}
               <div>
-                <Label htmlFor="remarks">Remarks</Label>
+                <Label htmlFor="remarks">Processing Remarks</Label>
                 <Textarea
                   id="remarks"
+                  placeholder="Enter remarks..."
                   value={formData.remarks}
-                  onChange={(e) => setFormData(prev => ({ ...prev, remarks: e.target.value }))}
-                  placeholder="Enter processing remarks..."
-                  rows={4}
+                  onChange={(e) => handleFieldChange('remarks', e.target.value)}
+                  rows={3}
                 />
               </div>
+            </div>
+            <Button 
+              onClick={handleSubmit}
+              disabled={processing || !formData.status}
+              className="w-full"
+            >
+              {processing ? 'Processing...' : 'Submit Processing'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-              {/* Submit Button */}
-              <Button
-                onClick={handleSubmit}
-                disabled={processing || !formData.status}
-                className="w-full"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {processing ? 'Processing...' : 'Update Claim'}
-              </Button>
-            </CardContent>
-          </Card>
+      {/* Processed Status Information */}
+      {claim && isClaimProcessed(claim.claim_status) && (
+        <Card className="mb-6 border-green-200 bg-green-50">
+          <CardHeader>
+            <CardTitle className="text-green-800">✅ Claim Already Processed</CardTitle>
+            <CardDescription>
+              This claim has already been processed and cannot be modified.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-white border rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-2">
+                <Badge variant="outline" className="bg-green-100 text-green-800">
+                  {claim.claim_status.replace('_', ' ').toUpperCase()}
+                </Badge>
+              </div>
+              <p className="text-sm text-gray-600">
+                This claim is in a processed state and cannot be reprocessed.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Unlock Claim Section - Only show if claim is locked by current user */}
+      {claim && claim.locked_by_processor === user?.uid && (
+        <Card className="mb-6 border-orange-200 bg-orange-50">
+          <CardHeader>
+            <CardTitle className="text-orange-800">🔓 Unlock Claim</CardTitle>
+            <CardDescription>
+              You have this claim locked. You can unlock it to allow other processors to work on it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-white border rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">
+                    <strong>Locked by:</strong> {claim.locked_by_processor_name || claim.locked_by_processor_email}
+                  </p>
+                  {claim.locked_at && (
+                    <p className="text-sm text-gray-500">
+                      <strong>Locked at:</strong> {new Date(claim.locked_at).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+                <Button 
+                  variant="outline" 
+                  onClick={handleUnlockClaim}
+                  disabled={processing}
+                  className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                >
+                  {processing ? 'Unlocking...' : 'Unlock Claim'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Processing Information */}
+      {claim.processing_remarks && (
+        <Card className="mb-6 border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="text-amber-800">📝 Processing Remarks</CardTitle>
+            <CardDescription>
+              Remarks from the processor regarding this claim
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-white border rounded-lg p-4">
+              <p className="text-gray-800 whitespace-pre-wrap">{claim.processing_remarks}</p>
+              {claim.processed_by_name && (
+                <div className="mt-3 text-sm text-gray-600">
+                  <p><strong>Processed by:</strong> {claim.processed_by_name}</p>
+                  {claim.processed_at && (
+                    <p><strong>Processed at:</strong> {new Date(claim.processed_at).toLocaleString()}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column */}
+        <div className="space-y-6">
+          {/* Patient Details */}
+          <div className="bg-white border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">👤 Patient Details</h3>
+            <div className="space-y-3">
+              <div>
+                <Label>Patient Name</Label>
+                <p className="font-medium">{claim.patient_details?.patient_name || claim.form_data?.patient_name || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Age</Label>
+                <p>{claim.patient_details?.age || claim.form_data?.age || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Gender</Label>
+                <p>{claim.patient_details?.gender || claim.form_data?.gender || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Contact</Label>
+                <p>{claim.patient_details?.patient_contact_number || claim.form_data?.patient_contact_number || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Email</Label>
+                <p>{claim.patient_details?.patient_email_id || claim.form_data?.patient_email_id || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Beneficiary Type</Label>
+                <p>{claim.patient_details?.beneficiary_type || claim.form_data?.beneficiary_type || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Payer Details */}
+          <div className="bg-white border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">💳 Payer Details</h3>
+            <div className="space-y-3">
+              <div>
+                <Label>Payer Name</Label>
+                <p className="font-medium">{claim.payer_details?.payer_name || claim.form_data?.payer_name || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Payer Type</Label>
+                <p>{claim.payer_details?.payer_type || claim.form_data?.payer_type || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Authorization</Label>
+                <p>{claim.payer_details?.authorization_number || claim.form_data?.authorization_number || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Policy Number</Label>
+                <p>{claim.payer_details?.policy_number || claim.form_data?.policy_number || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Total Authorized Amount</Label>
+                <p>₹{(claim.payer_details?.total_authorized_amount || claim.form_data?.total_authorized_amount || 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <Label>Claimed Amount</Label>
+                <p className="font-bold">₹{(claim.financial_details?.claimed_amount || claim.form_data?.claimed_amount || 0).toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Provider Details */}
+          <div className="bg-white border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">🏥 Provider Details</h3>
+            <div className="space-y-3">
+              <div>
+                <Label>Hospital</Label>
+                <p className="font-medium">{claim.hospital_name || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Specialty</Label>
+                <p>{claim.provider_details?.specialty || claim.form_data?.specialty || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Doctor</Label>
+                <p>{claim.provider_details?.doctor || claim.form_data?.doctor || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Admission Type</Label>
+                <p>{claim.provider_details?.admission_type || claim.form_data?.admission_type || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Ward Type</Label>
+                <p>{claim.provider_details?.ward_type || claim.form_data?.ward_type || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Service Period</Label>
+                <p>{claim.provider_details?.service_start_date || claim.form_data?.service_start_date || 'N/A'} to {claim.provider_details?.service_end_date || claim.form_data?.service_end_date || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-6">
+          {/* Treatment Details */}
+          <div className="bg-white border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">🏥 Treatment Details</h3>
+            <div className="space-y-3">
+              <div>
+                <Label>Final Diagnosis</Label>
+                <p className="font-medium">{claim.treatment_details?.final_diagnosis || claim.form_data?.final_diagnosis || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Treatment Done</Label>
+                <p>{claim.treatment_details?.treatment_done || claim.form_data?.treatment_done || 'N/A'}</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>ICD-10 Code</Label>
+                  <p>{claim.treatment_details?.icd_10_code || claim.form_data?.icd_10_code || 'N/A'}</p>
+                </div>
+                <div>
+                  <Label>PCS Code</Label>
+                  <p>{claim.treatment_details?.pcs_code || claim.form_data?.pcs_code || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bill Details */}
+          <div className="bg-white border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">💰 Bill Details</h3>
+            <div className="space-y-3">
+              <div>
+                <Label>Bill Number</Label>
+                <p className="font-medium">{claim.form_data?.bill_number || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Bill Date</Label>
+                <p>{claim.form_data?.bill_date || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Total Bill Amount</Label>
+                <p>₹{(claim.financial_details?.total_bill_amount || claim.form_data?.total_bill_amount || 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <Label>Claimed Amount</Label>
+                <p className="font-bold">₹{(claim.financial_details?.claimed_amount || claim.form_data?.claimed_amount || 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <Label>Patient Paid</Label>
+                <p>₹{(claim.financial_details?.amount_paid_by_patient || claim.form_data?.amount_paid_by_patient || 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <Label>Charged to Payer</Label>
+                <p>₹{(claim.financial_details?.amount_charged_to_payer || claim.form_data?.amount_charged_to_payer || 0).toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Submission Information */}
+          <div className="bg-white border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">📋 Submission Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Submitted by</Label>
+                <p>{claim.created_by_email || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Submission Date</Label>
+                <p>{new Date(claim.submission_date).toLocaleDateString('en-IN')}, {new Date(claim.submission_date).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</p>
+              </div>
+              <div>
+                <Label>Created</Label>
+                <p>{new Date(claim.created_at).toLocaleDateString('en-IN')}, {new Date(claim.created_at).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</p>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <p className="font-medium">{claim.claim_status || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Documents Section */}
+      {claim.documents && claim.documents.length > 0 && (
+        <div className="bg-white border rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-4">📄 Attached Documents ({claim.documents.length})</h3>
+          <p className="text-gray-600 mb-4">Documents that were uploaded and attached to this claim</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {claim.documents.map((doc: any, index: number) => (
+              <div key={doc.document_id || index} className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-sm text-gray-900 mb-1">{doc.document_name}</h4>
+                    <p className="text-xs text-gray-600 capitalize mb-2">
+                      {doc.document_type?.replace('_', ' ')}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : 'Unknown size'}
+                    </p>
+                  </div>
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    doc.status === 'uploaded' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {doc.status}
+                  </span>
+                </div>
+                
+                <div className="text-xs text-gray-400 mb-3 space-y-1">
+                  <div>ID: {doc.document_id}</div>
+                  {doc.uploaded_at && (
+                    <div>Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}</div>
+                  )}
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleViewDocument(doc)}
+                  >
+                    📥 View
+                  </Button>
+                  {doc.download_url && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => window.open(doc.download_url, '_blank')}
+                    >
+                      ⬇️ Download
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Transaction History Table */}
+      <div className="bg-white border rounded-lg p-6">
+        <h3 className="text-lg font-semibold mb-4">📋 Transaction History ({transactions.length} events)</h3>
+        
+        {transactions.length === 0 ? (
+          <p className="text-gray-500 text-center py-4">No transaction history available</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse border border-gray-300">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Trail No</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Status Type</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Status</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Remarks</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Query/Answer Remarks</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Issue Category</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Repeat Issue</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Action Required By Onsite Team</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Letter</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Updated BY</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Updated Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((transaction, index) => {
+                  // Map transaction types to display status
+                    const getStatusDisplay = (type: string, newStatus: string) => {
+                    switch (type) {
+                      case 'CREATED': return 'QC pending'
+                      case 'QUERIED': return 'QC Query'
+                      case 'ANSWERED': return 'QUERY ANSWERED'
+                      case 'CLEARED': return `QC Clear(${new Date(transaction.performed_at).toLocaleDateString('en-GB')})`
+                      case 'APPROVED': return 'QC Clear'
+                      case 'REJECTED': return 'QC Rejected'
+                      case 'DISPATCHED': return `DESPATCHED(${new Date(transaction.performed_at).toLocaleDateString('en-GB')})`
+                      default: return type
+                    }
+                  }
+
+                  const statusDisplay = getStatusDisplay(transaction.transaction_type, transaction.new_status)
+                  const updatedTime = transaction.performed_at ? 
+                    new Date(transaction.performed_at).toLocaleString('en-IN', { 
+                      timeZone: 'Asia/Kolkata',
+                      day: '2-digit',
+                      month: '2-digit', 
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    }) : ''
+
+                  return (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="border border-gray-300 px-3 py-2">{index + 1}</td>
+                      <td className="border border-gray-300 px-3 py-2">REQUEST</td>
+                      <td className="border border-gray-300 px-3 py-2 font-medium">{statusDisplay}</td>
+                      <td className="border border-gray-300 px-3 py-2">{transaction.remarks || ''}</td>
+                      <td className="border border-gray-300 px-3 py-2">
+                        {transaction.transaction_type === 'ANSWERED' ? transaction.remarks : ''}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2">
+                        {transaction.transaction_type === 'QUERIED' ? 'Reports' : ''}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2">No</td>
+                      <td className="border border-gray-300 px-3 py-2">
+                        {transaction.metadata?.action_required || ''}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2"></td>
+                      <td className="border border-gray-300 px-3 py-2 font-medium">
+                        {transaction.performed_by_name || transaction.performed_by_email}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2">{updatedTime}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
     </div>
   )
 }

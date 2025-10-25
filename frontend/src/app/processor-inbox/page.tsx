@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { FileText, Search, Filter, Clock, CheckCircle, AlertCircle, XCircle } from 'lucide-react'
+import { FileText, Search, Filter, Clock, CheckCircle, AlertCircle, XCircle, Lock, Unlock } from 'lucide-react'
 
 interface Claim {
   claim_id: string
@@ -30,6 +30,12 @@ interface Claim {
 
 const API_BASE_URL = 'http://localhost:5002'
 
+// Helper function to determine if a claim is already processed
+const isClaimProcessed = (claimStatus: string): boolean => {
+  const processedStatuses = ['qc_query', 'qc_clear', 'claim_approved', 'claim_denial']
+  return processedStatuses.includes(claimStatus)
+}
+
 export default function ProcessorInboxPage() {
   const { user } = useAuth()
   const router = useRouter()
@@ -37,6 +43,7 @@ export default function ProcessorInboxPage() {
   const [filteredClaims, setFilteredClaims] = useState<Claim[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [fetchingClaims, setFetchingClaims] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [startDate, setStartDate] = useState('')
@@ -52,7 +59,25 @@ export default function ProcessorInboxPage() {
 
   useEffect(() => {
     fetchClaims()
-  }, [])
+    
+    // Auto-refresh every 30 seconds to update lock status
+    const refreshInterval = setInterval(() => {
+      console.log('🔍 Auto-refreshing claims list...')
+      // Only refresh if we're not in the middle of a lock operation
+      if (!fetchingClaims) {
+        // Check if any claims are locked by current user - if so, preserve their lock states
+        const hasLockedClaims = claims.some(claim => claim.locked_by_processor === user?.uid)
+        if (hasLockedClaims) {
+          console.log('🔍 Auto-refresh with lock preservation')
+        }
+        fetchClaims()
+      } else {
+        console.log('🔍 Skipping auto-refresh - lock operation in progress')
+      }
+    }, 30000) // 30 seconds
+    
+    return () => clearInterval(refreshInterval)
+  }, [fetchingClaims])
 
   // Refetch claims when tab changes
   useEffect(() => {
@@ -64,7 +89,13 @@ export default function ProcessorInboxPage() {
   }, [claims, searchTerm, statusFilter, startDate, endDate, activeTab])
 
   const fetchClaims = async () => {
+    if (fetchingClaims) {
+      console.log('⏳ Claims already fetching, skipping...')
+      return
+    }
+    
     try {
+      setFetchingClaims(true)
       setLoading(true)
       const token = localStorage.getItem('auth_token')
       
@@ -103,6 +134,16 @@ export default function ProcessorInboxPage() {
       console.log('🔍 Processor API Response:', data)
       console.log('🔍 Number of claims:', data.claims?.length || 0)
       
+      // Debug lock information
+      if (data.claims && data.claims.length > 0) {
+        console.log('🔍 Lock data for first claim:', {
+          locked_by_processor: data.claims[0].locked_by_processor,
+          locked_by_processor_email: data.claims[0].locked_by_processor_email,
+          locked_by_processor_name: data.claims[0].locked_by_processor_name,
+          locked_at: data.claims[0].locked_at
+        })
+      }
+      
       if (data.success) {
         // Transform the data structure from processor API
         const transformedClaims = data.claims.map((claim: any) => ({
@@ -113,10 +154,50 @@ export default function ProcessorInboxPage() {
           claim_status: claim.claim_status || 'pending',
           submission_date: claim.submission_date,
           created_at: claim.created_at,
-          updated_at: claim.created_at // Using created_at as fallback
+          updated_at: claim.created_at, // Using created_at as fallback
+          // Lock information
+          locked_by_processor: claim.locked_by_processor || '',
+          locked_by_processor_email: claim.locked_by_processor_email || '',
+          locked_by_processor_name: claim.locked_by_processor_name || '',
+          locked_at: claim.locked_at || '',
+          lock_expires_at: claim.lock_expires_at || ''
         }))
         
-        setClaims(transformedClaims)
+        // Debug: Print lock information for each claim
+        transformedClaims.forEach((claim: Claim) => {
+          console.log(`🔍 DEBUG: Claim ${claim.claim_id} lock data:`)
+          console.log(`  locked_by_processor: ${claim.locked_by_processor || 'NOT_FOUND'}`)
+          console.log(`  locked_by_processor_email: ${claim.locked_by_processor_email || 'NOT_FOUND'}`)
+          console.log(`  locked_by_processor_name: ${claim.locked_by_processor_name || 'NOT_FOUND'}`)
+          console.log(`  locked_at: ${claim.locked_at || 'NOT_FOUND'}`)
+          console.log(`  lock_expires_at: ${claim.lock_expires_at || 'NOT_FOUND'}`)
+        })
+        
+        // Preserve lock states for claims locked by current user
+        setClaims(prevClaims => {
+          const updatedClaims = transformedClaims.map((serverClaim: Claim) => {
+            const existingClaim = prevClaims.find(c => c.claim_id === serverClaim.claim_id)
+            
+            // If the claim was locked by current user and server doesn't have lock info, preserve it
+            if (existingClaim && 
+                existingClaim.locked_by_processor === user?.uid && 
+                !serverClaim.locked_by_processor) {
+              console.log(`🔍 Preserving lock state for claim ${serverClaim.claim_id}`)
+              return {
+                ...serverClaim,
+                locked_by_processor: existingClaim.locked_by_processor,
+                locked_by_processor_email: existingClaim.locked_by_processor_email,
+                locked_by_processor_name: existingClaim.locked_by_processor_name,
+                locked_at: existingClaim.locked_at,
+                lock_expires_at: existingClaim.lock_expires_at
+              }
+            }
+            
+            return serverClaim
+          })
+          
+          return updatedClaims
+        })
       } else {
         throw new Error(data.error || 'Failed to fetch claims')
       }
@@ -125,6 +206,7 @@ export default function ProcessorInboxPage() {
       setError(err.message || 'An error occurred while fetching claims')
     } finally {
       setLoading(false)
+      setFetchingClaims(false)
     }
   }
 
@@ -197,9 +279,246 @@ export default function ProcessorInboxPage() {
     }
   }
 
-  const handleProcessClaim = (claimId: string) => {
-    // Navigate to claim processing page
-    window.location.href = `/processor-inbox/process/${claimId}`
+  const getLockStatus = (claim: Claim) => {
+    // Debug: Print lock status comparison
+    console.log('🔍 DEBUG: Lock status check for claim:', claim.claim_id)
+    console.log('  claim.locked_by_processor:', claim.locked_by_processor)
+    console.log('  user?.uid:', user?.uid)
+    console.log('  user?.id:', user?.id)
+    console.log('  comparison result:', claim.locked_by_processor === user?.uid || claim.locked_by_processor === user?.id)
+    
+    if (!claim.locked_by_processor) {
+      return (
+        <div className="flex items-center gap-1 text-green-600">
+          <Unlock className="h-4 w-4" />
+          <span className="text-sm">Available</span>
+        </div>
+      )
+    }
+    
+    if (claim.locked_by_processor === user?.uid || claim.locked_by_processor === user?.id) {
+      return (
+        <div className="flex items-center gap-1 text-blue-600">
+          <Lock className="h-4 w-4" />
+          <span className="text-sm font-medium">You (Can Process)</span>
+        </div>
+      )
+    }
+    
+    return (
+      <div className="flex items-center gap-1 text-red-600">
+        <Lock className="h-4 w-4" />
+        <span className="text-sm" title={claim.locked_by_processor_name || claim.locked_by_processor_email}>
+          {claim.locked_by_processor_name || claim.locked_by_processor_email}
+        </span>
+      </div>
+    )
+  }
+
+  const handleLockClaim = async (claimId: string) => {
+    console.log('🔍 Locking claim:', claimId)
+    
+    try {
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
+      // Show loading state
+      setFetchingClaims(true)
+
+      const lockResponse = await fetch(`${API_BASE_URL}/api/processor-routes/lock-claim/${claimId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!lockResponse.ok) {
+        const errorData = await lockResponse.json()
+        throw new Error(errorData.error || 'Failed to lock claim')
+      }
+
+      const lockData = await lockResponse.json()
+      console.log('🔍 Claim locked successfully:', lockData)
+
+      // Debug: Print user information
+      console.log('🔍 DEBUG: User object:', user)
+      console.log('🔍 DEBUG: User UID:', user?.uid)
+      console.log('🔍 DEBUG: User email:', user?.email)
+      console.log('🔍 DEBUG: User displayName:', user?.displayName)
+
+      // Update the claim in the local state immediately to show Process button
+      setClaims(prevClaims => 
+        prevClaims.map(claim => 
+          claim.claim_id === claimId 
+            ? {
+                ...claim,
+                locked_by_processor: user?.uid || user?.id || '',
+                locked_by_processor_email: user?.email || '',
+                locked_by_processor_name: user?.displayName || user?.name || user?.email || '',
+                locked_at: new Date().toISOString(),
+                lock_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour from now
+              }
+            : claim
+        )
+      )
+
+      // Debug: Print updated claim
+      console.log('🔍 DEBUG: Updated claim after lock:', {
+        claim_id: claimId,
+        locked_by_processor: user?.uid || user?.id || '',
+        locked_by_processor_email: user?.email || '',
+        locked_by_processor_name: user?.displayName || user?.name || user?.email || ''
+      })
+
+      // Don't refresh from server immediately - keep the local state
+      // The auto-refresh will sync with server later
+      console.log('🔍 Skipping immediate server refresh to preserve lock state')
+      
+      // Show success message with visual feedback
+      alert('🔒 Claim locked successfully! You can now process it.')
+      
+      // Optional: Scroll to the claim to show the updated buttons
+      const claimElement = document.querySelector(`[data-claim-id="${claimId}"]`)
+      if (claimElement) {
+        claimElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    } catch (error: any) {
+      console.error('🔍 Error locking claim:', error)
+      alert(`Error: ${error.message}`)
+    } finally {
+      setFetchingClaims(false)
+    }
+  }
+
+  const handleUnlockClaim = async (claimId: string) => {
+    console.log('🔍 Unlocking claim:', claimId)
+    
+    // Check if claim is locked by current user
+    const claim = claims.find(c => c.claim_id === claimId)
+    if (!claim) {
+      alert('Claim not found')
+      return
+    }
+
+    if (!claim.locked_by_processor || claim.locked_by_processor !== user?.uid) {
+      alert('You can only unlock claims that you have locked!')
+      return
+    }
+    
+    try {
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
+      // Show loading state
+      setFetchingClaims(true)
+
+      const unlockResponse = await fetch(`${API_BASE_URL}/api/processor-routes/unlock-claim/${claimId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!unlockResponse.ok) {
+        const errorData = await unlockResponse.json()
+        throw new Error(errorData.error || 'Failed to unlock claim')
+      }
+
+      const unlockData = await unlockResponse.json()
+      console.log('🔍 Claim unlocked successfully:', unlockData)
+
+      // Update the claim in the local state immediately to hide Process button
+      setClaims(prevClaims => 
+        prevClaims.map(claim => 
+          claim.claim_id === claimId 
+            ? {
+                ...claim,
+                locked_by_processor: '',
+                locked_by_processor_email: '',
+                locked_by_processor_name: '',
+                locked_at: '',
+                lock_expires_at: ''
+              }
+            : claim
+        )
+      )
+
+      // Don't refresh from server immediately - keep the local state
+      console.log('🔍 Skipping immediate server refresh to preserve unlock state')
+      
+      alert('Claim unlocked successfully!')
+    } catch (error: any) {
+      console.error('🔍 Error unlocking claim:', error)
+      alert(`Error: ${error.message}`)
+    } finally {
+      setFetchingClaims(false)
+    }
+  }
+
+  const handleProcessClaim = async (claimId: string) => {
+    console.log('🔍 Processing claim:', claimId)
+    
+    // Check if claim is locked by current user
+    const claim = claims.find(c => c.claim_id === claimId)
+    if (!claim) {
+      alert('Claim not found')
+      return
+    }
+
+    if (!claim.locked_by_processor || claim.locked_by_processor !== user?.uid) {
+      alert('You must lock the claim before processing it!')
+      return
+    }
+
+    try {
+      // Navigate to the processing page
+      const url = `/processor-inbox/process/${claimId}`
+      
+      // Try different methods to open the page
+      try {
+        // Method 1: Try window.open with specific parameters
+        const newWindow = window.open(url, '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes')
+        
+        // Check if the window was opened successfully
+        setTimeout(() => {
+          if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+            console.log('🔍 Popup blocked, trying alternative method')
+            
+            // Method 2: Create a link and click it
+            const link = document.createElement('a')
+            link.href = url
+            link.target = '_blank'
+            link.rel = 'noopener noreferrer'
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            
+            console.log('🔍 Opened via link click')
+          } else {
+            console.log('🔍 Successfully opened in new tab')
+            newWindow.focus()
+          }
+        }, 100)
+        
+      } catch (error) {
+        console.error('🔍 Error opening new window:', error)
+        
+        // Method 3: Fallback to same window navigation
+        console.log('🔍 Using fallback navigation in same window')
+        window.location.href = url
+      }
+    } catch (error: any) {
+      console.error('🔍 Error processing claim:', error)
+      alert(`Error: ${error.message}`)
+    } finally {
+      setFetchingClaims(false)
+    }
   }
 
 
@@ -410,18 +729,20 @@ export default function ProcessorInboxPage() {
                   <TableHead>Payer</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Lock Status</TableHead>
                   <TableHead>Submitted At</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredClaims.map((claim) => (
-                  <TableRow key={claim.claim_id}>
+                  <TableRow key={claim.claim_id} data-claim-id={claim.claim_id}>
                     <TableCell className="font-mono text-sm">{claim.claim_id}</TableCell>
                     <TableCell>{claim.patient_name}</TableCell>
                     <TableCell>{claim.payer_name}</TableCell>
                     <TableCell>₹{claim.amount.toLocaleString()}</TableCell>
                     <TableCell>{getStatusBadge(claim.claim_status)}</TableCell>
+                    <TableCell>{getLockStatus(claim)}</TableCell>
                     <TableCell>
                       <div className="text-sm">
                         <div className="font-medium">{new Date(claim.submission_date).toLocaleDateString('en-IN')}</div>
@@ -429,36 +750,78 @@ export default function ProcessorInboxPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {claim.locked_by_processor && claim.locked_by_processor !== user?.uid ? (
-                        <div className="flex flex-col items-start space-y-1">
+                      <div className="flex flex-col items-start space-y-2">
+                        {/* Locked by another processor */}
+                        {claim.locked_by_processor && claim.locked_by_processor !== user?.uid ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled
+                              className="opacity-50 w-full"
+                            >
+                              <Lock className="w-4 h-4 mr-1" />
+                              Locked by Other
+                            </Button>
+                            <div className="text-xs text-gray-500">
+                              {claim.locked_by_processor_name || claim.locked_by_processor_email}
+                            </div>
+                          </>
+                        ) : claim.locked_by_processor === user?.uid || claim.locked_by_processor === user?.id ? (
+                          /* Locked by current user - Show Unlock and Process buttons */
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleUnlockClaim(claim.claim_id)
+                              }}
+                              className="w-full border-orange-300 text-orange-700 hover:bg-orange-50"
+                            >
+                              <Unlock className="w-4 h-4 mr-1" />
+                              Unlock
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleProcessClaim(claim.claim_id)
+                              }}
+                              className="w-full"
+                            >
+                              <FileText className="w-4 h-4 mr-1" />
+                              Process
+                            </Button>
+                          </>
+                        ) : isClaimProcessed(claim.claim_status) ? (
+                          /* Already processed */
                           <Button
                             variant="outline"
                             size="sm"
                             disabled
-                            className="opacity-50"
+                            className="opacity-50 w-full"
                           >
-                            <Clock className="w-4 h-4 mr-1" />
-                            Locked
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Processed
                           </Button>
-                          <div className="text-xs text-gray-500">
-                            By: {claim.locked_by_processor_name || claim.locked_by_processor_email}
-                          </div>
-                          {claim.locked_at && (
-                            <div className="text-xs text-gray-400">
-                              {new Date(claim.locked_at).toLocaleString()}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleProcessClaim(claim.claim_id)}
-                        >
-                          <FileText className="w-4 h-4 mr-1" />
-                          Process
-                        </Button>
-                      )}
+                        ) : (
+                          /* Available - show Lock button */
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              handleLockClaim(claim.claim_id)
+                            }}
+                            className="w-full border-green-300 text-green-700 hover:bg-green-50"
+                          >
+                            <Lock className="w-4 h-4 mr-1" />
+                            Lock
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

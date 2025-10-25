@@ -27,7 +27,7 @@ export default function ProtectedRoute({
     // If not authenticated, redirect to login
     if (!isAuthenticated) {
       // Store the intended destination for after login
-      const returnUrl = pathname !== redirectTo ? pathname : '/dashboard';
+      const returnUrl = pathname !== redirectTo ? pathname : '/';
       router.push(`${redirectTo}?returnUrl=${encodeURIComponent(returnUrl)}`);
       return;
     }
@@ -36,13 +36,13 @@ export default function ProtectedRoute({
     if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
       // Redirect to appropriate default page based on role
       const defaultPaths: Record<string, string> = {
-        rm: '/dashboard',
-        rp: '/dashboard',
+        rm: '/',
+        rp: '/',
         employee: '/claims',
-        hospital_admin: '/dashboard'
+        hospital_admin: '/'
       };
 
-      router.push(defaultPaths[user.role] || '/dashboard');
+      router.push(defaultPaths[user.role] || '/');
       return;
     }
   }, [isAuthenticated, isLoading, user, router, pathname, redirectTo, allowedRoles]);

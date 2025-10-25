@@ -179,6 +179,65 @@ class ClaimsApi {
       return []
     }
   }
+
+  async dispatchClaim(claimId: string, dispatchData: { dispatch_remarks?: string; dispatch_tracking_number?: string }): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/v1/claims/dispatch-claim/${claimId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify(dispatchData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error dispatching claim:', error)
+      throw error
+    }
+  }
+
+  async getCouriers(): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/resources/couriers`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      return data.couriers || []
+    } catch (error) {
+      console.error('Error fetching couriers:', error)
+      return []
+    }
+  }
+
+  async getClaimTransactions(claimId: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/v1/claims/transactions/${claimId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      return data.transactions || []
+    } catch (error) {
+      console.error('Error fetching claim transactions:', error)
+      return []
+    }
+  }
 }
 
 export const claimsApi = new ClaimsApi()

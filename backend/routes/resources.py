@@ -298,6 +298,69 @@ def get_doctors():
             "details": str(e)
         }), 500
 
+@resources_bp.route('/couriers', methods=['GET'])
+def get_couriers():
+    """Get available couriers from Firestore"""
+    try:
+        # Get real data from Firestore
+        db = get_firestore()
+        couriers_ref = db.collection('couriers')
+        couriers_docs = couriers_ref.get()
+        
+        couriers = []
+        for doc in couriers_docs:
+            courier_data = doc.to_dict()
+            courier_data['courier_id'] = doc.id  # Use document ID as courier_id
+            couriers.append(courier_data)
+        
+        # If no couriers found, provide sample data
+        if len(couriers) == 0:
+            sample_couriers = [
+                {
+                    "courier_id": "bluedart",
+                    "courier_name": "Blue Dart",
+                    "contact_number": "+91-1800-233-1234",
+                    "status": "active"
+                },
+                {
+                    "courier_id": "dtdc",
+                    "courier_name": "DTDC",
+                    "contact_number": "+91-1800-233-1234",
+                    "status": "active"
+                },
+                {
+                    "courier_id": "fedex",
+                    "courier_name": "FedEx",
+                    "contact_number": "+91-1800-233-1234",
+                    "status": "active"
+                },
+                {
+                    "courier_id": "ups",
+                    "courier_name": "UPS",
+                    "contact_number": "+91-1800-233-1234",
+                    "status": "active"
+                }
+            ]
+            return jsonify({
+                "success": True,
+                "couriers": sample_couriers,
+                "total": len(sample_couriers),
+                "message": "Using sample courier data"
+            }), 200
+        
+        return jsonify({
+            "success": True,
+            "couriers": couriers,
+            "total": len(couriers)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": "Failed to fetch couriers",
+            "details": str(e)
+        }), 500
+
 @resources_bp.route('/treatment-lines', methods=['GET'])
 def get_treatment_lines():
     """Get treatment lines from Firestore (GLOBAL - not hospital-specific)"""

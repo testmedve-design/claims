@@ -7,6 +7,7 @@ from firebase_config import get_firestore
 from middleware import require_claims_access
 from firebase_admin import firestore
 from datetime import datetime
+from utils.transaction_helper import create_transaction, get_claim_transactions, TransactionType
 
 claims_bp = Blueprint('claims', __name__)
 
@@ -312,6 +313,7 @@ def get_claims_stats():
         approved_all = db.collection('claims').where('claim_status', '==', 'approved').where('is_draft', '==', False).get()
         rejected_all = db.collection('claims').where('claim_status', '==', 'rejected').where('is_draft', '==', False).get()
         queried_all = db.collection('claims').where('claim_status', '==', 'queried').where('is_draft', '==', False).get()
+        dispatched_all = db.collection('claims').where('claim_status', '==', 'dispatched').where('is_draft', '==', False).get()
         
         # Filter by hospital
         def filter_by_hospital(claims_list):
@@ -336,6 +338,7 @@ def get_claims_stats():
         approved_claims = filter_by_hospital(approved_all)
         rejected_claims = filter_by_hospital(rejected_all)
         queried_claims = filter_by_hospital(queried_all)
+        dispatched_claims = filter_by_hospital(dispatched_all)
         
         return jsonify({
             'success': True,
@@ -345,7 +348,8 @@ def get_claims_stats():
                 'approved': len(approved_claims),
                 'rejected': len(rejected_claims),
                 'queried': len(queried_claims),
-                'total': len(qc_pending_claims) + len(pending_claims) + len(approved_claims) + len(rejected_claims) + len(queried_claims)
+                'dispatched': len(dispatched_claims),
+                'total': len(qc_pending_claims) + len(pending_claims) + len(approved_claims) + len(rejected_claims) + len(queried_claims) + len(dispatched_claims)
             }
         }), 200
         
@@ -463,6 +467,26 @@ def answer_query(claim_id):
         
         db.collection('claims').document(claim_id).update(update_data)
         
+        # Create transaction record
+        transaction_metadata = {
+            'query_response': query_response
+        }
+        if uploaded_files:
+            transaction_metadata['uploaded_files_count'] = len(uploaded_files)
+        
+        create_transaction(
+            claim_id=claim_id,
+            transaction_type=TransactionType.ANSWERED,
+            performed_by=request.user_id,
+            performed_by_email=request.user_email,
+            performed_by_name=getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User',
+            performed_by_role='hospital_user',
+            previous_status='qc_query',
+            new_status='qc_answered',
+            remarks=query_response,
+            metadata=transaction_metadata
+        )
+        
         return jsonify({
             'success': True,
             'message': 'Query response submitted successfully',
@@ -474,4 +498,162 @@ def answer_query(claim_id):
         return jsonify({
             'success': False,
             'error': str(e)
+        }), 500
+
+@claims_bp.route('/dispatch-claim/<claim_id>', methods=['POST'])
+@require_claims_access
+def dispatch_claim(claim_id):
+    """Dispatch a cleared claim - HOSPITAL USERS ONLY"""
+    try:
+        data = request.get_json()
+        dispatch_remarks = data.get('dispatch_remarks', '').strip()
+        dispatch_date = data.get('dispatch_date', '').strip()
+        dispatch_mode = data.get('dispatch_mode', 'online').strip()
+        
+        # Mode-specific fields
+        acknowledgment_number = data.get('acknowledgment_number', '').strip()
+        courier_name = data.get('courier_name', '').strip()
+        docket_number = data.get('docket_number', '').strip()
+        contact_person_name = data.get('contact_person_name', '').strip()
+        contact_person_phone = data.get('contact_person_phone', '').strip()
+        
+        db = get_firestore()
+        
+        # Get the claim
+        claim_doc = db.collection('claims').document(claim_id).get()
+        if not claim_doc.exists:
+            return jsonify({
+                'success': False,
+                'error': 'Claim not found'
+            }), 404
+        
+        claim_data = claim_doc.to_dict()
+        
+        # Check if claim is in qc_clear status (cleared by processor)
+        if claim_data.get('claim_status') != 'qc_clear':
+            return jsonify({
+                'success': False,
+                'error': f'This claim is not cleared for dispatch. Current status: {claim_data.get("claim_status", "unknown")}'
+            }), 400
+        
+        # Update claim with dispatch information
+        update_data = {
+            'claim_status': 'dispatched',
+            'dispatched_by': request.user_id,
+            'dispatched_by_email': request.user_email,
+            'dispatched_by_name': getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User',
+            'dispatched_at': firestore.SERVER_TIMESTAMP,
+            'updated_at': firestore.SERVER_TIMESTAMP,
+            'dispatch_mode': dispatch_mode
+        }
+        
+        # Add optional dispatch information
+        if dispatch_remarks:
+            update_data['dispatch_remarks'] = dispatch_remarks
+        
+        if dispatch_date:
+            update_data['dispatch_date'] = dispatch_date
+            
+        # Add mode-specific fields
+        if dispatch_mode == 'online' and acknowledgment_number:
+            update_data['acknowledgment_number'] = acknowledgment_number
+        elif dispatch_mode == 'courier':
+            if courier_name:
+                update_data['courier_name'] = courier_name
+            if docket_number:
+                update_data['docket_number'] = docket_number
+        elif dispatch_mode == 'direct':
+            if contact_person_name:
+                update_data['contact_person_name'] = contact_person_name
+            if contact_person_phone:
+                update_data['contact_person_phone'] = contact_person_phone
+        
+        db.collection('claims').document(claim_id).update(update_data)
+        
+        # Create transaction record
+        transaction_metadata = {
+            'dispatch_mode': dispatch_mode,
+            'dispatch_date': dispatch_date
+        }
+        
+        if dispatch_mode == 'online' and acknowledgment_number:
+            transaction_metadata['acknowledgment_number'] = acknowledgment_number
+        elif dispatch_mode == 'courier':
+            if courier_name:
+                transaction_metadata['courier_name'] = courier_name
+            if docket_number:
+                transaction_metadata['docket_number'] = docket_number
+        elif dispatch_mode == 'direct':
+            if contact_person_name:
+                transaction_metadata['contact_person_name'] = contact_person_name
+            if contact_person_phone:
+                transaction_metadata['contact_person_phone'] = contact_person_phone
+        
+        create_transaction(
+            claim_id=claim_id,
+            transaction_type=TransactionType.DISPATCHED,
+            performed_by=request.user_id,
+            performed_by_email=request.user_email,
+            performed_by_name=getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User',
+            performed_by_role='hospital_user',
+            previous_status='qc_clear',
+            new_status='dispatched',
+            remarks=dispatch_remarks,
+            metadata=transaction_metadata
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Claim dispatched successfully',
+            'claim_id': claim_id,
+            'new_status': 'dispatched'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@claims_bp.route('/transactions/<claim_id>', methods=['GET'])
+@require_claims_access
+def get_transactions(claim_id):
+    """Get all transactions for a claim - Audit Trail"""
+    try:
+        # Get transactions from the claim_transactions collection
+        transactions = get_claim_transactions(claim_id)
+        
+        return jsonify({
+            'success': True,
+            'transactions': transactions,
+            'total': len(transactions)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'transactions': []
+        }), 500
+
+@claims_bp.route('/test-transactions/<claim_id>', methods=['GET'])
+def test_get_transactions(claim_id):
+    """Test endpoint to get transactions without authentication"""
+    try:
+        # Get transactions from the claim_transactions collection
+        transactions = get_claim_transactions(claim_id)
+        
+        return jsonify({
+            'success': True,
+            'transactions': transactions,
+            'total': len(transactions),
+            'claim_id': claim_id
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'transactions': [],
+            'claim_id': claim_id
         }), 500

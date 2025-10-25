@@ -8,6 +8,7 @@ from middleware import require_hospital_access
 from firebase_admin import firestore
 from datetime import datetime
 import uuid
+from utils.transaction_helper import create_transaction, TransactionType
 
 new_claim_bp = Blueprint('new_claim', __name__)
 
@@ -93,6 +94,24 @@ def submit_claim():
         
         # Save to Firestore
         db.collection('claims').document(claim_id).set(claim_document)
+        
+        # Create transaction record for claim creation
+        create_transaction(
+            claim_id=claim_id,
+            transaction_type=TransactionType.CREATED,
+            performed_by=request.user_id,
+            performed_by_email=request.user_email,
+            performed_by_name=getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User',
+            performed_by_role='hospital_user',
+            previous_status=None,
+            new_status='submitted',
+            remarks='Claim created and submitted',
+            metadata={
+                'patient_name': data.get('patient_name'),
+                'claimed_amount': data.get('claimed_amount'),
+                'payer_name': data.get('payer_name')
+            }
+        )
         
         return jsonify({
             'success': True,
