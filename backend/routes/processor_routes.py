@@ -7,9 +7,103 @@ from firebase_config import get_firestore
 from middleware import require_processor_access
 from firebase_admin import firestore
 from datetime import datetime, timedelta
-# Removed unused Timestamp import
+from utils.transaction_helper import create_transaction, TransactionType
 
 processor_bp = Blueprint('processor_routes', __name__)
+
+@processor_bp.route('/test-locks', methods=['GET'])
+def test_locks():
+    """Test endpoint to check lock information without authentication"""
+    try:
+        db = get_firestore()
+        
+        # Get all claims with lock information
+        claims_query = db.collection('claims').where('claim_status', 'in', ['qc_pending', 'need_more_info', 'qc_answered'])
+        claims = claims_query.get()
+        
+        claims_list = []
+        for doc in claims:
+            claim_data = doc.to_dict()
+            claims_list.append({
+                'claim_id': claim_data.get('claim_id', doc.id),
+                'claim_status': claim_data.get('claim_status', ''),
+                'hospital_name': claim_data.get('hospital_name', ''),
+                'hospital_id': claim_data.get('hospital_id', ''),
+                # Lock information
+                'locked_by_processor': claim_data.get('locked_by_processor', ''),
+                'locked_by_processor_email': claim_data.get('locked_by_processor_email', ''),
+                'locked_by_processor_name': claim_data.get('locked_by_processor_name', ''),
+                'locked_at': str(claim_data.get('locked_at', '')) if claim_data.get('locked_at') else '',
+                'lock_expires_at': str(claim_data.get('lock_expires_at', '')) if claim_data.get('lock_expires_at') else ''
+            })
+        
+        return jsonify({
+            'success': True,
+            'total_claims': len(claims_list),
+            'claims': claims_list
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@processor_bp.route('/get-claims-to-process-no-auth', methods=['GET'])
+def get_claims_to_process_no_auth():
+    """Get claims for processing WITHOUT authentication - for testing lock data"""
+    try:
+        db = get_firestore()
+        
+        # Get query parameters
+        tab = request.args.get('tab', 'unprocessed')
+        limit = int(request.args.get('limit', 50))
+        
+        # Build query for claims to process
+        query = db.collection('claims')
+        
+        # Filter by status based on tab
+        if tab == 'unprocessed':
+            query = query.where('claim_status', 'in', ['qc_pending', 'need_more_info', 'qc_answered'])
+        elif tab == 'processed':
+            query = query.where('claim_status', 'in', ['claim_approved', 'claim_denial'])
+        
+        # Execute query
+        claims = query.limit(limit).get()
+        
+        claims_list = []
+        for doc in claims:
+            claim_data = doc.to_dict()
+            claims_list.append({
+                'claim_id': claim_data.get('claim_id', doc.id),
+                'claim_status': claim_data.get('claim_status', ''),
+                'created_at': str(claim_data.get('created_at', '')),
+                'submission_date': str(claim_data.get('submission_date', '')),
+                'patient_name': claim_data.get('form_data', {}).get('patient_name', ''),
+                'claimed_amount': claim_data.get('form_data', {}).get('claimed_amount', ''),
+                'payer_name': claim_data.get('form_data', {}).get('payer_name', ''),
+                'specialty': claim_data.get('form_data', {}).get('specialty', ''),
+                'hospital_name': claim_data.get('hospital_name', ''),
+                'created_by_email': claim_data.get('created_by_email', ''),
+                # Lock information
+                'locked_by_processor': claim_data.get('locked_by_processor', ''),
+                'locked_by_processor_email': claim_data.get('locked_by_processor_email', ''),
+                'locked_by_processor_name': claim_data.get('locked_by_processor_name', ''),
+                'locked_at': str(claim_data.get('locked_at', '')) if claim_data.get('locked_at') else '',
+                'lock_expires_at': str(claim_data.get('lock_expires_at', '')) if claim_data.get('lock_expires_at') else ''
+            })
+        
+        return jsonify({
+            'success': True,
+            'total_claims': len(claims_list),
+            'claims': claims_list
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @processor_bp.route('/get-claims-to-process', methods=['GET'])
 @require_processor_access
@@ -78,6 +172,10 @@ def get_claims_to_process():
                     'code': hospital.get('code', '')
                 })
         
+        print(f"DEBUG: Processor hospitals: {processor_hospitals}")
+        print(f"DEBUG: Processor user ID: {request.user_id}")
+        print(f"DEBUG: Processor email: {request.user_email}")
+        
         # Filter by processor's affiliated hospitals
         processed_claims = []
         
@@ -105,16 +203,36 @@ def get_claims_to_process():
                 if (hospital['id'] and hospital['id'] == claim_hospital_id) or \
                    (hospital['name'] and hospital['name'].upper() in claim_hospital_name.upper()):
                     belongs_to_processor = True
+                    print(f"DEBUG: Claim {claim_data.get('claim_id', doc.id)} matches hospital {hospital['name']} (ID: {hospital['id']})")
                     break
             
             # If no hospital filtering (processor has no hospitals), include all claims
             if not processor_hospitals or belongs_to_processor:
                 processed_claims.append((doc, claim_data))
                 print(f"DEBUG: Added claim {claim_data.get('claim_id', doc.id)} to results")
+                # Debug lock information for added claims
+                print(f"DEBUG: Lock info for added claim {claim_data.get('claim_id', doc.id)}:")
+                print(f"  locked_by_processor: {claim_data.get('locked_by_processor', 'NOT_FOUND')}")
+                print(f"  locked_by_processor_email: {claim_data.get('locked_by_processor_email', 'NOT_FOUND')}")
+                print(f"  locked_by_processor_name: {claim_data.get('locked_by_processor_name', 'NOT_FOUND')}")
+                print(f"  locked_at: {claim_data.get('locked_at', 'NOT_FOUND')}")
+                print(f"  lock_expires_at: {claim_data.get('lock_expires_at', 'NOT_FOUND')}")
+            else:
+                print(f"DEBUG: Skipping claim {claim_data.get('claim_id', doc.id)} - doesn't belong to processor's hospitals")
         
         
         claims_list = []
         for doc, claim_data in processed_claims:
+            # Debug lock information
+            print(f"🔍 DEBUG: Claim {claim_data.get('claim_id', doc.id)} lock data:")
+            print(f"  Document ID: {doc.id}")
+            print(f"  All claim_data keys: {list(claim_data.keys())}")
+            print(f"  locked_by_processor: {claim_data.get('locked_by_processor', 'NOT_FOUND')}")
+            print(f"  locked_by_processor_email: {claim_data.get('locked_by_processor_email', 'NOT_FOUND')}")
+            print(f"  locked_by_processor_name: {claim_data.get('locked_by_processor_name', 'NOT_FOUND')}")
+            print(f"  locked_at: {claim_data.get('locked_at', 'NOT_FOUND')}")
+            print(f"  lock_expires_at: {claim_data.get('lock_expires_at', 'NOT_FOUND')}")
+            
             claims_list.append({
                 'claim_id': claim_data.get('claim_id', doc.id),
                 'claim_status': claim_data.get('claim_status', ''),
@@ -125,7 +243,13 @@ def get_claims_to_process():
                 'payer_name': claim_data.get('form_data', {}).get('payer_name', ''),
                 'specialty': claim_data.get('form_data', {}).get('specialty', ''),
                 'hospital_name': claim_data.get('hospital_name', ''),
-                'created_by_email': claim_data.get('created_by_email', '')
+                'created_by_email': claim_data.get('created_by_email', ''),
+                # Lock information
+                'locked_by_processor': claim_data.get('locked_by_processor', ''),
+                'locked_by_processor_email': claim_data.get('locked_by_processor_email', ''),
+                'locked_by_processor_name': claim_data.get('locked_by_processor_name', ''),
+                'locked_at': str(claim_data.get('locked_at', '')) if claim_data.get('locked_at') else '',
+                'lock_expires_at': str(claim_data.get('lock_expires_at', '')) if claim_data.get('lock_expires_at') else ''
             })
         
         # Apply limit after filtering
@@ -150,13 +274,22 @@ def get_transition_trail(claim_id):
     try:
         db = get_firestore()
         
-        # Get the claim document
+        # First try to get the claim by document ID (most common case)
         claim_doc = db.collection('claims').document(claim_id).get()
+        
         if not claim_doc.exists:
-            return jsonify({
-                'success': False,
-                'error': 'Claim not found'
-            }), 404
+            # If not found by document ID, search by claim_id field
+            claims_query = db.collection('claims').where('claim_id', '==', claim_id)
+            claims_docs = claims_query.get()
+            
+            if not claims_docs:
+                return jsonify({
+                    'success': False,
+                    'error': 'Claim not found'
+                }), 404
+            
+            # Get the first matching claim
+            claim_doc = claims_docs[0]
         
         claim_data = claim_doc.to_dict()
         
@@ -212,13 +345,22 @@ def process_claim(claim_id):
         
         db = get_firestore()
         
-        # Get the claim
+        # First try to get the claim by document ID (most common case)
         claim_doc = db.collection('claims').document(claim_id).get()
+        
         if not claim_doc.exists:
-            return jsonify({
-                'success': False,
-                'error': 'Claim not found'
-            }), 404
+            # If not found by document ID, search by claim_id field
+            claims_query = db.collection('claims').where('claim_id', '==', claim_id)
+            claims_docs = claims_query.get()
+            
+            if not claims_docs:
+                return jsonify({
+                    'success': False,
+                    'error': 'Claim not found'
+                }), 404
+            
+            # Get the first matching claim
+            claim_doc = claims_docs[0]
         
         claim_data = claim_doc.to_dict()
         
@@ -237,12 +379,13 @@ def process_claim(claim_id):
             }), 409  # Conflict status
         
         # 🔒 LOCK THE CLAIM - Set lock before processing
+        lock_expiry = datetime.now() + timedelta(hours=1)
         lock_data = {
             'locked_by_processor': request.user_id,
             'locked_by_processor_email': request.user_email,
             'locked_by_processor_name': getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User',
             'locked_at': firestore.SERVER_TIMESTAMP,
-            'lock_expires_at': datetime.now() + timedelta(hours=2)  # Lock expires in 2 hours
+            'lock_expires_at': lock_expiry.isoformat()  # Store as ISO string
         }
         
         # Update lock first
@@ -282,6 +425,30 @@ def process_claim(claim_id):
         # Update the claim
         db.collection('claims').document(claim_id).update(update_data)
         
+        # Create transaction record
+        transaction_type_map = {
+            'qc_clear': TransactionType.CLEARED,
+            'qc_query': TransactionType.QUERIED,
+            'claim_approved': TransactionType.APPROVED,
+            'claim_denial': TransactionType.REJECTED,
+            'need_more_info': TransactionType.QUERIED
+        }
+        
+        transaction_type = transaction_type_map.get(new_status, TransactionType.UPDATED)
+        
+        create_transaction(
+            claim_id=claim_id,
+            transaction_type=transaction_type,
+            performed_by=request.user_id,
+            performed_by_email=request.user_email,
+            performed_by_name=user_name,
+            performed_by_role='processor',
+            previous_status=claim_data.get('claim_status'),
+            new_status=new_status,
+            remarks=remarks,
+            metadata={'processing_action': new_status}
+        )
+        
         return jsonify({
             'success': True,
             'message': f'Claim status updated to {new_status} successfully',
@@ -302,18 +469,23 @@ def get_claim_details(claim_id):
     try:
         db = get_firestore()
         
-        # Get the claim by searching for the claim_id field
-        claims_query = db.collection('claims').where('claim_id', '==', claim_id)
-        claims_docs = claims_query.get()
+        # First try to get the claim by document ID (most common case)
+        claim_doc = db.collection('claims').document(claim_id).get()
         
-        if not claims_docs:
-            return jsonify({
-                'success': False,
-                'error': 'Claim not found'
-            }), 404
+        if not claim_doc.exists:
+            # If not found by document ID, search by claim_id field
+            claims_query = db.collection('claims').where('claim_id', '==', claim_id)
+            claims_docs = claims_query.get()
+            
+            if not claims_docs:
+                return jsonify({
+                    'success': False,
+                    'error': 'Claim not found'
+                }), 404
+            
+            # Get the first matching claim
+            claim_doc = claims_docs[0]
         
-        # Get the first matching claim
-        claim_doc = claims_docs[0]
         claim_data = claim_doc.to_dict()
         
         # Debug: Print creator information
@@ -332,6 +504,14 @@ def get_claim_details(claim_id):
         print(f"  processed_by_name: {claim_data.get('processed_by_name', 'NOT_FOUND')}")
         print(f"  processing_remarks: {claim_data.get('processing_remarks', 'NOT_FOUND')}")
         print(f"  processed_at: {claim_data.get('processed_at', 'NOT_FOUND')}")
+        
+        # Debug: Print lock information
+        print(f"🔍 DEBUG: Lock info for claim {claim_id}:")
+        print(f"  locked_by_processor: {claim_data.get('locked_by_processor', 'NOT_FOUND')}")
+        print(f"  locked_by_processor_email: {claim_data.get('locked_by_processor_email', 'NOT_FOUND')}")
+        print(f"  locked_by_processor_name: {claim_data.get('locked_by_processor_name', 'NOT_FOUND')}")
+        print(f"  locked_at: {claim_data.get('locked_at', 'NOT_FOUND')}")
+        print(f"  lock_expires_at: {claim_data.get('lock_expires_at', 'NOT_FOUND')}")
         
         # Extract form_data for easier access
         form_data = claim_data.get('form_data', {})
@@ -379,6 +559,12 @@ def get_claim_details(claim_id):
                 'processed_by_email': claim_data.get('processed_by_email', ''),
                 'processed_by_name': claim_data.get('processed_by_name', ''),
                 'processed_at': str(claim_data.get('processed_at', '')),
+                # Lock information
+                'locked_by_processor': claim_data.get('locked_by_processor', ''),
+                'locked_by_processor_email': claim_data.get('locked_by_processor_email', ''),
+                'locked_by_processor_name': claim_data.get('locked_by_processor_name', ''),
+                'locked_at': str(claim_data.get('locked_at', '')) if claim_data.get('locked_at') else '',
+                'lock_expires_at': str(claim_data.get('lock_expires_at', '')) if claim_data.get('lock_expires_at') else '',
                 # Patient details
                 'patient_details': {
                     'patient_name': form_data.get('patient_name', ''),
@@ -469,6 +655,7 @@ def get_processing_stats():
         qc_clear_claims = db.collection('claims').where('claim_status', '==', 'qc_clear').get()
         qc_query_claims = db.collection('claims').where('claim_status', '==', 'qc_query').get()
         rejected_claims = db.collection('claims').where('claim_status', '==', 'rejected').get()
+        dispatched_claims = db.collection('claims').where('claim_status', '==', 'dispatched').get()
         
         return jsonify({
             'success': True,
@@ -478,10 +665,142 @@ def get_processing_stats():
                 'qc_clear': len(qc_clear_claims),
                 'qc_query': len(qc_query_claims),
                 'rejected': len(rejected_claims),
+                'dispatched': len(dispatched_claims),
                 'unprocessed': len(qc_pending_claims) + len(answered_claims),
                 'processed': len(qc_clear_claims) + len(qc_query_claims),
-                'total': len(qc_pending_claims) + len(answered_claims) + len(qc_clear_claims) + len(qc_query_claims) + len(rejected_claims)
+                'total': len(qc_pending_claims) + len(answered_claims) + len(qc_clear_claims) + len(qc_query_claims) + len(rejected_claims) + len(dispatched_claims)
             }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@processor_bp.route('/lock-claim/<claim_id>', methods=['POST'])
+@require_processor_access
+def lock_claim(claim_id):
+    """Lock a claim for processing - PROCESSORS ONLY"""
+    try:
+        db = get_firestore()
+        
+        # First try to get the claim by document ID (most common case)
+        claim_doc = db.collection('claims').document(claim_id).get()
+        
+        if not claim_doc.exists:
+            # If not found by document ID, search by claim_id field
+            claims_query = db.collection('claims').where('claim_id', '==', claim_id)
+            claims_docs = claims_query.get()
+            
+            if not claims_docs:
+                return jsonify({
+                    'success': False,
+                    'error': 'Claim not found'
+                }), 404
+            
+            # Get the first matching claim
+            claim_doc = claims_docs[0]
+        
+        claim_data = claim_doc.to_dict()
+        
+        # Check if claim is already locked by another processor
+        current_processor = claim_data.get('locked_by_processor', '')
+        current_processor_email = claim_data.get('locked_by_processor_email', '')
+        lock_timestamp = claim_data.get('locked_at', None)
+        
+        # If claim is locked by another processor
+        if current_processor and current_processor != request.user_id:
+            return jsonify({
+                'success': False,
+                'error': f'Claim is currently being processed by {current_processor_email}. Please try again later.',
+                'locked_by': current_processor_email,
+                'locked_at': str(lock_timestamp) if lock_timestamp else 'Unknown'
+            }), 409  # Conflict status
+        
+        # Lock the claim for 1 hour
+        lock_expiry = datetime.now() + timedelta(hours=1)
+        lock_data = {
+            'locked_by_processor': request.user_id,
+            'locked_by_processor_email': request.user_email,
+            'locked_by_processor_name': getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User',
+            'locked_at': firestore.SERVER_TIMESTAMP,
+            'lock_expires_at': lock_expiry.isoformat()  # Store as ISO string
+        }
+        
+        # Update lock
+        db.collection('claims').document(claim_id).update(lock_data)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Claim locked successfully',
+            'claim_id': claim_id,
+            'locked_by': request.user_email,
+            'locked_at': lock_expiry.isoformat()
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@processor_bp.route('/unlock-claim/<claim_id>', methods=['POST'])
+@require_processor_access
+def unlock_claim(claim_id):
+    """Unlock a claim - PROCESSORS ONLY"""
+    try:
+        db = get_firestore()
+        
+        # First try to get the claim by document ID (most common case)
+        claim_doc = db.collection('claims').document(claim_id).get()
+        
+        if not claim_doc.exists:
+            # If not found by document ID, search by claim_id field
+            claims_query = db.collection('claims').where('claim_id', '==', claim_id)
+            claims_docs = claims_query.get()
+            
+            if not claims_docs:
+                return jsonify({
+                    'success': False,
+                    'error': 'Claim not found'
+                }), 404
+            
+            # Get the first matching claim
+            claim_doc = claims_docs[0]
+        
+        claim_data = claim_doc.to_dict()
+        
+        # Check if claim is locked by current processor
+        current_processor = claim_data.get('locked_by_processor', '')
+        
+        if not current_processor:
+            return jsonify({
+                'success': False,
+                'error': 'Claim is not currently locked'
+            }), 400
+        
+        if current_processor != request.user_id:
+            return jsonify({
+                'success': False,
+                'error': 'You can only unlock claims that you have locked'
+            }), 403
+        
+        # Unlock the claim
+        unlock_data = {
+            'locked_by_processor': None,
+            'locked_by_processor_email': None,
+            'locked_by_processor_name': None,
+            'locked_at': None,
+            'lock_expires_at': None
+        }
+        
+        db.collection('claims').document(claim_id).update(unlock_data)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Claim unlocked successfully',
+            'claim_id': claim_id
         }), 200
         
     except Exception as e:
@@ -496,13 +815,23 @@ def check_claim_lock(claim_id):
     """Check if a claim is locked by another processor"""
     try:
         db = get_firestore()
+        
+        # First try to get the claim by document ID (most common case)
         claim_doc = db.collection('claims').document(claim_id).get()
         
         if not claim_doc.exists:
-            return jsonify({
-                'success': False,
-                'error': 'Claim not found'
-            }), 404
+            # If not found by document ID, search by claim_id field
+            claims_query = db.collection('claims').where('claim_id', '==', claim_id)
+            claims_docs = claims_query.get()
+            
+            if not claims_docs:
+                return jsonify({
+                    'success': False,
+                    'error': 'Claim not found'
+                }), 404
+            
+            # Get the first matching claim
+            claim_doc = claims_docs[0]
         
         claim_data = claim_doc.to_dict()
         
@@ -520,10 +849,11 @@ def check_claim_lock(claim_id):
             if lock_expires_at:
                 current_time = datetime.now()
                 # Handle both datetime objects and Firestore timestamps
-                if hasattr(lock_expires_at, 'timestamp'):
-                    expires_time = datetime.fromtimestamp(lock_expires_at.timestamp())
-                elif hasattr(lock_expires_at, 'to_pydatetime'):
+                if hasattr(lock_expires_at, 'to_pydatetime'):
                     expires_time = lock_expires_at.to_pydatetime()
+                elif isinstance(lock_expires_at, str):
+                    # Handle ISO format strings
+                    expires_time = datetime.fromisoformat(lock_expires_at.replace('Z', '+00:00'))
                 else:
                     expires_time = lock_expires_at
                 
@@ -588,7 +918,17 @@ def bulk_process_claims():
         
         for claim_id in claim_ids:
             try:
+                # First try to get the claim by document ID (most common case)
                 claim_doc = db.collection('claims').document(claim_id).get()
+                
+                if not claim_doc.exists:
+                    # If not found by document ID, search by claim_id field
+                    claims_query = db.collection('claims').where('claim_id', '==', claim_id)
+                    claims_docs = claims_query.get()
+                    
+                    if claims_docs:
+                        claim_doc = claims_docs[0]
+                
                 if claim_doc.exists:
                     # Use the provided status directly
                     new_status = status

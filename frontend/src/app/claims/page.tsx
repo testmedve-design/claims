@@ -113,11 +113,11 @@ export default function ClaimsPage() {
   // Check if user has access to claims page
   useEffect(() => {
     if (user) {
+      // Only redirect if user is not a hospital user (who should be able to create claims)
       if (user.role === 'claim_processor' || (user.role as string) === 'claim_processor_l4') {
         router.push('/processor-inbox') // Redirect claim processors to their inbox
-      } else if (user.role === 'hospital_user') {
-        router.push('/claims-inbox') // Redirect hospital users to their inbox
       }
+      // Hospital users should be able to access the new claim form
     }
   }, [user, router])
 
@@ -402,6 +402,12 @@ export default function ClaimsPage() {
               documents: documents
             }))
             console.log('✅ Draft loaded with documents:', documents)
+          }
+          
+          // Show document checklist if payer is selected
+          if (draftData.payer_name) {
+            setShowDocumentChecklist(true)
+            console.log('✅ Document checklist enabled for payer:', draftData.payer_name)
           }
           
           console.log('✅ Draft loaded for editing:', draftData)

@@ -11,7 +11,7 @@ export default function RootLoading() {
         </div>
         <div className="space-y-2">
           <h2 className="text-xl font-semibold text-foreground">Loading...</h2>
-          <p className="text-muted-foreground">Please wait while we prepare your dashboard</p>
+          <p className="text-muted-foreground">Please wait while we prepare your application</p>
         </div>
       </div>
     </div>

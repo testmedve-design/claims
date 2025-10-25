@@ -8,7 +8,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from config import Config
 from firebase_config import initialize_firebase
-from utils import register_error_handlers
+import app_utils
 
 # Import route modules
 from routes.auth import auth_bp
@@ -50,7 +50,7 @@ def create_app():
     app.register_blueprint(processor_routes_bp, url_prefix='/api/processor-routes')
     
     # Register error handlers
-    register_error_handlers(app)
+    app_utils.register_error_handlers(app)
     
     return app
 

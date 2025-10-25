@@ -8,6 +8,10 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
+import { claimsApi } from '@/services/claimsApi'
+import { Truck, Settings } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function ClaimDetailsPage() {
   const params = useParams()
@@ -18,6 +22,8 @@ export default function ClaimDetailsPage() {
   const [claim, setClaim] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [transactionsLoading, setTransactionsLoading] = useState(false)
   
   // Query response functionality
   const [showQueryResponse, setShowQueryResponse] = useState(false)
@@ -25,6 +31,19 @@ export default function ClaimDetailsPage() {
   const [submittingResponse, setSubmittingResponse] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [uploadingFiles, setUploadingFiles] = useState(false)
+
+  // Dispatch modal functionality
+  const [showDispatchModal, setShowDispatchModal] = useState(false)
+  const [dispatchMode, setDispatchMode] = useState<'online' | 'courier' | 'direct'>('online')
+  const [dispatchDate, setDispatchDate] = useState('')
+  const [dispatchRemarks, setDispatchRemarks] = useState('')
+  const [couriers, setCouriers] = useState<any[]>([])
+  const [selectedCourier, setSelectedCourier] = useState('')
+  const [docketNumber, setDocketNumber] = useState('')
+  const [acknowledgmentNumber, setAcknowledgmentNumber] = useState('')
+  const [contactPersonName, setContactPersonName] = useState('')
+  const [contactPersonPhone, setContactPersonPhone] = useState('')
+  const [submittingDispatch, setSubmittingDispatch] = useState(false)
 
   useEffect(() => {
     if (claimId) {
@@ -39,6 +58,48 @@ export default function ClaimDetailsPage() {
       setShowQueryResponse(true)
     }
   }, [searchParams])
+
+  useEffect(() => {
+    // Fetch couriers when dispatch modal opens
+    if (showDispatchModal && couriers.length === 0) {
+      fetchCouriers()
+    }
+  }, [showDispatchModal])
+
+  const fetchCouriers = async () => {
+    try {
+      const courierList = await claimsApi.getCouriers()
+      setCouriers(courierList)
+    } catch (error) {
+      console.error('Error fetching couriers:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch couriers',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const fetchTransactions = async () => {
+    if (transactionsLoading) {
+      console.log('⏳ Transactions already loading, skipping...')
+      return
+    }
+    
+    try {
+      setTransactionsLoading(true)
+      console.log('🔍 Fetching transactions for claim:', claimId)
+      const transactionData = await claimsApi.getClaimTransactions(claimId)
+      console.log('📊 Transactions received:', transactionData.length, 'transactions')
+      setTransactions(transactionData)
+    } catch (error) {
+      console.error('❌ Error fetching transactions:', error)
+      console.log('💡 This might be due to authentication issues')
+      setTransactions([])
+    } finally {
+      setTransactionsLoading(false)
+    }
+  }
 
   const fetchClaimDetails = async () => {
     try {
@@ -62,6 +123,8 @@ export default function ClaimDetailsPage() {
         const data = await response.json()
         if (data.success) {
           setClaim(data.claim)
+          // Fetch transactions after getting claim details
+          await fetchTransactions()
         } else {
           setError(data.error || 'Failed to fetch claim details')
         }
@@ -204,6 +267,52 @@ export default function ClaimDetailsPage() {
     }
   }
 
+  const handleDispatchClaim = async () => {
+    try {
+      setSubmittingDispatch(true)
+
+      // Prepare dispatch data based on mode
+      let dispatchData: any = {
+        dispatch_remarks: dispatchRemarks,
+        dispatch_date: dispatchDate,
+        dispatch_mode: dispatchMode
+      }
+
+      // Add mode-specific fields
+      if (dispatchMode === 'online') {
+        dispatchData.acknowledgment_number = acknowledgmentNumber
+      } else if (dispatchMode === 'courier') {
+        dispatchData.courier_name = selectedCourier
+        dispatchData.docket_number = docketNumber
+      } else if (dispatchMode === 'direct') {
+        dispatchData.contact_person_name = contactPersonName
+        dispatchData.contact_person_phone = contactPersonPhone
+      }
+
+      // Call dispatch API
+      await claimsApi.dispatchClaim(claimId, dispatchData)
+
+      toast({
+        title: 'Success',
+        description: 'Claim dispatched successfully!',
+        variant: 'default'
+      })
+
+      // Close modal and refresh claim details
+      setShowDispatchModal(false)
+      fetchClaimDetails()
+    } catch (error) {
+      console.error('Error dispatching claim:', error)
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to dispatch claim',
+        variant: 'destructive'
+      })
+    } finally {
+      setSubmittingDispatch(false)
+    }
+  }
+
   const handleViewDocument = async (doc: any) => {
     try {
       const token = localStorage.getItem('auth_token')
@@ -312,6 +421,155 @@ export default function ClaimDetailsPage() {
               >
                 Answer Query
               </Button>
+            )}
+            {claim.claim_status === 'qc_clear' && (
+              <Dialog open={showDispatchModal} onOpenChange={setShowDispatchModal}>
+                <DialogTrigger asChild>
+                  <Button
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    size="sm"
+                  >
+                    <Settings className="w-4 h-4 mr-1" />
+                    Process
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Dispatch Claim</DialogTitle>
+                  </DialogHeader>
+                  
+                  <div className="space-y-6">
+                    {/* Dispatch Mode Selection */}
+                    <div className="space-y-2">
+                      <Label>Dispatch Mode</Label>
+                      <Select value={dispatchMode} onValueChange={(value: 'online' | 'courier' | 'direct') => setDispatchMode(value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select dispatch mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="online">Online</SelectItem>
+                          <SelectItem value="courier">Courier</SelectItem>
+                          <SelectItem value="direct">Direct</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Dispatch Date */}
+                    <div className="space-y-2">
+                      <Label>Dispatch Date</Label>
+                      <input
+                        type="date"
+                        value={dispatchDate}
+                        onChange={(e) => setDispatchDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+
+                    {/* Mode-specific fields */}
+                    {dispatchMode === 'online' && (
+                      <div className="space-y-2">
+                        <Label>Acknowledgment Number</Label>
+                        <input
+                          type="text"
+                          value={acknowledgmentNumber}
+                          onChange={(e) => setAcknowledgmentNumber(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter acknowledgment number"
+                          required
+                        />
+                      </div>
+                    )}
+
+                    {dispatchMode === 'courier' && (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Courier Name</Label>
+                          <Select value={selectedCourier} onValueChange={setSelectedCourier}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select courier" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {couriers.map((courier) => (
+                                <SelectItem key={courier.courier_id} value={courier.courier_name}>
+                                  {courier.courier_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Docket Number</Label>
+                          <input
+                            type="text"
+                            value={docketNumber}
+                            onChange={(e) => setDocketNumber(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter docket number"
+                            required
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {dispatchMode === 'direct' && (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Contact Person Name</Label>
+                          <input
+                            type="text"
+                            value={contactPersonName}
+                            onChange={(e) => setContactPersonName(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter contact person name"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Phone Number</Label>
+                          <input
+                            type="tel"
+                            value={contactPersonPhone}
+                            onChange={(e) => setContactPersonPhone(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter phone number"
+                            required
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Dispatch Remarks */}
+                    <div className="space-y-2">
+                      <Label>Dispatch Remarks (Optional)</Label>
+                      <Textarea
+                        value={dispatchRemarks}
+                        onChange={(e) => setDispatchRemarks(e.target.value)}
+                        placeholder="Enter any additional remarks"
+                        rows={3}
+                      />
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowDispatchModal(false)}
+                        disabled={submittingDispatch}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleDispatchClaim}
+                        disabled={submittingDispatch || !dispatchDate}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {submittingDispatch ? 'Dispatching...' : 'Dispatch Claim'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             )}
           </div>
           <p className="text-sm text-gray-500 mt-1">
@@ -704,6 +962,88 @@ export default function ClaimDetailsPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Transaction History Table */}
+      <div className="bg-white border rounded-lg p-6">
+        <h3 className="text-lg font-semibold mb-4">📋 Transaction History ({transactions.length} events)</h3>
+        
+        {transactions.length === 0 ? (
+          <p className="text-gray-500 text-center py-4">No transaction history available</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse border border-gray-300">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Trail No</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Status Type</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Status</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Remarks</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Query/Answer Remarks</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Issue Category</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Repeat Issue</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Action Required By Onsite Team</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Letter</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Updated BY</th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Updated Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((transaction, index) => {
+                  // Map transaction types to display status
+                    const getStatusDisplay = (type: string, newStatus: string) => {
+                    switch (type) {
+                      case 'CREATED': return 'QC pending'
+                      case 'QUERIED': return 'QC Query'
+                      case 'ANSWERED': return 'QUERY ANSWERED'
+                      case 'CLEARED': return `QC Clear(${new Date(transaction.performed_at).toLocaleDateString('en-GB')})`
+                      case 'APPROVED': return 'QC Clear'
+                      case 'REJECTED': return 'QC Rejected'
+                      case 'DISPATCHED': return `DESPATCHED(${new Date(transaction.performed_at).toLocaleDateString('en-GB')})`
+                      default: return type
+                    }
+                  }
+
+                  const statusDisplay = getStatusDisplay(transaction.transaction_type, transaction.new_status)
+                  const updatedTime = transaction.performed_at ? 
+                    new Date(transaction.performed_at).toLocaleString('en-IN', { 
+                      timeZone: 'Asia/Kolkata',
+                      day: '2-digit',
+                      month: '2-digit', 
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    }) : ''
+
+                  return (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="border border-gray-300 px-3 py-2">{index + 1}</td>
+                      <td className="border border-gray-300 px-3 py-2">REQUEST</td>
+                      <td className="border border-gray-300 px-3 py-2 font-medium">{statusDisplay}</td>
+                      <td className="border border-gray-300 px-3 py-2">{transaction.remarks || ''}</td>
+                      <td className="border border-gray-300 px-3 py-2">
+                        {transaction.transaction_type === 'ANSWERED' ? transaction.remarks : ''}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2">
+                        {transaction.transaction_type === 'QUERIED' ? 'Reports' : ''}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2">No</td>
+                      <td className="border border-gray-300 px-3 py-2">
+                        {transaction.metadata?.action_required || ''}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2"></td>
+                      <td className="border border-gray-300 px-3 py-2 font-medium">
+                        {transaction.performed_by_name || transaction.performed_by_email}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2">{updatedTime}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Footer */}

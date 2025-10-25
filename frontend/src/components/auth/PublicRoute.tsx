@@ -36,7 +36,7 @@ function PublicRouteContent({
         if (user?.role === 'employee') {
           destination = '/claims';
         } else {
-          destination = '/dashboard';
+          destination = '/';
         }
       }
 
@@ -45,7 +45,7 @@ function PublicRouteContent({
         destination = returnUrl;
       }
 
-      router.push(destination || '/dashboard');
+      router.push(destination || '/');
       return;
     }
   }, [isAuthenticated, isLoading, user, router, searchParams, redirectIfAuthenticated, redirectTo]);

@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import uuid
 import os
 from werkzeug.utils import secure_filename
+from utils.compression import compress_document, get_compression_stats
 
 documents_bp = Blueprint('documents', __name__)
 
@@ -60,6 +61,10 @@ def upload_document():
         user_id = getattr(request, 'user_id', '')
         hospital_id = getattr(request, 'hospital_id', '')
         
+        # Compress file if needed
+        print(f"🔧 Compressing file: {file.filename}")
+        compressed_file, original_size, was_compressed = compress_document(file, max_size_mb=5.0, quality=85)
+        
         # Generate unique filename
         file_extension = file.filename.rsplit('.', 1)[1].lower()
         unique_filename = f"{uuid.uuid4().hex}.{file_extension}"
@@ -71,8 +76,8 @@ def upload_document():
         bucket = get_storage()
         blob = bucket.blob(storage_path)
         
-        # Upload file
-        blob.upload_from_file(file, content_type=file.content_type)
+        # Upload compressed file
+        blob.upload_from_file(compressed_file, content_type=compressed_file.content_type)
         
         # Generate signed URL for download (valid for 7 days)
         download_url = blob.generate_signed_url(expiration=timedelta(days=7))
@@ -81,10 +86,13 @@ def upload_document():
         db = get_firestore()
         document_id = f"doc_{uuid.uuid4().hex[:8]}"
         
-        # Get file size before uploading
-        file.seek(0, 2)  # Seek to end
-        file_size = file.tell()
-        file.seek(0)  # Reset to beginning
+        # Get compressed file size
+        compressed_file.seek(0, 2)
+        compressed_size = compressed_file.tell()
+        compressed_file.seek(0)
+        
+        # Calculate compression stats
+        compression_stats = get_compression_stats(original_size, compressed_size)
         
         document_metadata = {
             'document_id': document_id,
@@ -94,12 +102,19 @@ def upload_document():
             'original_filename': secure_filename(file.filename),
             'storage_path': storage_path,
             'download_url': download_url,
-            'file_size': file_size,
-            'file_type': file.content_type,
+            'file_size': compressed_size,
+            'original_file_size': original_size,
+            'file_type': compressed_file.content_type,
             'uploaded_by': user_id,
             'hospital_id': hospital_id,
             'uploaded_at': firestore.SERVER_TIMESTAMP,
-            'status': 'uploaded'
+            'status': 'uploaded',
+            'compression': {
+                'was_compressed': was_compressed,
+                'compression_ratio': compression_stats['compression_ratio'],
+                'size_reduction_percent': compression_stats['size_reduction_percent'],
+                'bytes_saved': compression_stats['bytes_saved']
+            }
         }
         
         # Save to documents collection
