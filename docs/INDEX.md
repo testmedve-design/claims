@@ -52,6 +52,15 @@
    - Check claim lock status
    - Get processing statistics
 
+6. **[LOCK_SYSTEM_IMPLEMENTATION.md](./LOCK_SYSTEM_IMPLEMENTATION.md)** 🔒 **NEW!**
+   - Complete lock system documentation
+   - Lock/unlock endpoints
+   - Frontend lock UI implementation
+   - Lock state preservation
+   - Auto-unlock mechanism
+   - Security validation
+   - Testing guide
+
 ---
 
 ## 📄 Documents & Resources
@@ -67,7 +76,7 @@
    - Progress indicators
    - Multiple file uploads
 
-7. **[06_RESOURCES_API.md](./06_RESOURCES_API.md)** 📊
+8. **[06_RESOURCES_API.md](./06_RESOURCES_API.md)** 📊
    - Get specialties
    - Get doctors
    - Get treatment lines
