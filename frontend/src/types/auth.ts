@@ -5,7 +5,7 @@ export interface User {
   name?: string;
   displayName?: string;
   emailVerified?: boolean;
-  role: 'rm' | 'rp' | 'employee' | 'hospital_admin' | 'hospital_user' | 'claim_processor' | 'claim_processor_l4' | 'reconciler';
+  role: 'rm' | 'rp' | 'employee' | 'hospital_admin' | 'hospital_user' | 'claim_processor' | 'claim_processor_l1' | 'claim_processor_l2' | 'claim_processor_l3' | 'claim_processor_l4' | 'reconciler';
   roles?: string[];
   status?: string;
   phone?: string;

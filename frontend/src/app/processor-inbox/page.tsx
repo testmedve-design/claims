@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { FileText, Search, Filter, Clock, CheckCircle, AlertCircle, XCircle, Lock, Unlock } from 'lucide-react'
+import { PROCESSOR_APPROVAL_LIMITS, canAccessRoute } from '@/lib/routes'
 
 interface Claim {
   claim_id: string
@@ -44,6 +45,7 @@ export default function ProcessorInboxPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [fetchingClaims, setFetchingClaims] = useState(false)
+  const fetchingRef = useRef(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [startDate, setStartDate] = useState('')
@@ -52,7 +54,8 @@ export default function ProcessorInboxPage() {
 
   // Check if user has processor access
   useEffect(() => {
-    if (user && user.role !== 'claim_processor' && (user.role as string) !== 'claim_processor_l4') {
+    const processorRoles = ['claim_processor', 'claim_processor_l1', 'claim_processor_l2', 'claim_processor_l3', 'claim_processor_l4']
+    if (user && !processorRoles.includes(user.role as string)) {
       router.push('/claims-inbox') // Redirect to regular claims inbox
     }
   }, [user, router])
@@ -64,7 +67,7 @@ export default function ProcessorInboxPage() {
     const refreshInterval = setInterval(() => {
       console.log('🔍 Auto-refreshing claims list...')
       // Only refresh if we're not in the middle of a lock operation
-      if (!fetchingClaims) {
+      if (!fetchingRef.current) {
         // Check if any claims are locked by current user - if so, preserve their lock states
         const hasLockedClaims = claims.some(claim => claim.locked_by_processor === user?.uid)
         if (hasLockedClaims) {
@@ -77,7 +80,7 @@ export default function ProcessorInboxPage() {
     }, 30000) // 30 seconds
     
     return () => clearInterval(refreshInterval)
-  }, [fetchingClaims])
+  }, []) // Remove fetchingClaims from dependencies to prevent infinite loop
 
   // Refetch claims when tab changes
   useEffect(() => {
@@ -89,12 +92,13 @@ export default function ProcessorInboxPage() {
   }, [claims, searchTerm, statusFilter, startDate, endDate, activeTab])
 
   const fetchClaims = async () => {
-    if (fetchingClaims) {
+    if (fetchingRef.current) {
       console.log('⏳ Claims already fetching, skipping...')
       return
     }
     
     try {
+      fetchingRef.current = true
       setFetchingClaims(true)
       setLoading(true)
       const token = localStorage.getItem('auth_token')
@@ -205,6 +209,7 @@ export default function ProcessorInboxPage() {
       console.error('Error fetching claims:', err)
       setError(err.message || 'An error occurred while fetching claims')
     } finally {
+      fetchingRef.current = false
       setLoading(false)
       setFetchingClaims(false)
     }
@@ -212,6 +217,12 @@ export default function ProcessorInboxPage() {
 
   const filterClaims = () => {
     let filtered = claims
+
+    // Filter by processor approval limit
+    if (user?.role && PROCESSOR_APPROVAL_LIMITS[user.role] !== undefined) {
+      const userLimit = PROCESSOR_APPROVAL_LIMITS[user.role]
+      filtered = filtered.filter(claim => claim.amount <= userLimit)
+    }
 
     // Filter by tab (unprocessed vs processed)
     if (activeTab === 'unprocessed') {
@@ -523,7 +534,8 @@ export default function ProcessorInboxPage() {
 
 
   // Show access denied for non-processors
-  if (user && user.role !== 'claim_processor' && (user.role as string) !== 'claim_processor_l4') {
+  const processorRoles = ['claim_processor', 'claim_processor_l1', 'claim_processor_l2', 'claim_processor_l3', 'claim_processor_l4']
+  if (user && !processorRoles.includes(user.role as string)) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
         <Card className="w-full max-w-md">

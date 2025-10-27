@@ -31,12 +31,13 @@ function PublicRouteContent({
 
       let destination = redirectTo;
 
-      if (!destination) {
-        // Default redirects based on user role
-        if (user?.role === 'employee') {
-          destination = '/claims';
+      if (!destination && user) {
+        // Use centralized routing configuration
+        const { getDefaultPageForRole, isAllowedRole } = require('@/lib/routes');
+        if (isAllowedRole(user.role)) {
+          destination = getDefaultPageForRole(user.role as any);
         } else {
-          destination = '/';
+          destination = '/login';
         }
       }
 

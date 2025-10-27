@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Save, Plus, X } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { claimsApi } from '@/services/claimsApi'
+import { PROCESSOR_APPROVAL_LIMITS } from '@/lib/routes'
 
 interface ClaimDetails {
   claim_id: string
@@ -250,7 +251,8 @@ export default function ProcessClaimPage() {
     console.log('🔍 User object:', user)
     
     // Only redirect if user is loaded and doesn't have processor role
-    if (user && user.role !== 'claim_processor' && (user.role as string) !== 'claim_processor_l4') {
+    const processorRoles = ['claim_processor', 'claim_processor_l1', 'claim_processor_l2', 'claim_processor_l3', 'claim_processor_l4']
+    if (user && !processorRoles.includes(user.role as string)) {
       console.log('🔍 Redirecting - user role is not claim_processor:', user.role)
       router.push('/processor-inbox')
       return
@@ -319,6 +321,18 @@ export default function ProcessClaimPage() {
       console.log('🔍 Form Data Structure:', data.claim?.form_data)
       
       if (data.success) {
+        // Check processor approval limit
+        if (user?.role && PROCESSOR_APPROVAL_LIMITS[user.role] !== undefined) {
+          const userLimit = PROCESSOR_APPROVAL_LIMITS[user.role]
+          const claimAmount = data.claim?.claimed_amount || 0
+          
+          if (claimAmount > userLimit) {
+            setError(`This claim amount (₹${claimAmount.toLocaleString('en-IN')}) exceeds your approval limit of ₹${userLimit.toLocaleString('en-IN')}. You cannot process this claim.`)
+            setLoading(false)
+            return
+          }
+        }
+        
         setClaim(data.claim)
         setFormData(prev => ({
           ...prev,

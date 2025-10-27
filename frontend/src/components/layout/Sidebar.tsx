@@ -61,6 +61,21 @@ const getNavigationItems = (userRole: string): NavItem[] => {
         icon: User,
       },
     ]
+  } else if (userRole === 'rm' || userRole === 'reconciler') {
+    // RM and Reconciler users see RM Inbox and Profile (same functionality)
+    return [
+      {
+        title: 'RM Inbox',
+        href: '/rm-inbox',
+        icon: Activity,
+        divider: true,
+      },
+      {
+        title: 'Profile',
+        href: '/profile',
+        icon: User,
+      },
+    ]
   } else {
     // Regular hospital users see Claims, Drafts, Claims Inbox, and Profile
     return [

@@ -601,6 +601,45 @@ def get_claim_types():
             "details": str(e)
         }), 500
 
+@resources_bp.route('/banks', methods=['GET'])
+def get_banks():
+    """Get available banks from Firestore (GLOBAL - not hospital-specific)"""
+    try:
+        # Get real data from Firestore
+        db = get_firestore()
+        banks_ref = db.collection('banks')
+        
+        # Get all banks (global collection)
+        banks_docs = banks_ref.get()
+        
+        banks = []
+        for doc in banks_docs:
+            bank_data = doc.to_dict()
+            bank_data['bank_id'] = doc.id  # Use document ID as bank_id
+            banks.append(bank_data)
+        
+        # If no banks found, provide helpful message
+        if len(banks) == 0:
+            return jsonify({
+                "success": True,
+                "banks": [],
+                "total": 0,
+                "message": "No banks found in the system. Please contact administrator to add banks."
+            }), 200
+        
+        return jsonify({
+            "success": True,
+            "banks": banks,
+            "total": len(banks)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": "Failed to fetch banks",
+            "details": str(e)
+        }), 500
+
 @resources_bp.route('/admission-types', methods=['GET'])
 def get_admission_types():
     """Get available admission types from Firestore (GLOBAL - not hospital-specific)"""
