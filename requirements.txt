@@ -19,11 +19,15 @@ cryptography>=41.0.4
 requests>=2.31.0
 httpx>=0.24.1
 
+# Image Processing & Compression
+Pillow>=10.0.0
+
 # Environment Variables
 python-dotenv>=1.0.0
 
 # Date/Time
 python-dateutil>=2.8.2
+pytz>=2023.3
 
 # JSON
 jsonschema>=4.19.0
