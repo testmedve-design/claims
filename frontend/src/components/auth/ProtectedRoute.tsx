@@ -4,6 +4,7 @@ import React, { ReactNode, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingScreen from '@/components/LoadingScreen';
+import { canAccessRoute, getDefaultPageForRole, isAllowedRole, isBlockedRole } from '@/lib/routes';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -32,18 +33,30 @@ export default function ProtectedRoute({
       return;
     }
 
-    // If authenticated but role not allowed
-    if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
-      // Redirect to appropriate default page based on role
-      const defaultPaths: Record<string, string> = {
-        rm: '/',
-        rp: '/',
-        employee: '/claims',
-        hospital_admin: '/'
-      };
-
-      router.push(defaultPaths[user.role] || '/');
+    // Check if user is blocked
+    if (user && isBlockedRole(user.role)) {
+      console.error('Access denied: Blocked role detected:', user.role);
+      router.push('/login');
       return;
+    }
+
+    // Check if route-specific allowedRoles are provided
+    if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
+      // Redirect to role's default page
+      const defaultPage = getDefaultPageForRole(user.role as any);
+      router.push(defaultPage);
+      return;
+    }
+
+    // Check centralized route access control
+    if (user && isAllowedRole(user.role)) {
+      const canAccess = canAccessRoute(user.role as any, pathname);
+      if (!canAccess) {
+        // User doesn't have access to this route - redirect to their default page
+        const defaultPage = getDefaultPageForRole(user.role as any);
+        router.push(defaultPage);
+        return;
+      }
     }
   }, [isAuthenticated, isLoading, user, router, pathname, redirectTo, allowedRoles]);
 
@@ -57,8 +70,18 @@ export default function ProtectedRoute({
     return <LoadingScreen />;
   }
 
-  // If role not allowed, don't render anything (redirect will happen)
+  // If user is blocked, don't render anything
+  if (user && isBlockedRole(user.role)) {
+    return <LoadingScreen />;
+  }
+
+  // If role not allowed (for route-specific checks)
   if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
+    return <LoadingScreen />;
+  }
+
+  // If user doesn't have access to this route (centralized check)
+  if (user && isAllowedRole(user.role) && !canAccessRoute(user.role as any, pathname)) {
     return <LoadingScreen />;
   }
 

@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import LoadingScreen from '@/components/LoadingScreen'
+import { getDefaultPageForRole, isAllowedRole } from '@/lib/routes'
 
 export default function Home() {
   const { isAuthenticated, isLoading, user } = useAuth()
@@ -12,11 +13,13 @@ export default function Home() {
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
-        // Redirect based on user role
-        if (user?.role === 'claim_processor' || user?.role === 'claim_processor_l4') {
-          router.push('/processor-inbox')
+        // Use centralized routing configuration
+        if (user?.role && isAllowedRole(user.role)) {
+          const defaultPage = getDefaultPageForRole(user.role)
+          router.push(defaultPage)
         } else {
-          router.push('/claims')
+          // Blocked role or unknown role - redirect to login
+          router.push('/login')
         }
       } else {
         router.push('/login')

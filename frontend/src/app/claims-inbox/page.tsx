@@ -36,7 +36,8 @@ export default function ClaimsInboxPage() {
 
   // Check if user has access to claims inbox page
   useEffect(() => {
-    if (user && user.role === 'claim_processor') {
+    const processorRoles = ['claim_processor', 'claim_processor_l1', 'claim_processor_l2', 'claim_processor_l3', 'claim_processor_l4']
+    if (user && processorRoles.includes(user.role as string)) {
       router.push('/processor-inbox') // Redirect claim processors to their inbox
     }
   }, [user, router])

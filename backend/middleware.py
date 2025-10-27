@@ -10,8 +10,12 @@ from firebase_config import get_firestore
 ALLOWED_CLAIMS_ROLES = [
     'hospital_user',
     'claim_processor',
-    'claim_processor_l4',
-    'reconciler'
+    'claim_processor_l1',  # Up to 50K
+    'claim_processor_l2',  # Up to 1 lakh
+    'claim_processor_l3',  # Up to 2 lakhs
+    'claim_processor_l4',  # All amounts
+    'reconciler',
+    'rm'  # Relationship Manager
 ]
 
 # Blocked roles (NO ACCESS to Claims Module)
@@ -20,7 +24,6 @@ BLOCKED_ROLES = [
     'super_admin',
     'system_admin',
     'hospital_admin',
-    'rm',
     'rp',
     'employee'
 ]
@@ -67,12 +70,7 @@ def require_claims_access(f):
                         else:
                             raise ValueError("No UID found in custom token")
                     except Exception as firebase_error:
-                        # If all else fails, check if it's a simple backend token
-                        if token.startswith('test-token-'):
-                            uid = token.replace('test-token-', '')
-                            print(f"DEBUG: Using backend token for UID: {uid}")
-                        else:
-                            raise ValueError(f"Invalid token: {str(custom_token_error)}")
+                        raise ValueError(f"Invalid token: {str(custom_token_error)}")
             
             # Get user data from Firestore
             db = get_firestore()
@@ -201,12 +199,7 @@ def require_processor_access(f):
                         else:
                             raise ValueError("No UID found in custom token")
                     except Exception as firebase_error:
-                        # If all else fails, check if it's a simple backend token
-                        if token.startswith('test-token-'):
-                            uid = token.replace('test-token-', '')
-                            print(f"DEBUG: Using backend token for UID: {uid}")
-                        else:
-                            raise ValueError(f"Invalid token: {str(custom_token_error)}")
+                        raise ValueError(f"Invalid token: {str(custom_token_error)}")
             
             # Get user data from Firestore
             db = get_firestore()
@@ -217,12 +210,12 @@ def require_processor_access(f):
             user_data = user_doc.to_dict()
             user_role = user_data.get('role', '').lower()
             
-            # Check if user is a claim processor (including l4 level)
-            if user_role not in ['claim_processor', 'claim_processor_l4']:
+            # Check if user is a claim processor (including all levels L1-L4)
+            if user_role not in ['claim_processor', 'claim_processor_l1', 'claim_processor_l2', 'claim_processor_l3', 'claim_processor_l4']:
                 return jsonify({
                     'error': 'Access denied',
                     'message': f'Claim processor access required. Your role: {user_role}',
-                    'required_role': 'claim_processor'
+                    'required_role': 'claim_processor (any level)'
                 }), 403
             
             # Store user info in request
@@ -313,12 +306,7 @@ def require_hospital_access(f):
                         else:
                             raise ValueError("No UID found in custom token")
                     except Exception as firebase_error:
-                        # If all else fails, check if it's a simple backend token
-                        if token.startswith('test-token-'):
-                            uid = token.replace('test-token-', '')
-                            print(f"DEBUG: Using backend token for UID: {uid}")
-                        else:
-                            raise ValueError(f"Invalid token: {str(custom_token_error)}")
+                        raise ValueError(f"Invalid token: {str(custom_token_error)}")
             
             # Get user data from Firestore
             db = get_firestore()
@@ -377,6 +365,88 @@ def require_hospital_access(f):
             request.user_name = user_name
             request.hospital_id = hospital_id
             request.hospital_name = hospital_name
+            
+            return f(*args, **kwargs)
+        except Exception as e:
+            return jsonify({'error': 'Invalid token', 'details': str(e)}), 401
+    
+    return decorated_function
+
+def require_rm_access(f):
+    """Decorator for RM (Relationship Manager) and Reconciler roles"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Skip authentication for OPTIONS requests (CORS preflight)
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+            
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'error': 'No token provided'}), 401
+        
+        try:
+            # Remove 'Bearer ' prefix if present
+            if token.startswith('Bearer '):
+                token = token[7:]
+            
+            # Verify the token - handle both ID tokens and custom tokens
+            try:
+                # First, try to verify as ID token
+                decoded_token = auth.verify_id_token(token)
+                uid = decoded_token['uid']
+            except Exception as id_token_error:
+                # If ID token verification fails, it might be a custom token
+                try:
+                    import jwt
+                    decoded_token = jwt.decode(token, options={"verify_signature": False})
+                    uid = decoded_token.get('uid')
+                    if not uid:
+                        raise ValueError("Invalid token format - no UID found")
+                except Exception as custom_token_error:
+                    raise ValueError(f"Invalid token: {str(custom_token_error)}")
+            
+            # Get user data from Firestore
+            db = get_firestore()
+            user_doc = db.collection('users').document(uid).get()
+            if not user_doc.exists:
+                return jsonify({'error': 'User not found'}), 404
+            
+            user_data = user_doc.to_dict()
+            user_role = user_data.get('role', '').lower()
+            
+            # Check if user is an RM or Reconciler (both have same access)
+            if user_role not in ['rm', 'reconciler']:
+                return jsonify({
+                    'error': 'Access denied',
+                    'message': f'RM/Reconciler access required. Your role: {user_role}',
+                    'required_role': 'rm or reconciler'
+                }), 403
+            
+            # Store user info in request
+            request.user = decoded_token
+            request.user_data = user_data
+            request.user_role = user_role
+            request.user_id = uid
+            request.user_email = user_data.get('email', '')
+            
+            # Try multiple name fields
+            user_name = (user_data.get('name', '') or 
+                        user_data.get('display_name', '') or 
+                        user_data.get('full_name', '') or 
+                        f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or
+                        user_data.get('email', '').split('@')[0].replace('.', ' ').replace('_', ' ').title() or
+                        'Unknown User')
+            
+            request.user_name = user_name
+            
+            # Extract entity assignments for payers and hospitals
+            entity_assignments = user_data.get('entity_assignments', {})
+            payers = entity_assignments.get('payers', [])
+            hospitals = entity_assignments.get('hospitals', [])
+            
+            request.entity_assignments = entity_assignments
+            request.assigned_payers = payers
+            request.assigned_hospitals = hospitals
             
             return f(*args, **kwargs)
         except Exception as e:
