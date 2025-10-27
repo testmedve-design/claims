@@ -40,6 +40,19 @@ def create_app():
     # Initialize Firebase
     initialize_firebase()
     
+    # Root endpoint for health check
+    @app.route('/', methods=['GET'])
+    @app.route('/api', methods=['GET'])
+    @app.route('/api/health', methods=['GET'])
+    def health_check():
+        """Health check endpoint"""
+        return jsonify({
+            'success': True,
+            'message': 'Hospital Claims Management System API',
+            'version': '1.0.0',
+            'status': 'running'
+        }), 200
+    
     # Register blueprints - CLEAN STRUCTURE
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(claims_bp, url_prefix='/api/v1/claims')
