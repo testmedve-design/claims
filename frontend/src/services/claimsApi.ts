@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5002'
+const API_BASE_URL = 'https://claims-2.onrender.com'
 
 // Import the main ClaimFormData from types
 import type { ClaimFormData } from '@/types/claims'
@@ -164,7 +164,7 @@ class ClaimsApi {
 
   async getClaims(): Promise<any[]> {
     try {
-      const response = await fetch(`http://localhost:5002/api/v1/claims/get-all-claims`, {
+      const response = await fetch(`${this.baseUrl}/api/v1/claims/get-all-claims`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }

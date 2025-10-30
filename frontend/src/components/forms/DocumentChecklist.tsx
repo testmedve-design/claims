@@ -59,7 +59,7 @@ export default function DocumentChecklist({
     try {
       setChecklistLoading(true)
       // Build URL with payer_name and optional specialty
-      let url = `http://localhost:5002/api/new-claim/checklist/get-checklist?payer_name=${encodeURIComponent(payerName)}`
+      let url = `https://claims-2.onrender.com/api/new-claim/checklist/get-checklist?payer_name=${encodeURIComponent(payerName)}`
       if (specialty) {
         url += `&specialty=${encodeURIComponent(specialty)}`
       }
@@ -136,7 +136,7 @@ export default function DocumentChecklist({
         formData.append('document_type', itemId)
         formData.append('document_name', file.name)
         
-        const response = await fetch(`http://localhost:5002/api/v1/drafts/upload-document/${draftId}`, {
+        const response = await fetch(`https://claims-2.onrender.com/api/v1/drafts/upload-document/${draftId}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('auth_token')}`

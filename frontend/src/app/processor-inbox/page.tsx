@@ -29,7 +29,7 @@ interface Claim {
   lock_expires_at?: string
 }
 
-const API_BASE_URL = 'http://localhost:5002'
+const API_BASE_URL = 'https://claims-2.onrender.com'
 
 // Helper function to determine if a claim is already processed
 const isClaimProcessed = (claimStatus: string): boolean => {
@@ -117,7 +117,7 @@ export default function ProcessorInboxPage() {
         params.append('end_date', endDate)
       }
       
-      const url = `http://localhost:5002/api/processor-routes/get-claims-to-process?${params.toString()}`
+      const url = `https://claims-2.onrender.com/api/processor-routes/get-claims-to-process?${params.toString()}`
       
       console.log('🔍 Fetching claims for tab:', activeTab)
       console.log('🔍 API URL:', url)

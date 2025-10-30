@@ -1,97 +1,51 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Form } from '@/components/ui/form'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { toast } from '@/lib/toast'
+import { Card } from '@/components/ui/card'
+import { toast } from '@/hooks/use-toast'
 import { claimsApi } from '@/services/claimsApi'
-import type { ClaimFormData, Specialty, Doctor, Payer, Insurer, Ward } from '@/types/claims'
-import { FileText, User, CreditCard, Hospital, DollarSign } from 'lucide-react'
+import type { Specialty, Doctor, Payer, Insurer, Ward } from '@/types/claims'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams, useRouter } from 'next/navigation'
 import DocumentChecklist from '@/components/forms/DocumentChecklist'
+import { claimFormSchema, defaultClaimFormValues, type ClaimFormValues } from '@/schemas/claimSchema'
 
-const API_BASE_URL = 'http://localhost:5002'
+// Import the modular form section components
+import { PatientDetailsSection } from '@/components/forms/claims/PatientDetailsSection'
+import { PayerDetailsSection } from '@/components/forms/claims/PayerDetailsSection'
+import { ProviderDetailsSection } from '@/components/forms/claims/ProviderDetailsSection'
+import { BillDetailsSection } from '@/components/forms/claims/BillDetailsSection'
+import { DocumentDisplay } from '@/components/forms/claims/DocumentDisplay'
+import { DocumentUpload } from '@/components/forms/claims/DocumentUpload'
+import { PageHeader } from '@/components/forms/claims/PageHeader'
+import { ReviewStep } from '@/components/forms/claims/ReviewStep'
 
+import { CheckCircle2, AlertCircle, UserCircle, CreditCard, Building2, Receipt, FileCheck } from 'lucide-react'
 
-const initialFormData: ClaimFormData = {
-  // Patient Details
-  patient_name: '', 
-  patient_id: '',
-  age: 0, 
-  age_unit: 'YRS', 
-  gender: '', 
-  id_card_type: '',
-  id_card_number: '', 
-  patient_contact_number: '', 
-  patient_email_id: '',
-  beneficiary_type: '', 
-  relationship: '', 
-  
-  // Payer Details
-  payer_patient_id: '',
-  authorization_number: '', 
-  total_authorized_amount: 0, 
-  payer_type: '',
-  payer_name: '', 
-  insurer_name: '', 
-  policy_number: '', 
-  sponsorer_corporate_name: '',
-  sponsorer_employee_id: '', 
-  sponsorer_employee_name: '', 
-  
-  // Provider Details
-  patient_registration_number: '',
-  specialty: '', 
-  doctor: '', 
-  treatment_line: '', 
-  claim_type: 'INPATIENT',
-  service_start_date: '', 
-  service_end_date: '', 
-  inpatient_number: '',
-  admission_type: '', 
-  hospitalization_type: '', 
-  ward_type: '', 
-  final_diagnosis: '',
-  icd_10_code: '', 
-  treatment_done: '', 
-  pcs_code: '', 
-  
-  // Bill Details
-  bill_number: '',
-  bill_date: '', 
-  security_deposit: 0, 
-  total_bill_amount: 0, 
-  patient_discount_amount: 0,
-  amount_paid_by_patient: 0, 
-  total_patient_paid_amount: 0, 
-  amount_charged_to_payer: 0,
-  mou_discount_amount: 0, 
-  claimed_amount: 0, 
-  submission_remarks: '',
-  
-  // Legacy fields
-  admission_date: '', 
-  discharge_date: '', 
-  diagnosis: '',
-  treatment: '', 
-  total_amount: 0, 
-  documents: []
-}
+const API_BASE_URL = 'https://claims-2.onrender.com'
 
 export default function ClaimsPage() {
   const { user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [formData, setFormData] = useState<ClaimFormData>(initialFormData)
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null)
   const [isEditingDraft, setIsEditingDraft] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [loadingDraft, setLoadingDraft] = useState(false)
+
+  // Accordion state - allow multiple sections to be open
+  const [openAccordion, setOpenAccordion] = useState<string[]>(['patient'])
+
+  // Initialize React Hook Form with Zod validation
+  const form = useForm<ClaimFormValues>({
+    resolver: zodResolver(claimFormSchema) as any,
+    defaultValues: defaultClaimFormValues,
+    mode: 'onChange',
+  })
   
   // Dynamic data states
   const [specialties, setSpecialties] = useState<Specialty[]>([])
@@ -107,17 +61,14 @@ export default function ClaimsPage() {
   const [uploadedDocuments, setUploadedDocuments] = useState<any[]>([])
   
   // Get hospital ID from logged-in user
-  // Get hospital ID from logged-in user (use same method as profile page)
   const hospitalId = (user as any)?.entity_assignments?.hospitals?.[0]?.id || null
 
   // Check if user has access to claims page
   useEffect(() => {
     if (user) {
-      // Only redirect if user is not a hospital user (who should be able to create claims)
       if (user.role === 'claim_processor' || (user.role as string) === 'claim_processor_l4') {
-        router.push('/processor-inbox') // Redirect claim processors to their inbox
+        router.push('/processor-inbox')
       }
-      // Hospital users should be able to access the new claim form
     }
   }, [user, router])
 
@@ -134,10 +85,7 @@ export default function ClaimsPage() {
   // Fetch initial data when user is loaded
   useEffect(() => {
     if (user) {
-      console.log('User loaded, fetching data for hospital:', hospitalId)
       fetchInitialData()
-      
-      // Check if we need to load a draft
       const draftId = searchParams.get('draft')
       if (draftId) {
         loadDraft(draftId)
@@ -145,29 +93,99 @@ export default function ClaimsPage() {
     }
   }, [user, hospitalId, searchParams])
 
+  // Watch form values for reactive updates
+  const watchedSpecialty = form.watch('specialty')
+  const watchedPayerType = form.watch('payer_type')
+  const watchedPayerName = form.watch('payer_name')
+  const watchedBeneficiaryType = form.watch('beneficiary_type')
+  const watchedTotalBill = form.watch('total_bill_amount')
+  const watchedPatientDiscount = form.watch('patient_discount_amount')
+  const watchedAmountPaidByPatient = form.watch('amount_paid_by_patient')
+  const watchedTotalPatientPaid = form.watch('total_patient_paid_amount')
+  const watchedAmountChargedToPayer = form.watch('amount_charged_to_payer')
+  const watchedMouDiscount = form.watch('mou_discount_amount')
+
   // Fetch doctors when specialty changes
   useEffect(() => {
-    if (formData.specialty) {
-      fetchDoctorsBySpecialty(formData.specialty)
+    if (watchedSpecialty) {
+      fetchDoctorsBySpecialty(watchedSpecialty)
+      form.setValue('doctor', '')
     }
-  }, [formData.specialty])
+  }, [watchedSpecialty])
+
+  // Auto-calculate bill amounts
+  useEffect(() => {
+    const totalPatientPaid = (watchedPatientDiscount || 0) + (watchedAmountPaidByPatient || 0)
+    form.setValue('total_patient_paid_amount', totalPatientPaid)
+  }, [watchedPatientDiscount, watchedAmountPaidByPatient])
+
+  useEffect(() => {
+    const amountChargedToPayer = (watchedTotalBill || 0) - (watchedTotalPatientPaid || 0)
+    form.setValue('amount_charged_to_payer', amountChargedToPayer)
+  }, [watchedTotalBill, watchedTotalPatientPaid])
+
+  useEffect(() => {
+    const claimedAmount = (watchedAmountChargedToPayer || 0) - (watchedMouDiscount || 0)
+    form.setValue('claimed_amount', claimedAmount)
+  }, [watchedAmountChargedToPayer, watchedMouDiscount])
+
+  useEffect(() => {
+    if (watchedPayerType && watchedPayerType !== 'TPA') {
+      form.setValue('insurer_name', '')
+    }
+  }, [watchedPayerType])
+
+  useEffect(() => {
+    if (watchedPayerName) {
+      setShowDocumentChecklist(true)
+    }
+  }, [watchedPayerName])
+
+  useEffect(() => {
+    if (watchedBeneficiaryType) {
+      form.setValue('relationship', '')
+    }
+  }, [watchedBeneficiaryType])
+
+  // Stepper navigation handlers
+  const handleNext = async () => {
+    // No validation needed for accordion - users can fill at their own pace
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handlePrevious = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleStepChange = (step: string) => {
+    setOpenAccordion((prev) => {
+      if (prev.includes(step)) {
+        return prev.filter((s) => s !== step)
+      } else {
+        return [...prev, step]
+      }
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const canProceedToNext = () => {
+    return !form.formState.isSubmitting
+  }
 
   const fetchInitialData = async () => {
     try {
       setLoadingData(true)
       
-      // Check if user has a hospital assigned
       if (!hospitalId) {
-        toast.error('No hospital assigned', {
-          description: 'Please contact administrator to assign a hospital to your account'
+        toast({
+          title: "Error",
+          description: 'No hospital assigned. Please contact administrator.',
+          variant: "destructive"
         })
         setLoadingData(false)
         return
       }
       
-      console.log('Fetching data for hospital ID:', hospitalId)
-      
-      // Fetch specialties, payers, insurers, and wards in parallel
       const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
@@ -180,7 +198,6 @@ export default function ClaimsPage() {
         fetch(`${API_BASE_URL}/api/resources/ward-types`, { headers })
       ])
 
-      // Check if all API calls were successful
       if (!specialtiesRes.ok || !payersRes.ok || !insurersRes.ok || !wardsRes.ok) {
         throw new Error('One or more API calls failed')
       }
@@ -190,34 +207,11 @@ export default function ClaimsPage() {
       const insurersData = await insurersRes.json()
       const wardsData = await wardsRes.json()
 
-      console.log('Specialties loaded:', specialtiesData.specialties?.length || 0)
-      console.log('Payers loaded:', payersData.payers?.length || 0)
-      console.log('Insurers loaded:', insurersData.insurers?.length || 0)
-      console.log('Ward types loaded:', wardsData.ward_types?.length || 0)
-
-      if (specialtiesData.success) {
-        setSpecialties(specialtiesData.specialties || [])
-      } else {
-        console.error('Failed to load specialties:', specialtiesData.error)
-        toast.error('Failed to load specialties')
-      }
-
-      if (payersData.success) {
-        setPayers(payersData.payers || [])
-      } else {
-        console.error('Failed to load payers:', payersData.error)
-        toast.error('Failed to load payers')
-      }
-
-      if (insurersData.success) {
-        setInsurers(insurersData.insurers || [])
-      } else {
-        console.error('Failed to load insurers:', insurersData.error)
-        toast.error('Failed to load insurers')
-      }
-
+      if (specialtiesData.success) setSpecialties(specialtiesData.specialties || [])
+      if (payersData.success) setPayers(payersData.payers || [])
+      if (insurersData.success) setInsurers(insurersData.insurers || [])
+      
       if (wardsData.success) {
-        // Normalize ward data structure - handle inconsistent field names
         const normalizedWards = (wardsData.ward_types || []).map((ward: any) => ({
           ward_type_id: ward.ward_type_id || ward.ward_id,
           ward_type_name: ward.ward_type_name || ward.ward_name,
@@ -226,20 +220,18 @@ export default function ClaimsPage() {
           hospital_name: ward.hospital_name || ''
         }))
         
-        // Remove duplicates based on ward_type_name and keep unique entries
         const uniqueWards = normalizedWards.filter((ward: Ward, index: number, self: Ward[]) => 
           index === self.findIndex((w: Ward) => w.ward_type_name === ward.ward_type_name)
         )
         
         setWards(uniqueWards)
-      } else {
-        console.error('Failed to load wards:', wardsData.error)
-        toast.error('Failed to load ward types')
       }
     } catch (error) {
       console.error('Error fetching initial data:', error)
-      toast.error('Failed to load form data', {
-        description: 'Some dropdowns may not be populated'
+      toast({
+        title: "Error",
+        description: 'Failed to load form data',
+        variant: "destructive"
       })
     } finally {
       setLoadingData(false)
@@ -249,8 +241,7 @@ export default function ClaimsPage() {
   const loadDraft = async (draftId: string) => {
     try {
       setLoadingDraft(true)
-      console.log('Loading draft:', draftId)
-      
+
       const response = await fetch(`${API_BASE_URL}/api/v1/drafts/get-draft/${draftId}`, {
         method: 'GET',
         headers: {
@@ -259,23 +250,26 @@ export default function ClaimsPage() {
         }
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to load draft')
-      }
+      if (!response.ok) throw new Error('Failed to load draft')
 
       const data = await response.json()
-      
+
       if (data.success && data.draft) {
         const draftFormData = data.draft.form_data
-        setFormData(draftFormData)
-        
-        toast.success('Draft loaded successfully', {
-          description: `Patient: ${draftFormData.patient_name || 'N/A'}`
+        form.reset(draftFormData)
+
+        toast({
+          title: "Success",
+          description: `Draft loaded for patient: ${draftFormData.patient_name || 'N/A'}`
         })
       }
     } catch (error) {
       console.error('Error loading draft:', error)
-      toast.error('Failed to load draft')
+      toast({
+        title: "Error",
+        description: 'Failed to load draft',
+        variant: "destructive"
+      })
     } finally {
       setLoadingDraft(false)
     }
@@ -283,8 +277,6 @@ export default function ClaimsPage() {
 
   const fetchDoctorsBySpecialty = async (specialty: string) => {
     try {
-      console.log('Fetching doctors for specialty:', specialty, 'hospital:', hospitalId)
-      
       const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
@@ -294,91 +286,36 @@ export default function ClaimsPage() {
         `${API_BASE_URL}/api/resources/doctors?hospital_id=${hospitalId}&specialty=${encodeURIComponent(specialty)}`,
         { headers }
       )
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
 
       const data = await response.json()
-
-      console.log('Doctors fetched:', data.doctors?.length || 0)
 
       if (data.success) {
         setDoctors(data.doctors || [])
       } else {
-        console.error('Failed to load doctors:', data.error)
-        toast.error('Failed to load doctors')
+        toast({
+          title: "Error",
+          description: 'Failed to load doctors',
+          variant: "destructive"
+        })
       }
     } catch (error) {
       console.error('Error fetching doctors:', error)
-      toast.error('Failed to load doctors')
-      setDoctors([]) // Clear doctors list on error
+      toast({
+        title: "Error",
+        description: 'Failed to load doctors',
+        variant: "destructive"
+      })
+      setDoctors([])
     }
-  }
-
-  const handleChange = (field: keyof ClaimFormData, value: string) => {
-    setFormData(prev => {
-      const updated = { ...prev, [field]: value }
-      
-      // Auto-calculations for bill amounts
-      const totalBill = updated.total_bill_amount || 0
-      const patientDiscount = updated.patient_discount_amount || 0
-      const amountPaidByPatient = updated.amount_paid_by_patient || 0
-      
-      // Rule 2: Total Patient Paid = Patient Discount + Amount Paid By Patient
-      if (field === 'patient_discount_amount' || field === 'amount_paid_by_patient') {
-        const totalPatientPaid = patientDiscount + amountPaidByPatient
-        updated.total_patient_paid_amount = totalPatientPaid
-      }
-      
-      // Rule 3: Amount Charged to Payer = Total Bill - Total Patient Paid
-      if (field === 'total_bill_amount' || field === 'patient_discount_amount' || field === 'amount_paid_by_patient' || field === 'total_patient_paid_amount') {
-        const totalPatientPaid = updated.total_patient_paid_amount || 0
-        updated.amount_charged_to_payer = totalBill - totalPatientPaid
-      }
-      
-      // Rule 4: Claimed Amount = Amount Charged to Payer - MOU Discount
-      const amountChargedToPayer = updated.amount_charged_to_payer || 0
-      const mouDiscountAmount = updated.mou_discount_amount || 0
-      updated.claimed_amount = amountChargedToPayer - mouDiscountAmount
-      
-      return updated
-    })
-    
-    if (field === 'beneficiary_type') {
-      setFormData(prev => ({ ...prev, relationship: '' }))
-    }
-    
-    // Reset doctor when specialty changes
-    if (field === 'specialty') {
-      setFormData(prev => ({ ...prev, doctor: '' }))
-    }
-    
-    // Clear insurer_name when payer_type changes to non-TPA
-    if (field === 'payer_type' && value !== 'TPA') {
-      setFormData(prev => ({ ...prev, insurer_name: '' }))
-    }
-    
-    // Show document checklist when payer_name and specialty are both filled
-    if (field === 'payer_name' && value) {
-      setShowDocumentChecklist(true)
-    }
-  }
-
-  const getRelationshipOptions = () => {
-    if (formData.beneficiary_type === 'SELF' || formData.beneficiary_type === 'SELF (Individual Policy)') {
-      return ['SELF']
-    } else if (formData.beneficiary_type === 'DEPENDANT') {
-      return ['SPOUSE', 'SON', 'DAUGHTER', 'FATHER', 'MOTHER', 'BROTHER', 'SISTER', 'OTHER']
-    }
-    return ['SELF', 'SPOUSE', 'SON', 'DAUGHTER', 'FATHER', 'MOTHER', 'OTHER']
   }
 
   const loadDraftForEditing = async (draftId: string) => {
     try {
       setLoadingDraft(true)
-      console.log('🔄 Loading draft for editing:', draftId)
-      
-      const response = await fetch(`http://localhost:5002/api/v1/drafts/get-draft/${draftId}`, {
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/drafts/get-draft/${draftId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -391,27 +328,18 @@ export default function ClaimsPage() {
         if (data.success && data.draft) {
           const draftData = data.draft.form_data || {}
           const documents = data.draft.documents || []
-          
-          // Set form data
-          setFormData(draftData)
-          
-          // Set documents if they exist
-          if (documents && documents.length > 0) {
-            setFormData(prev => ({
-              ...prev,
-              documents: documents
-            }))
-            console.log('✅ Draft loaded with documents:', documents)
-          }
-          
-          // Show document checklist if payer is selected
+
+          form.reset({
+            ...draftData,
+            documents: documents
+          })
+
           if (draftData.payer_name) {
             setShowDocumentChecklist(true)
-            console.log('✅ Document checklist enabled for payer:', draftData.payer_name)
           }
-          
-          console.log('✅ Draft loaded for editing:', draftData)
-          toast.success('Draft loaded for editing', {
+
+          toast({
+            title: "Success",
             description: `Resuming: ${draftData.patient_name || 'Untitled Draft'}`
           })
         }
@@ -420,152 +348,106 @@ export default function ClaimsPage() {
       }
     } catch (error) {
       console.error('Error loading draft:', error)
-      toast.error('Failed to load draft for editing')
+      toast({
+        title: "Error",
+        description: 'Failed to load draft for editing',
+        variant: "destructive"
+      })
     } finally {
       setLoadingDraft(false)
     }
   }
 
   const handleSaveDraft = async () => {
-    // Prevent double-saving
-    if (loading) {
-      console.log('❌ Draft save already in progress, ignoring duplicate call')
-      return
-    }
-    
-    // Additional protection: Check if we just saved a draft with the same data
+    if (form.formState.isSubmitting) return
+
+    const formValues = form.getValues()
+
     const currentDataHash = JSON.stringify({
-      patient_name: formData.patient_name,
-      specialty: formData.specialty,
-      total_bill_amount: formData.total_bill_amount
+      patient_name: formValues.patient_name,
+      specialty: formValues.specialty,
+      total_bill_amount: formValues.total_bill_amount
     })
-    
+
     const lastSaveHash = localStorage.getItem('lastDraftSaveHash')
     const lastSaveTime = localStorage.getItem('lastDraftSaveTime')
     const now = Date.now()
-    
+
     if (lastSaveHash === currentDataHash && lastSaveTime && (now - parseInt(lastSaveTime)) < 5000) {
-      console.log('❌ Duplicate save prevented - same data saved within 5 seconds')
-      toast.error('Please wait before saving again', {
-        description: 'You just saved a draft with the same data'
+      toast({
+        title: "Error",
+        description: 'Please wait before saving again',
+        variant: "destructive"
       })
       return
     }
-    
-    setLoading(true)
 
     try {
-      console.log('🔄 Starting draft save with data:', formData)
-      
-      // Determine if we're updating an existing draft or creating a new one
       const isUpdating = isEditingDraft && editingDraftId
-      const url = isUpdating 
-        ? `http://localhost:5002/api/v1/drafts/update-draft/${editingDraftId}`
-        : 'http://localhost:5002/api/v1/drafts/save-draft'
-      
-      console.log(`🔄 ${isUpdating ? 'Updating' : 'Creating'} draft:`, url)
-      
+      const url = isUpdating
+        ? `${API_BASE_URL}/api/v1/drafts/update-draft/${editingDraftId}`
+        : `${API_BASE_URL}/api/v1/drafts/save-draft`
+
       const response = await fetch(url, {
         method: isUpdating ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formValues)
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('❌ Draft save failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        })
-        
-        if (response.status === 401) {
-          throw new Error('Authentication required. Please log in to save drafts.')
-        } else if (response.status === 409) {
-          throw new Error(errorData.message || 'Duplicate draft detected')
-        } else {
-          throw new Error(errorData.error || errorData.message || `Failed to save draft (${response.status})`)
-        }
+        throw new Error(errorData.error || errorData.message || `Failed to save draft`)
       }
 
       const result = await response.json()
-      
-      console.log('✅ Draft saved successfully:', result)
-      
-      // Store save info to prevent duplicates
+
       localStorage.setItem('lastDraftSaveHash', currentDataHash)
       localStorage.setItem('lastDraftSaveTime', now.toString())
-      
+
       const action = isUpdating ? 'Updated' : 'Saved'
       const draftId = result.draft_id || editingDraftId
-      
-      toast.success(`Draft ${action} Successfully`, {
-        description: `Draft ID: ${draftId}`,
-      })
 
-      // Don't reset form data for drafts
+      toast({
+        title: `Draft ${action} Successfully`,
+        description: `Draft ID: ${draftId}`
+      })
     } catch (error) {
       console.error('Draft save error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Please try again'
-      toast.error('Failed to Save Draft', {
+      toast({
+        title: "Error",
         description: errorMessage,
+        variant: "destructive"
       })
-    } finally {
-      setLoading(false)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Validation: Claimed Amount should not exceed Total Authorized Amount
-    const claimedAmount = formData.claimed_amount || 0
-    const authorizedAmount = formData.total_authorized_amount || 0
-    
-    if (claimedAmount > authorizedAmount) {
-      toast.error('Validation Error', {
-        description: `Claimed Amount (₹${claimedAmount}) cannot exceed Total Authorized Amount (₹${authorizedAmount})`
-      })
-      return
-    }
-    
-    setLoading(true)
-
+  const onSubmit = async (formValues: ClaimFormValues) => {
     try {
-      console.log('Submitting claim with data:', formData)
-      
-      // Convert numeric string fields to proper numbers for backend
       const submissionData = {
-        ...formData,
-        // Convert all numeric fields to numbers
-        age: Number(formData.age) || 0,
-        total_authorized_amount: Number(formData.total_authorized_amount) || 0,
-        security_deposit: Number(formData.security_deposit) || 0,
-        total_bill_amount: Number(formData.total_bill_amount) || 0,
-        patient_discount_amount: Number(formData.patient_discount_amount) || 0,
-        amount_paid_by_patient: Number(formData.amount_paid_by_patient) || 0,
-        total_patient_paid_amount: Number(formData.total_patient_paid_amount) || 0,
-        amount_charged_to_payer: Number(formData.amount_charged_to_payer) || 0,
-        mou_discount_amount: Number(formData.mou_discount_amount) || 0,
-        claimed_amount: Number(formData.claimed_amount) || 0,
-        // Include uploaded documents
+        ...formValues,
+        age: Number(formValues.age) || 0,
+        total_authorized_amount: Number(formValues.total_authorized_amount) || 0,
+        security_deposit: Number(formValues.security_deposit) || 0,
+        total_bill_amount: Number(formValues.total_bill_amount) || 0,
+        patient_discount_amount: Number(formValues.patient_discount_amount) || 0,
+        amount_paid_by_patient: Number(formValues.amount_paid_by_patient) || 0,
+        total_patient_paid_amount: Number(formValues.total_patient_paid_amount) || 0,
+        amount_charged_to_payer: Number(formValues.amount_charged_to_payer) || 0,
+        mou_discount_amount: Number(formValues.mou_discount_amount) || 0,
+        claimed_amount: Number(formValues.claimed_amount) || 0,
         documents: uploadedDocuments
       }
+
+      const result = await claimsApi.submitClaim(submissionData as any)
       
-      const result = await claimsApi.submitClaim(submissionData)
-      
-      console.log('Claim submitted successfully:', result)
-      
-      // Upload documents after claim creation
       if (result.claim_id && uploadedDocuments.length > 0) {
-        console.log('Uploading documents for claim:', result.claim_id)
-        
         try {
           const uploadPromises = uploadedDocuments
-            .filter(doc => doc.file) // Only upload documents that have files
+            .filter(doc => doc.file)
             .map(async (doc) => {
               const formData = new FormData()
               formData.append('file', doc.file!)
@@ -573,7 +455,7 @@ export default function ClaimsPage() {
               formData.append('document_type', doc.document_type)
               formData.append('document_name', doc.document_name)
 
-              const response = await fetch('http://localhost:5002/api/v1/documents/upload', {
+              const response = await fetch(`${API_BASE_URL}/api/v1/documents/upload`, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
@@ -581,628 +463,244 @@ export default function ClaimsPage() {
                 body: formData
               })
 
-              if (!response.ok) {
-                throw new Error(`Failed to upload ${doc.document_name}`)
-              }
-
+              if (!response.ok) throw new Error(`Failed to upload ${doc.document_name}`)
               return await response.json()
             })
 
           await Promise.all(uploadPromises)
-          console.log('All documents uploaded successfully')
         } catch (error) {
           console.error('Error uploading documents:', error)
-          toast.error('Claim created but some documents failed to upload', {
-            description: 'You can upload documents later from the claim details page.'
+          toast({
+            title: "Warning",
+            description: 'Claim created but some documents failed to upload. You can upload documents later.'
           })
         }
       }
       
-      toast.success('Claim Submitted Successfully', {
-        description: `Claim ID: ${result.claim_id}`,
+      toast({
+        title: "Success",
+        description: `Claim submitted successfully. Claim ID: ${result.claim_id}`
       })
 
-      setFormData(initialFormData)
+      form.reset(defaultClaimFormValues)
       setUploadedDocuments([])
       setShowDocumentChecklist(false)
       setChecklistComplete(false)
+      setOpenAccordion(['patient'])
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error) {
       console.error('Claim submission error:', error)
-      toast.error('Failed to Submit Claim', {
-        description: error instanceof Error ? error.message : 'Please try again',
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to submit claim',
+        variant: "destructive"
       })
-    } finally {
-      setLoading(false)
     }
   }
 
   if (loadingDraft) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-          <p>Loading draft...</p>
+      <div className="space-y-6">
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+            <p>Loading draft...</p>
+          </div>
         </div>
       </div>
     )
   }
 
+  // Calculate progress metrics (removed for cleaner UI)
+  
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">IP Claim Submission</h1>
-          <p className="text-muted-foreground">Fill in all required fields to submit a new inpatient claim</p>
-        </div>
-        
-        {user && (
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                    <Hospital className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Submitting claim for</p>
-                    <p className="text-lg font-semibold">
-                      {(user as any)?.entity_assignments?.hospitals?.[0]?.name || 
-                       (user as any)?.hospital_name || 
-                       'Unknown Hospital'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-6 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">User</p>
-                    <p className="font-medium">{user.displayName || user.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Role</p>
-                    <p className="font-medium capitalize">{user.role?.replace('_', ' ')}</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+    <div className="space-y-6">
+      <PageHeader />
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Patient Details */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <User className="h-4 w-4" />
-              </div>
-              <div>
-                <CardTitle>Patient Details</CardTitle>
-                <CardDescription>Basic patient information</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="patient_name">Patient Name <span className="text-destructive">*</span></Label>
-              <Input id="patient_name" value={formData.patient_name} onChange={(e) => handleChange('patient_name', e.target.value)} required placeholder="Enter patient full name" />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Age <span className="text-destructive">*</span></Label>
-              <div className="flex gap-2">
-                <Input type="number" value={formData.age} onChange={(e) => handleChange('age', e.target.value)} required placeholder="Age" className="flex-1" />
-                <Select value={formData.age_unit} onValueChange={(value) => handleChange('age_unit', value)}>
-                  <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="DAYS" value="DAYS">Days</SelectItem>
-                  <SelectItem key="MONTHS" value="MONTHS">Months</SelectItem>
-                  <SelectItem key="YRS" value="YRS">Years</SelectItem>
-                </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Gender <span className="text-destructive">*</span></Label>
-              <Select value={formData.gender} onValueChange={(value) => handleChange('gender', value)} required>
-                <SelectTrigger><SelectValue placeholder="Select Gender" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="MALE" value="MALE">Male</SelectItem>
-                  <SelectItem key="FEMALE" value="FEMALE">Female</SelectItem>
-                  <SelectItem key="OTHER/NA" value="OTHER/NA">Other/NA</SelectItem>
-                  <SelectItem key="Not Available" value="Not Available">Not Available</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>ID Card Type <span className="text-destructive">*</span></Label>
-              <Select value={formData.id_card_type} onValueChange={(value) => handleChange('id_card_type', value)} required>
-                <SelectTrigger><SelectValue placeholder="Select ID Card Type" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="AADHAR CARD" value="AADHAR CARD">Aadhar Card</SelectItem>
-                  <SelectItem key="VOTERS ID CARD" value="VOTERS ID CARD">Voters ID Card</SelectItem>
-                  <SelectItem key="PASSPORT" value="PASSPORT">Passport</SelectItem>
-                  <SelectItem key="PAN CARD" value="PAN CARD">PAN Card</SelectItem>
-                  <SelectItem key="RATION CARD" value="RATION CARD">Ration Card</SelectItem>
-                  <SelectItem key="EMPLOYEE ID CARD" value="EMPLOYEE ID CARD">Employee ID Card</SelectItem>
-                  <SelectItem key="Driving License" value="Driving License">Driving License</SelectItem>
-                  <SelectItem key="Other" value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="id_card_number">ID Card Number</Label>
-              <Input id="id_card_number" value={formData.id_card_number} onChange={(e) => handleChange('id_card_number', e.target.value)} placeholder="Enter ID card number" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="patient_contact_number">Contact Number</Label>
-              <Input id="patient_contact_number" type="tel" value={formData.patient_contact_number} onChange={(e) => handleChange('patient_contact_number', e.target.value)} placeholder="+91-XXXXXXXXXX" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="patient_email_id">Email ID</Label>
-              <Input id="patient_email_id" type="email" value={formData.patient_email_id} onChange={(e) => handleChange('patient_email_id', e.target.value)} placeholder="patient@example.com" />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Beneficiary Type <span className="text-destructive">*</span></Label>
-              <Select value={formData.beneficiary_type} onValueChange={(value) => handleChange('beneficiary_type', value)} required>
-                <SelectTrigger><SelectValue placeholder="Select Beneficiary Type" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="SELF" value="SELF">Self</SelectItem>
-                  <SelectItem key="DEPENDANT" value="DEPENDANT">Dependant</SelectItem>
-                  <SelectItem key="SELF (Individual Policy)" value="SELF (Individual Policy)">Self (Individual Policy)</SelectItem>
-                  <SelectItem key="Not Available" value="Not Available">Not Available</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Relationship <span className="text-destructive">*</span></Label>
-              <Select value={formData.relationship} onValueChange={(value) => handleChange('relationship', value)} required disabled={!formData.beneficiary_type}>
-                <SelectTrigger><SelectValue placeholder="Select Relationship" /></SelectTrigger>
-                <SelectContent>
-                  {getRelationshipOptions().map((rel) => (
-                    <SelectItem key={rel} value={rel}>{rel}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!formData.beneficiary_type && <p className="text-sm text-muted-foreground">Select beneficiary type first</p>}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Payer Details */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <CreditCard className="h-4 w-4" />
-              </div>
-              <div>
-                <CardTitle>Payer Details</CardTitle>
-                <CardDescription>Insurance and payer information</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="payer_patient_id">Payer Patient ID <span className="text-destructive">*</span></Label>
-              <Input id="payer_patient_id" value={formData.payer_patient_id} onChange={(e) => handleChange('payer_patient_id', e.target.value)} required />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="authorization_number">Authorization Number <span className="text-destructive">*</span></Label>
-              <Input id="authorization_number" value={formData.authorization_number} onChange={(e) => handleChange('authorization_number', e.target.value)} required />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="total_authorized_amount">Total Authorized Amount <span className="text-destructive">*</span></Label>
-              <Input id="total_authorized_amount" type="number" step="0.01" value={formData.total_authorized_amount} onChange={(e) => handleChange('total_authorized_amount', e.target.value)} required />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Payer Type <span className="text-destructive">*</span></Label>
-              <Select value={formData.payer_type} onValueChange={(value) => handleChange('payer_type', value)} required>
-                <SelectTrigger><SelectValue placeholder="Select Payer Type" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="INSURANCE COMPANY" value="INSURANCE COMPANY">Insurance Company</SelectItem>
-                  <SelectItem key="CORPORATE" value="CORPORATE">Corporate</SelectItem>
-                  <SelectItem key="TPA" value="TPA">TPA</SelectItem>
-                  <SelectItem key="STATE GOVERNMENT" value="STATE GOVERNMENT">State Government</SelectItem>
-                  <SelectItem key="CENTRAL GOVERNMENT" value="CENTRAL GOVERNMENT">Central Government</SelectItem>
-                  <SelectItem key="INTERNATIONAL" value="INTERNATIONAL">International</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Payer Name <span className="text-destructive">*</span></Label>
-              <Select value={formData.payer_name} onValueChange={(value) => handleChange('payer_name', value)} required disabled={loadingData || !formData.payer_type}>
-                <SelectTrigger><SelectValue placeholder={!formData.payer_type ? "Select payer type first" : loadingData ? "Loading payers..." : "Select Payer"} /></SelectTrigger>
-                <SelectContent>
-                  {payers
-                    .filter(p => {
-                      if (!formData.payer_type) return true
-                      // Match payer type (case-insensitive)
-                      const payerType = p.payer_type?.toUpperCase() || ''
-                      const selectedType = formData.payer_type.toUpperCase()
-                      return payerType === selectedType || payerType.includes(selectedType)
-                    })
-                    .map((payer, index) => (
-                      <SelectItem key={`${payer.payer_id}-${index}`} value={payer.payer_name || payer.payer_id}>{payer.payer_name || payer.payer_id}</SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              {!formData.payer_type && <p className="text-sm text-muted-foreground">Select payer type first</p>}
-            </div>
-
-            {/* Insurer Name - ONLY show when Payer Type is TPA */}
-            {formData.payer_type === 'TPA' && (
-              <div className="space-y-2">
-                <Label>Insurer Name <span className="text-destructive">*</span></Label>
-                <Select 
-                  value={formData.insurer_name} 
-                  onValueChange={(value) => handleChange('insurer_name', value)} 
-                  required 
-                  disabled={loadingData}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={loadingData ? "Loading insurers..." : "Select Insurer"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {insurers.map((insurer, index) => (
-                      <SelectItem key={`${insurer.insurer_id}-${index}`} value={insurer.insurer_name}>{insurer.insurer_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-destructive">Required for TPA payer type</p>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="policy_number">Policy Number</Label>
-              <Input id="policy_number" value={formData.policy_number} onChange={(e) => handleChange('policy_number', e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sponsorer_corporate_name">Corporate Name</Label>
-              <Input id="sponsorer_corporate_name" value={formData.sponsorer_corporate_name} onChange={(e) => handleChange('sponsorer_corporate_name', e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sponsorer_employee_id">Employee ID</Label>
-              <Input id="sponsorer_employee_id" value={formData.sponsorer_employee_id} onChange={(e) => handleChange('sponsorer_employee_id', e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sponsorer_employee_name">Employee Name</Label>
-              <Input id="sponsorer_employee_name" value={formData.sponsorer_employee_name} onChange={(e) => handleChange('sponsorer_employee_name', e.target.value)} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Provider Details */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <Hospital className="h-4 w-4" />
-              </div>
-              <div>
-                <CardTitle>Provider Details</CardTitle>
-                <CardDescription>Treatment and admission information</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="patient_registration_number">Registration Number <span className="text-destructive">*</span></Label>
-              <Input id="patient_registration_number" value={formData.patient_registration_number} onChange={(e) => handleChange('patient_registration_number', e.target.value)} required />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Specialty <span className="text-destructive">*</span></Label>
-              <Select value={formData.specialty} onValueChange={(value) => handleChange('specialty', value)} required disabled={loadingData}>
-                <SelectTrigger><SelectValue placeholder={loadingData ? "Loading specialties..." : "Select Specialty"} /></SelectTrigger>
-                <SelectContent>
-                  {specialties.map((spec, index) => (
-                    <SelectItem key={`${spec.specialty_id}-${index}`} value={spec.specialty_name}>{spec.specialty_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Doctor <span className="text-destructive">*</span></Label>
-              <Select value={formData.doctor} onValueChange={(value) => handleChange('doctor', value)} required disabled={!formData.specialty || doctors.length === 0}>
-                <SelectTrigger><SelectValue placeholder={!formData.specialty ? "Select specialty first" : doctors.length === 0 ? "No doctors available" : "Select Doctor"} /></SelectTrigger>
-                <SelectContent>
-                  {doctors.map((doc, index) => (
-                    <SelectItem key={`${doc.doctor_id}-${index}`} value={doc.doctor_name}>{doc.doctor_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!formData.specialty && <p className="text-sm text-muted-foreground">Select specialty first</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Treatment Line <span className="text-destructive">*</span></Label>
-              <Select value={formData.treatment_line} onValueChange={(value) => handleChange('treatment_line', value)} required>
-                <SelectTrigger><SelectValue placeholder="Select Treatment Line" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="MEDICAL" value="MEDICAL">Medical</SelectItem>
-                  <SelectItem key="SURGICAL" value="SURGICAL">Surgical</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Claim Type <span className="text-destructive">*</span></Label>
-              <Select value={formData.claim_type} onValueChange={(value) => handleChange('claim_type', value)} required>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="INPATIENT" value="INPATIENT">Inpatient</SelectItem>
-                  <SelectItem key="DIALYSIS" value="DIALYSIS">Dialysis</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="service_start_date">Service Start Date <span className="text-destructive">*</span></Label>
-              <Input id="service_start_date" type="date" value={formData.service_start_date} onChange={(e) => handleChange('service_start_date', e.target.value)} required />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="service_end_date">Service End Date <span className="text-destructive">*</span></Label>
-              <Input id="service_end_date" type="date" value={formData.service_end_date} onChange={(e) => handleChange('service_end_date', e.target.value)} required />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="inpatient_number">InPatient Number <span className="text-destructive">*</span></Label>
-              <Input id="inpatient_number" value={formData.inpatient_number} onChange={(e) => handleChange('inpatient_number', e.target.value)} required />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Admission Type <span className="text-destructive">*</span></Label>
-              <Select value={formData.admission_type} onValueChange={(value) => handleChange('admission_type', value)} required>
-                <SelectTrigger><SelectValue placeholder="Select Admission Type" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="PLANNED" value="PLANNED">Planned</SelectItem>
-                  <SelectItem key="EMERGENCY" value="EMERGENCY">Emergency</SelectItem>
-                  <SelectItem key="CASHLESS" value="CASHLESS">Cashless</SelectItem>
-                  <SelectItem key="REIMBURSEMENT" value="REIMBURSEMENT">Reimbursement</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Hospitalization Type <span className="text-destructive">*</span></Label>
-              <Select value={formData.hospitalization_type} onValueChange={(value) => handleChange('hospitalization_type', value)} required>
-                <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem key="DAYCARE" value="DAYCARE">Daycare</SelectItem>
-                  <SelectItem key="NON DAYCARE" value="NON DAYCARE">Non Daycare</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Ward Type <span className="text-destructive">*</span></Label>
-              <Select value={formData.ward_type} onValueChange={(value) => handleChange('ward_type', value)} required disabled={loadingData}>
-                <SelectTrigger><SelectValue placeholder={loadingData ? "Loading wards..." : "Select Ward Type"} /></SelectTrigger>
-                <SelectContent>
-                  {wards.map((ward, index) => (
-                    <SelectItem key={`${ward.ward_type_id}-${index}`} value={ward.ward_type_name}>{ward.ward_type_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="final_diagnosis">Final Diagnosis <span className="text-destructive">*</span></Label>
-              <Input id="final_diagnosis" value={formData.final_diagnosis} onChange={(e) => handleChange('final_diagnosis', e.target.value)} required />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="icd_10_code">ICD 10 Code</Label>
-              <Input id="icd_10_code" value={formData.icd_10_code} onChange={(e) => handleChange('icd_10_code', e.target.value)} placeholder="e.g., I21.9" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="treatment_done">Treatment Done <span className="text-destructive">*</span></Label>
-              <Input id="treatment_done" value={formData.treatment_done} onChange={(e) => handleChange('treatment_done', e.target.value)} required />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pcs_code">PCS Code</Label>
-              <Input id="pcs_code" value={formData.pcs_code} onChange={(e) => handleChange('pcs_code', e.target.value)} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Bill Details */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <DollarSign className="h-4 w-4" />
-              </div>
-              <div>
-                <CardTitle>Bill Details</CardTitle>
-                <CardDescription>Billing and payment information</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="bill_number">Bill Number <span className="text-destructive">*</span></Label>
-              <Input id="bill_number" value={formData.bill_number} onChange={(e) => handleChange('bill_number', e.target.value)} required />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bill_date">Bill Date <span className="text-destructive">*</span></Label>
-              <Input id="bill_date" type="date" value={formData.bill_date} onChange={(e) => handleChange('bill_date', e.target.value)} required />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="security_deposit">Security Deposit</Label>
-              <Input id="security_deposit" type="number" step="0.01" value={formData.security_deposit} onChange={(e) => handleChange('security_deposit', e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="total_bill_amount">Total Bill Amount <span className="text-destructive">*</span></Label>
-              <Input id="total_bill_amount" type="number" step="0.01" value={formData.total_bill_amount} onChange={(e) => handleChange('total_bill_amount', e.target.value)} required />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="patient_discount_amount">Patient Discount</Label>
-              <Input id="patient_discount_amount" type="number" step="0.01" value={formData.patient_discount_amount} onChange={(e) => handleChange('patient_discount_amount', e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="amount_paid_by_patient">Amount Paid By Patient</Label>
-              <Input id="amount_paid_by_patient" type="number" step="0.01" value={formData.amount_paid_by_patient} onChange={(e) => handleChange('amount_paid_by_patient', e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="total_patient_paid_amount">Total Patient Paid</Label>
-              <Input 
-                id="total_patient_paid_amount" 
-                type="number" 
-                step="0.01" 
-                value={formData.total_patient_paid_amount} 
-                onChange={(e) => handleChange('total_patient_paid_amount', e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Suggested: = Patient Discount + Amount Paid By Patient</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="amount_charged_to_payer">Amount Charged to Payer</Label>
-              <Input 
-                id="amount_charged_to_payer" 
-                type="number" 
-                step="0.01" 
-                value={formData.amount_charged_to_payer} 
-                onChange={(e) => handleChange('amount_charged_to_payer', e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Suggested: = Total Bill Amount - Total Patient Paid</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="mou_discount_amount">MOU Discount</Label>
-              <Input id="mou_discount_amount" type="number" step="0.01" value={formData.mou_discount_amount} onChange={(e) => handleChange('mou_discount_amount', e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="claimed_amount">Claimed Amount <span className="text-destructive">*</span></Label>
-              <Input 
-                id="claimed_amount" 
-                type="number" 
-                step="0.01" 
-                value={formData.claimed_amount} 
-                readOnly 
-                disabled
-                className="bg-muted/50 cursor-not-allowed"
-              />
-              <p className="text-xs text-muted-foreground">Auto-calculated: = Amount Charged to Payer - MOU Discount</p>
-            </div>
-
-            <div className="space-y-2 col-span-full">
-              <Label htmlFor="submission_remarks">Submission Remarks</Label>
-              <Textarea id="submission_remarks" value={formData.submission_remarks} onChange={(e) => handleChange('submission_remarks', e.target.value)} rows={4} placeholder="Enter any additional remarks..." />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Document Checklist */}
-        {showDocumentChecklist && formData.payer_name && (
-          <DocumentChecklist
-            key={`${formData.payer_name}-${formData.specialty || 'no-specialty'}`}
-            payerName={formData.payer_name}
-            specialty={formData.specialty || ''}
-            onChecklistComplete={setChecklistComplete}
-            onDocumentsUploaded={setUploadedDocuments}
-          />
-        )}
-
-        {/* Attached Documents Display */}
-        {formData.documents && formData.documents.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                📄 Attached Documents ({formData.documents.length})
-              </CardTitle>
-              <CardDescription>
-                Documents that were previously uploaded and saved with this draft
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {formData.documents.map((doc: any, index: number) => (
-                  <div key={doc.document_id || index} className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-sm">{doc.document_name}</h4>
-                        <p className="text-xs text-gray-500 capitalize">
-                          {doc.document_type?.replace('_', ' ')}
-                        </p>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Card className="border-0 shadow-sm">
+              <Accordion
+                type="multiple"
+                value={openAccordion}
+                onValueChange={setOpenAccordion}
+                className="w-full"
+              >
+                {/* Patient Details Accordion */}
+                <AccordionItem value="patient" className="border-b">
+                  <AccordionTrigger className="px-8 py-5 hover:no-underline hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                        <UserCircle className="h-5 w-5 text-blue-700" />
                       </div>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        doc.status === 'uploaded' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {doc.status}
-                      </span>
+                      <div className="text-left">
+                        <p className="font-semibold text-gray-900">Patient Details</p>
+                        <p className="text-xs text-gray-500">Basic patient information</p>
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-400 mb-3">
-                      ID: {doc.document_id}
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                      onClick={() => {
-                        if (doc.download_url) {
-                          window.open(doc.download_url, '_blank')
-                        } else {
-                          toast.error('Download URL not available. Please refresh the page to get a fresh URL.')
-                        }
-                      }}
-                    >
-                      📥 View Document
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  </AccordionTrigger>
+                  <AccordionContent className="px-8 py-6">
+                    <PatientDetailsSection
+                      form={form}
+                      watchedBeneficiaryType={watchedBeneficiaryType}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
 
-        <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => setFormData(initialFormData)}>Reset</Button>
-          <Button 
-            type="button" 
-            variant="secondary" 
-            onClick={handleSaveDraft} 
-            disabled={loading || !formData.patient_name}
-            className={loading ? 'opacity-50 cursor-not-allowed' : ''}
-          >
-            {loading ? (isEditingDraft ? 'Updating...' : 'Saving...') : (isEditingDraft ? 'Update Draft' : 'Save Draft')}
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={loading || (showDocumentChecklist && !checklistComplete)} 
-            className="min-w-[150px]"
-          >
-            {loading ? 'Submitting...' : 'Submit Claim'}
-          </Button>
-        </div>
-      </form>
+                {/* Payer Details Accordion */}
+                <AccordionItem value="payer" className="border-b">
+                  <AccordionTrigger className="px-8 py-5 hover:no-underline hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                        <CreditCard className="h-5 w-5 text-blue-700" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-gray-900">Payer Details</p>
+                        <p className="text-xs text-gray-500">Insurance & authorization</p>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-8 py-6">
+                    <PayerDetailsSection
+                      form={form}
+                      payers={payers}
+                      insurers={insurers}
+                      watchedPayerType={watchedPayerType}
+                      loadingData={loadingData}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Provider Details Accordion */}
+                <AccordionItem value="provider" className="border-b">
+                  <AccordionTrigger className="px-8 py-5 hover:no-underline hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                        <Building2 className="h-5 w-5 text-blue-700" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-gray-900">Provider Details</p>
+                        <p className="text-xs text-gray-500">Treatment information</p>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-8 py-6">
+                    <ProviderDetailsSection
+                      form={form}
+                      specialties={specialties}
+                      doctors={doctors}
+                      wards={wards}
+                      watchedSpecialty={watchedSpecialty}
+                      loadingData={loadingData}
+                      onFetchDoctors={fetchDoctorsBySpecialty}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Bill Details Accordion */}
+                <AccordionItem value="bill" className="border-b">
+                  <AccordionTrigger className="px-8 py-5 hover:no-underline hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                        <Receipt className="h-5 w-5 text-blue-700" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-gray-900">Bill Details</p>
+                        <p className="text-xs text-gray-500">Financial information</p>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-8 py-6">
+                    <BillDetailsSection form={form} />
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Documents Accordion */}
+                <AccordionItem value="documents" className="border-b">
+                  <AccordionTrigger className="px-8 py-5 hover:no-underline hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                        <FileCheck className="h-5 w-5 text-blue-700" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-gray-900">Documents</p>
+                        <p className="text-xs text-gray-500">Upload required files</p>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-8 py-6 space-y-6">
+                    <DocumentUpload
+                      payerName={watchedPayerName}
+                      specialty={watchedSpecialty}
+                      onDocumentsUploaded={setUploadedDocuments}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Review & Submit Accordion */}
+                <AccordionItem value="review">
+                  <AccordionTrigger className="px-8 py-5 hover:no-underline hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-gray-900">Review & Submit</p>
+                        <p className="text-xs text-gray-500">Final confirmation</p>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-8 py-6">
+                    <ReviewStep
+                      formData={form.getValues()}
+                      onEditStep={(step) => {
+                        setOpenAccordion((prev) => {
+                          if (!prev.includes(step)) {
+                            return [...prev, step]
+                          }
+                          return prev
+                        })
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                      }}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </Card>
+
+            {/* Form Actions */}
+            <div className="sticky bottom-0 z-40 bg-primary/5 backdrop-blur-sm border-t border-primary/20">
+              <div className="px-8 py-4 flex items-center justify-between gap-4 max-w-4xl mx-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSaveDraft}
+                  disabled={form.formState.isSubmitting}
+                  className="border-primary/40 text-primary hover:bg-primary/10 font-medium"
+                >
+                  Save Draft
+                </Button>
+                <div className="flex gap-2 items-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push('/drafts')}
+                    className="border-primary/30 text-gray-700 hover:bg-primary/5"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={form.handleSubmit(onSubmit)}
+                    disabled={form.formState.isSubmitting}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+                  >
+                    {form.formState.isSubmitting ? 'Submitting...' : 'Submit Claim'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </Form>
     </div>
   )
 }

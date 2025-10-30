@@ -1,5 +1,7 @@
 'use client'
 
+import * as React from 'react'
+import type { FC, HTMLAttributes } from 'react'
 import { useState } from 'react'
 import {
   ColumnDef,
@@ -33,6 +35,7 @@ import {
 } from '@/components/ui/table'
 import { Card } from '@/components/ui/card'
 import { TableSkeleton } from '@/components/ui/table-skeleton'
+import { Separator } from '@/components/ui/separator'
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -43,6 +46,7 @@ interface DataTableProps<TData, TValue> {
   showPagination?: boolean
   initialColumnVisibility?: VisibilityState
   loading?: boolean
+  actionButton?: React.ReactNode
 }
 
 export function DataTable<TData, TValue>({
@@ -54,6 +58,7 @@ export function DataTable<TData, TValue>({
   showColumnToggle = true,
   showPagination = true,
   initialColumnVisibility = {},
+  actionButton,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -85,50 +90,62 @@ export function DataTable<TData, TValue>({
       <div className="flex items-center justify-between gap-4">
         {/* Search */}
         {searchKey && (
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" aria-hidden="true" />
+          <div className="relative flex-1 max-w-sm group">
+            <Search
+              className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
             <Input
               placeholder={searchPlaceholder}
               value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
               onChange={(event) =>
                 table.getColumn(searchKey)?.setFilterValue(event.target.value)
               }
-              className="pl-10 glass-card border-0"
+              className="pl-9 pr-4 h-9 bg-background
+                border-input shadow-sm transition-all duration-200
+                focus:border-primary focus:ring-1 focus:ring-primary
+                hover:border-input hover:shadow-sm"
               aria-label={searchPlaceholder}
             />
           </div>
         )}
 
-        {/* Column Visibility */}
-        {showColumnToggle && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto glass-card border-0" aria-label="Toggle column visibility">
-                Columns <ChevronDown className="ml-2 h-4 w-4" aria-hidden="true" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="glass-card border-0">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  )
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        {/* Action Button */}
+        <div className="flex items-center gap-2">
+          {actionButton}
+          {/* Column Visibility */}
+          {showColumnToggle && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="glass-card border-1" aria-label="Toggle column visibility">
+                  Columns <ChevronDown className="ml-2 h-4 w-4" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="glass-card border-1 p-2">
+                {table
+                  .getAllColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => {
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }
+                      >
+                        {column.id}
+                      </DropdownMenuCheckboxItem>
+                    )
+                  })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
+
+      <Separator className="my-4 opacity-30" />
 
       {/* Table */}
       <Card className="glass-card border-0 shadow-none">
@@ -139,7 +156,10 @@ export function DataTable<TData, TValue>({
                 <TableRow key={headerGroup.id} className="hover:bg-transparent border-border/30">
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead key={header.id} className="bg-muted/20 font-semibold text-foreground">
+                      <TableHead
+                        key={header.id}
+                        className="bg-muted/20 font-semibold text-foreground [&:has(button:hover)]:text-primary transition-colors"
+                      >
                         {header.isPlaceholder
                           ? null
                           : flexRender(

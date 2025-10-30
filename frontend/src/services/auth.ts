@@ -11,7 +11,7 @@ import type {
 
 class AuthService {
   private api: AxiosInstance;
-  private baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api';
+  private baseURL = process.env.NEXT_PUBLIC_API_URL || 'https://claims-2.onrender.com/api';
 
   constructor() {
     this.api = axios.create({

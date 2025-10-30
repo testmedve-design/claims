@@ -4,6 +4,7 @@ import React, { ReactNode, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingScreen from '@/components/LoadingScreen';
+import { getDefaultPageForRole, isAllowedRole } from '@/lib/routes';
 
 interface PublicRouteProps {
   children: ReactNode;
@@ -33,7 +34,6 @@ function PublicRouteContent({
 
       if (!destination && user) {
         // Use centralized routing configuration
-        const { getDefaultPageForRole, isAllowedRole } = require('@/lib/routes');
         if (isAllowedRole(user.role)) {
           destination = getDefaultPageForRole(user.role as any);
         } else {

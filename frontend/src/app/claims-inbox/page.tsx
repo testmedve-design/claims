@@ -1,16 +1,27 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Search, Filter, Eye, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { DataTable } from '@/components/ui/data-table'
+import { ColumnDef } from '@tanstack/react-table'
+import { Search, Filter, Eye, CheckCircle, XCircle, Clock, FileText, TrendingUp, Download, RefreshCw, ArrowUpDown, MoreHorizontal } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { StatsCardSkeleton } from '@/components/ui/card-skeleton'
+import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
 
 interface Claim {
   claim_id: string
@@ -28,11 +39,21 @@ export default function ClaimsInboxPage() {
   const router = useRouter()
   const [claims, setClaims] = useState<Claim[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [filteredClaims, setFilteredClaims] = useState<Claim[]>([])
+
+  // Statistics
+  const totalClaims = claims.length
+  const pendingClaims = claims.filter(claim => 
+    ['qc_pending', 'qc_query'].includes(claim.claim_status)
+  ).length
+  const approvedClaims = claims.filter(claim => 
+    ['qc_clear', 'clear', 'Approved'].includes(claim.claim_status)
+  ).length
+  const rejectedClaims = claims.filter(claim => 
+    claim.claim_status === 'rejected'
+  ).length
 
   // Check if user has access to claims inbox page
   useEffect(() => {
@@ -45,10 +66,6 @@ export default function ClaimsInboxPage() {
   useEffect(() => {
     fetchClaims()
   }, [])
-
-  useEffect(() => {
-    filterClaims()
-  }, [claims, searchTerm, statusFilter, startDate, endDate])
 
   const fetchClaims = async () => {
     try {
@@ -66,7 +83,7 @@ export default function ClaimsInboxPage() {
         params.append('end_date', endDate)
       }
       
-      const url = `http://localhost:5002/api/v1/claims/get-all-claims${params.toString() ? `?${params.toString()}` : ''}`
+      const url = `https://claims-2.onrender.com/api/v1/claims/get-all-claims${params.toString() ? `?${params.toString()}` : ''}`
       
       const response = await fetch(url, {
         method: 'GET',
@@ -114,53 +131,36 @@ export default function ClaimsInboxPage() {
     }
   }
 
-  const filterClaims = () => {
-    console.log('DEBUG: Filtering claims:', {
-      totalClaims: claims.length,
-      searchTerm,
-      statusFilter,
-      startDate,
-      endDate
-    })
-    
+  // Filter claims based on status and date filters
+  const filteredClaims = useMemo(() => {
     let filtered = claims
-
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(claim =>
-        claim.patient_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        claim.claim_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        claim.payer_name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
 
     // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(claim => claim.claim_status === statusFilter)
     }
 
-    console.log('DEBUG: Filtered claims:', filtered.length)
-    setFilteredClaims(filtered)
-  }
+    return filtered
+  }, [claims, statusFilter])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'qc_pending':
-        return <Badge variant="outline" className="text-yellow-600"><Clock className="w-3 h-3 mr-1" />QC Pending</Badge>
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200">QC Pending</Badge>
       case 'qc_answered':
-        return <Badge variant="outline" className="text-blue-600"><Eye className="w-3 h-3 mr-1" />QC Answered</Badge>
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">QC Answered</Badge>
       case 'qc_clear':
-        return <Badge variant="outline" className="text-green-600"><CheckCircle className="w-3 h-3 mr-1" />QC Clear</Badge>
+        return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200">QC Clear</Badge>
       case 'qc_query':
-        return <Badge variant="outline" className="text-orange-600"><Eye className="w-3 h-3 mr-1" />QC Query</Badge>
+        return <Badge className="bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200">QC Query</Badge>
       case 'answered':
-        return <Badge variant="outline" className="text-blue-600"><CheckCircle className="w-3 h-3 mr-1" />Answered</Badge>
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">Answered</Badge>
       case 'clear':
-        return <Badge variant="outline" className="text-green-600"><CheckCircle className="w-3 h-3 mr-1" />Clear</Badge>
+        return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200">Clear</Badge>
       case 'Approved':
-        return <Badge variant="outline" className="text-green-600"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>
+        return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200">Approved</Badge>
       case 'rejected':
-        return <Badge variant="outline" className="text-red-600"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>
+        return <Badge className="bg-red-100 text-red-800 border-red-200 hover:bg-red-200">Rejected</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
@@ -177,54 +177,299 @@ export default function ClaimsInboxPage() {
     window.open(`/claims/${claimId}?action=answer_query`, '_blank')
   }
 
+  // Define columns for DataTable
+  const columns: ColumnDef<Claim>[] = useMemo(() => [
+    {
+      accessorKey: "claim_id",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-8 p-0 hover:bg-transparent"
+          >
+            Claim ID
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => (
+        <div className="font-mono text-sm font-medium text-blue-600">
+          {row.getValue("claim_id")}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "patient_name",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-8 p-0 hover:bg-transparent"
+          >
+            Patient Name
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => {
+        const patientName = row.getValue("patient_name") as string
+        return (
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+              <span className="text-xs font-medium text-blue-600">
+                {patientName ? patientName.charAt(0).toUpperCase() : 'P'}
+              </span>
+            </div>
+            <div>
+              <div className="font-medium text-gray-900">{patientName}</div>
+              <div className="text-sm text-gray-500">Patient</div>
+            </div>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "payer_name",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-8 p-0 hover:bg-transparent"
+          >
+            Payer
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => {
+        const payerName = row.getValue("payer_name") as string
+        return (
+          <div className="text-sm">
+            <div className="font-medium text-gray-900">{payerName}</div>
+            <div className="text-gray-500">Payer</div>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "amount",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-8 p-0 hover:bg-transparent"
+          >
+            Amount
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => {
+        const amount = row.getValue("amount") as number
+        return (
+          <div className="text-sm">
+            <div className="font-medium text-gray-900">₹{amount.toLocaleString()}</div>
+            <div className="text-gray-500">Amount</div>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "claim_status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("claim_status") as string
+        return getStatusBadge(status)
+      },
+    },
+    {
+      accessorKey: "submission_date",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-8 p-0 hover:bg-transparent"
+          >
+            Submitted At
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => {
+        const date = row.getValue("submission_date") as string
+        return (
+          <div className="text-sm">
+            <div className="font-medium text-gray-900">{new Date(date).toLocaleDateString('en-IN')}</div>
+            <div className="text-gray-500">{new Date(date).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</div>
+          </div>
+        )
+      },
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const claim = row.original
+        
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => handleViewClaim(claim.claim_id)}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                View Details
+              </DropdownMenuItem>
+              {claim.claim_status === 'qc_query' && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => handleAnswerQuery(claim.claim_id)}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Answer Query
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+    },
+  ], [])
+
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading claims...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="flex gap-2">
+            <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-10 w-28 bg-gray-200 rounded animate-pulse"></div>
+          </div>
         </div>
+
+        {/* Statistics Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatsCardSkeleton count={4} />
+        </div>
+
+        {/* Filters Skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-4 w-48 bg-gray-200 rounded animate-pulse mt-2"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Table Skeleton */}
+        <TableSkeleton rows={5} columns={7} />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Claims Inbox</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Claims Inbox</h1>
           <p className="text-gray-600">Manage and review submitted claims</p>
         </div>
-        <Button onClick={fetchClaims} variant="outline">
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={fetchClaims} variant="outline" className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+          <Button variant="outline" className="gap-2">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Claims</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalClaims}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Claims</CardTitle>
+            <Clock className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{pendingClaims}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Approved Claims</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{approvedClaims}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Rejected Claims</CardTitle>
+            <XCircle className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{rejectedClaims}</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
+            <Filter className="h-5 w-5" />
             Filters
           </CardTitle>
+          <CardDescription>Filter claims by status or date range</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="lg:col-span-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search by patient name, claim ID, or payer..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Filter by status" />
+                <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
@@ -238,135 +483,51 @@ export default function ClaimsInboxPage() {
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
+            <Input
+              type="date"
+              placeholder="Start Date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <Input
+              type="date"
+              placeholder="End Date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
             <div className="flex gap-2">
-              <Input
-                type="date"
-                placeholder="Start Date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+              <Button
+                onClick={fetchClaims}
                 className="flex-1"
-              />
-              <Input
-                type="date"
-                placeholder="End Date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="flex-1"
-              />
+              >
+                Apply Filters
+              </Button>
+              <Button
+                onClick={() => {
+                  setStartDate('')
+                  setEndDate('')
+                  setStatusFilter('all')
+                  fetchClaims()
+                }}
+                variant="outline"
+              >
+                Clear
+              </Button>
             </div>
-          </div>
-          <div className="flex gap-2 mt-4">
-            <Button 
-              onClick={fetchClaims} 
-              variant="outline" 
-              size="sm"
-            >
-              Apply Filters
-            </Button>
-            <Button 
-              onClick={() => {
-                setStartDate('')
-                setEndDate('')
-                setStatusFilter('all')
-                setSearchTerm('')
-                fetchClaims()
-              }} 
-              variant="outline" 
-              size="sm"
-            >
-              Clear Filters
-            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Claims Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Claims ({filteredClaims.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredClaims.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Search className="w-8 h-8 text-gray-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">No claims found</h3>
-                  <p className="text-gray-500 mt-1">
-                    {claims.length === 0 
-                      ? "No claims have been submitted yet. Submit your first claim to get started."
-                      : "No claims match your current filters. Try adjusting your search criteria."
-                    }
-                  </p>
-                </div>
-                {claims.length === 0 && (
-                  <Button onClick={() => router.push('/claims')} className="mt-4">
-                    Submit New Claim
-                  </Button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Claim ID</TableHead>
-                  <TableHead>Patient Name</TableHead>
-                  <TableHead>Payer</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Submitted At</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredClaims.map((claim) => (
-                  <TableRow key={claim.claim_id}>
-                    <TableCell className="font-mono text-sm">{claim.claim_id}</TableCell>
-                    <TableCell>{claim.patient_name}</TableCell>
-                    <TableCell>{claim.payer_name}</TableCell>
-                    <TableCell>₹{claim.amount.toLocaleString()}</TableCell>
-                    <TableCell>{getStatusBadge(claim.claim_status)}</TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div className="font-medium">{new Date(claim.submission_date).toLocaleDateString('en-IN')}</div>
-                        <div className="text-gray-500">{new Date(claim.submission_date).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewClaim(claim.claim_id)}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
-                        {claim.claim_status === 'qc_query' && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleAnswerQuery(claim.claim_id)}
-                            className="bg-orange-600 hover:bg-orange-700"
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Answer Query
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Claims DataTable */}
+      <DataTable
+        columns={columns}
+        data={filteredClaims}
+        searchKey="patient_name"
+        searchPlaceholder="Search by patient name..."
+        loading={loading}
+        showColumnToggle={true}
+        showPagination={true}
+      />
     </div>
   )
 }

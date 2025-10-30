@@ -74,7 +74,7 @@ export default function DraftsPage() {
   const fetchDrafts = async () => {
     try {
       setLoading(true)
-      const response = await fetch('http://localhost:5002/api/v1/drafts/get-drafts', {
+      const response = await fetch('https://claims-2.onrender.com/api/v1/drafts/get-drafts', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +98,7 @@ export default function DraftsPage() {
 
   const handleDeleteDraft = async (draftId: string) => {
     try {
-      const response = await fetch(`http://localhost:5002/api/v1/drafts/delete-draft/${draftId}`, {
+      const response = await fetch(`https://claims-2.onrender.com/api/v1/drafts/delete-draft/${draftId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -125,7 +125,7 @@ export default function DraftsPage() {
 
   const handleSubmitDraft = async (draftId: string) => {
     try {
-      const response = await fetch(`http://localhost:5002/api/v1/drafts/submit-draft/${draftId}`, {
+      const response = await fetch(`https://claims-2.onrender.com/api/v1/drafts/submit-draft/${draftId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,

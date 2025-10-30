@@ -209,7 +209,7 @@ interface ProcessingForm {
   new_query: string
 }
 
-const API_BASE_URL = 'http://localhost:5002'
+const API_BASE_URL = 'https://claims-2.onrender.com'
 
 // Helper function to determine if a claim is already processed
 const isClaimProcessed = (claimStatus: string): boolean => {
@@ -461,7 +461,7 @@ export default function ProcessClaimPage() {
       }
 
       // Fallback: Use proxy endpoint with token as query parameter
-      const proxyUrl = `http://localhost:5002/api/v1/documents/proxy/${doc.document_id}?token=${encodeURIComponent(token)}`
+      const proxyUrl = `https://claims-2.onrender.com/api/v1/documents/proxy/${doc.document_id}?token=${encodeURIComponent(token)}`
       window.open(proxyUrl, '_blank')
       
     } catch (err: any) {

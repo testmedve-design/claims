@@ -1,5 +1,19 @@
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+
+// Firebase Configuration
+const firebaseConfig = {
+  // API key embedded directly per user request
+  apiKey: 'AIzaSyAaqgkXJXkntZBs7QQyss7Hy_HECyMXE2c',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
 
 // Real Firebase Authentication
 export const signInWithEmail = async (email: string, password: string) => {
