@@ -87,7 +87,7 @@ export default function RMProcessClaimPage() {
 
   const fetchBanks = async () => {
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api'
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://claims-2.onrender.com/api'
       const response = await fetch(`${API_BASE_URL}/resources/banks`)
       const data = await response.json()
       if (data.success && data.banks) {
@@ -207,7 +207,7 @@ export default function RMProcessClaimPage() {
       formData.append('document_type', documentType)
       formData.append('document_name', selectedFile.name)
 
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api'
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://claims-2.onrender.com/api'
       const response = await fetch(`${API_BASE_URL}/v1/documents/upload`, {
         method: 'POST',
         headers: {

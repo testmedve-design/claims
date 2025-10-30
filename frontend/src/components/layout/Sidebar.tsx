@@ -79,6 +79,11 @@ const getNavigationItems = (userRole: string): NavItem[] => {
   } else {
     // Regular hospital users see Claims, Drafts, Claims Inbox, and Profile
     return [
+       {
+        title: 'Claims Inbox',
+        href: '/claims-inbox',
+        icon: Activity,        
+      },
       {
         title: 'Claims',
         href: '/claims',
@@ -88,13 +93,8 @@ const getNavigationItems = (userRole: string): NavItem[] => {
         title: 'Drafts',
         href: '/drafts',
         icon: FileText,
-      },
-      {
-        title: 'Claims Inbox',
-        href: '/claims-inbox',
-        icon: Activity,
         divider: true,
-      },
+      },     
       {
         title: 'Profile',
         href: '/profile',

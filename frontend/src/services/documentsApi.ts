@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5002'
+const API_BASE_URL = 'https://claims-2.onrender.com'
 
 export interface DocumentUploadResponse {
   success: boolean

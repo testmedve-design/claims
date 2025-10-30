@@ -9,9 +9,18 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
 import { claimsApi } from '@/services/claimsApi'
-import { Truck, Settings } from 'lucide-react'
+import { Truck, Settings, UserCircle, CreditCard, Building2, Receipt, History } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+
+// Import display components
+import { PatientDetailsDisplay } from '@/components/forms/claims/PatientDetailsDisplay'
+import { PayerDetailsDisplay } from '@/components/forms/claims/PayerDetailsDisplay'
+import { ProviderDetailsDisplay } from '@/components/forms/claims/ProviderDetailsDisplay'
+import { BillDetailsDisplay } from '@/components/forms/claims/BillDetailsDisplay'
+import { TransactionHistory } from '@/components/forms/claims/TransactionHistory'
+import { ProcessorInfo } from '@/components/forms/claims/ProcessorInfo'
 
 export default function ClaimDetailsPage() {
   const params = useParams()
@@ -111,7 +120,7 @@ export default function ClaimDetailsPage() {
       console.log('🔍 Token from localStorage:', token ? 'Token exists' : 'No token found')
       console.log('🔍 Token length:', token ? token.length : 0)
       
-      const response = await fetch(`http://localhost:5002/api/v1/claims/get-claim/${claimId}`, {
+      const response = await fetch(`https://claims-2.onrender.com/api/v1/claims/get-claim/${claimId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -182,7 +191,7 @@ export default function ClaimDetailsPage() {
       formData.append('document_type', 'query_response')
       formData.append('document_name', `Query Response - ${file.name}`)
 
-      const response = await fetch('http://localhost:5002/api/v1/documents/upload', {
+      const response = await fetch('https://claims-2.onrender.com/api/v1/documents/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -223,7 +232,7 @@ export default function ClaimDetailsPage() {
         setUploadingFiles(false)
       }
       
-      const response = await fetch(`http://localhost:5002/api/v1/claims/answer-query/${claimId}`, {
+      const response = await fetch(`https://claims-2.onrender.com/api/v1/claims/answer-query/${claimId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -323,7 +332,7 @@ export default function ClaimDetailsPage() {
       }
 
       // Use proxy endpoint to serve document content directly
-      const proxyUrl = `http://localhost:5002/api/v1/documents/proxy/${doc.document_id}`
+      const proxyUrl = `https://claims-2.onrender.com/api/v1/documents/proxy/${doc.document_id}`
       
       // Open document in new tab using proxy endpoint
       window.open(proxyUrl, '_blank')
@@ -676,145 +685,100 @@ export default function ClaimDetailsPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Patient Details */}
-        <div className="bg-white border rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">👤 Patient Details</h3>
-          <div className="space-y-3">
-            <div>
-              <span className="text-sm font-medium text-gray-500">Patient Name:</span>
-              <p className="font-semibold">{claim.form_data?.patient_name}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm font-medium text-gray-500">Age:</span>
-                <p>{claim.form_data?.age} {claim.form_data?.age_unit}</p>
+      {/* Claim Details Accordion */}
+      <Card className="border-0 shadow-sm">
+        <Accordion type="multiple" defaultValue={['patient', 'payer', 'provider', 'bill', 'history']} className="w-full">
+          {/* Patient Details */}
+          <AccordionItem value="patient" className="border-b">
+            <AccordionTrigger className="px-8 py-5 hover:no-underline hover:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <UserCircle className="h-5 w-5 text-blue-700" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Patient Details</p>
+                  <p className="text-xs text-gray-500">Basic patient information</p>
+                </div>
               </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Gender:</span>
-                <p>{claim.form_data?.gender}</p>
-              </div>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-500">Contact:</span>
-              <p>{claim.form_data?.patient_contact_number}</p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-500">Email:</span>
-              <p>{claim.form_data?.patient_email_id}</p>
-            </div>
-          </div>
-        </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-8 py-6">
+              <PatientDetailsDisplay data={claim.form_data} />
+            </AccordionContent>
+          </AccordionItem>
 
-        {/* Payer Details */}
-        <div className="bg-white border rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">💳 Payer Details</h3>
-          <div className="space-y-3">
-            <div>
-              <span className="text-sm font-medium text-gray-500">Payer Name:</span>
-              <p className="font-semibold">{claim.form_data?.payer_name}</p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-500">Payer Type:</span>
-              <p>{claim.form_data?.payer_type}</p>
-            </div>
-            {claim.form_data?.insurer_name && (
-              <div>
-                <span className="text-sm font-medium text-gray-500">Insurer:</span>
-                <p>{claim.form_data.insurer_name}</p>
+          {/* Payer Details */}
+          <AccordionItem value="payer" className="border-b">
+            <AccordionTrigger className="px-8 py-5 hover:no-underline hover:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <CreditCard className="h-5 w-5 text-blue-700" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Payer Details</p>
+                  <p className="text-xs text-gray-500">Insurance & authorization</p>
+                </div>
               </div>
-            )}
-            <div>
-              <span className="text-sm font-medium text-gray-500">Authorization:</span>
-              <p>#{claim.form_data?.authorization_number}</p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-500">Total Authorized Amount:</span>
-              <p className="font-semibold text-green-600">₹{claim.form_data?.total_authorized_amount?.toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-8 py-6">
+              <PayerDetailsDisplay data={claim.form_data} />
+            </AccordionContent>
+          </AccordionItem>
 
-        {/* Provider Details */}
-        <div className="bg-white border rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">🏥 Provider Details</h3>
-          <div className="space-y-3">
-            <div>
-              <span className="text-sm font-medium text-gray-500">Hospital:</span>
-              <p className="font-semibold">{claim.hospital_name}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm font-medium text-gray-500">Specialty:</span>
-                <p>{claim.form_data?.specialty}</p>
+          {/* Provider Details */}
+          <AccordionItem value="provider" className="border-b">
+            <AccordionTrigger className="px-8 py-5 hover:no-underline hover:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <Building2 className="h-5 w-5 text-blue-700" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Provider Details</p>
+                  <p className="text-xs text-gray-500">Treatment information</p>
+                </div>
               </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Doctor:</span>
-                <p>{claim.form_data?.doctor}</p>
-              </div>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-500">Diagnosis:</span>
-              <p>{claim.form_data?.final_diagnosis}</p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-500">Treatment:</span>
-              <p>{claim.form_data?.treatment_done}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm font-medium text-gray-500">Admission:</span>
-                <p>{claim.form_data?.admission_type}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Ward:</span>
-                <p>{claim.form_data?.ward_type}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-8 py-6">
+              <ProviderDetailsDisplay data={claim.form_data} hospitalName={claim.hospital_name} />
+            </AccordionContent>
+          </AccordionItem>
 
-        {/* Bill Details */}
-        <div className="bg-white border rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">💰 Bill Details</h3>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm font-medium text-gray-500">Bill Number:</span>
-                <p>{claim.form_data?.bill_number}</p>
+          {/* Bill Details */}
+          <AccordionItem value="bill" className="border-b">
+            <AccordionTrigger className="px-8 py-5 hover:no-underline hover:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <Receipt className="h-5 w-5 text-blue-700" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Bill Details</p>
+                  <p className="text-xs text-gray-500">Financial information</p>
+                </div>
               </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Bill Date:</span>
-                <p>{new Date(claim.form_data?.bill_date).toLocaleDateString()}</p>
+            </AccordionTrigger>
+            <AccordionContent className="px-8 py-6">
+              <BillDetailsDisplay data={claim.form_data} />
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Transaction History */}
+          <AccordionItem value="history">
+            <AccordionTrigger className="px-8 py-5 hover:no-underline hover:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <History className="h-5 w-5 text-blue-700" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Transaction History</p>
+                  <p className="text-xs text-gray-500">{transactions.length} events</p>
+                </div>
               </div>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-500">Total Bill Amount:</span>
-              <p className="font-semibold text-lg">₹{claim.form_data?.total_bill_amount?.toLocaleString()}</p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-500">Claimed Amount:</span>
-              <p className="font-semibold text-lg text-green-600">₹{claim.form_data?.claimed_amount?.toLocaleString()}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm font-medium text-gray-500">Patient Paid:</span>
-                <p>₹{claim.form_data?.total_patient_paid_amount?.toLocaleString()}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-500">Charged to Payer:</span>
-                <p>₹{claim.form_data?.amount_charged_to_payer?.toLocaleString()}</p>
-              </div>
-            </div>
-            {claim.form_data?.submission_remarks && (
-              <div>
-                <span className="text-sm font-medium text-gray-500">Remarks:</span>
-                <p className="text-sm bg-gray-50 p-3 rounded-md">{claim.form_data.submission_remarks}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-8 py-6">
+              <TransactionHistory transactions={transactions} />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </Card>
 
       {/* Documents Section */}
       {claim.documents && claim.documents.length > 0 && (
@@ -883,179 +847,9 @@ export default function ClaimDetailsPage() {
         </div>
       )}
 
-      {/* Transaction History */}
+      {/* Claim Metadata */}
       <div className="mt-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>📋 Transaction History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Creator Information */}
-              {(claim.created_by || claim.submitted_by) && (
-                <div className="border-l-4 border-green-500 pl-4 py-2 bg-green-50">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-semibold text-green-900">
-                        Created by: {claim.created_by_name || claim.submitted_by_name || claim.created_by_email || claim.submitted_by_email || claim.created_by || claim.submitted_by}
-                      </p>
-                      <p className="text-sm text-green-700">Status: Created</p>
-                    </div>
-                    {claim.created_at && (
-                      <p className="text-sm text-green-600">
-                        {new Date(claim.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Hospital Response Information */}
-              {claim.query_response && (
-                <div className="border-l-4 border-purple-500 pl-4 py-2 bg-purple-50">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-semibold text-purple-900">Answered by: {claim.query_answered_by_name || claim.query_answered_by_email || claim.query_answered_by || 'Hospital User'}</p>
-                      <p className="text-sm text-purple-700">Status: QC Answered</p>
-                    </div>
-                    {claim.query_answered_at && (
-                      <p className="text-sm text-purple-600">
-                        {new Date(claim.query_answered_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
-                      </p>
-                    )}
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-sm font-medium text-purple-900">Response:</p>
-                    <p className="text-sm text-purple-800 mt-1">{claim.query_response}</p>
-                  </div>
-                  {claim.query_response_files && claim.query_response_files.length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-sm font-medium text-purple-900">Supporting Documents:</p>
-                      <p className="text-sm text-purple-800 mt-1">{claim.query_response_files.length} file(s) uploaded</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Processor Information */}
-              {claim.processed_by && (
-                <div className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-semibold text-blue-900">Processed by: {claim.processed_by_name || claim.processed_by_email || claim.processed_by}</p>
-                      <p className="text-sm text-blue-700">Status: {claim.claim_status}</p>
-                    </div>
-                    {claim.processed_at && (
-                      <p className="text-sm text-blue-600">
-                        {new Date(claim.processed_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
-                      </p>
-                    )}
-                  </div>
-                  {claim.processing_remarks && (
-                    <div className="mt-2">
-                      <p className="text-sm font-medium text-blue-900">Remarks:</p>
-                      <p className="text-sm text-blue-800 mt-1">{claim.processing_remarks}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Transaction History Table */}
-      <div className="bg-white border rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">📋 Transaction History ({transactions.length} events)</h3>
-        
-        {transactions.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">No transaction history available</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-gray-300">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Trail No</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Status Type</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Status</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Remarks</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Query/Answer Remarks</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Issue Category</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Repeat Issue</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Action Required By Onsite Team</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Letter</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Updated BY</th>
-                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Updated Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((transaction, index) => {
-                  // Map transaction types to display status
-                    const getStatusDisplay = (type: string, newStatus: string) => {
-                    switch (type) {
-                      case 'CREATED': return 'QC pending'
-                      case 'QUERIED': return 'QC Query'
-                      case 'ANSWERED': return 'QUERY ANSWERED'
-                      case 'CLEARED': return `QC Clear(${new Date(transaction.performed_at).toLocaleDateString('en-GB')})`
-                      case 'APPROVED': return 'QC Clear'
-                      case 'REJECTED': return 'QC Rejected'
-                      case 'DISPATCHED': return `DESPATCHED(${new Date(transaction.performed_at).toLocaleDateString('en-GB')})`
-                      default: return type
-                    }
-                  }
-
-                  const statusDisplay = getStatusDisplay(transaction.transaction_type, transaction.new_status)
-                  const updatedTime = transaction.performed_at ? 
-                    new Date(transaction.performed_at).toLocaleString('en-IN', { 
-                      timeZone: 'Asia/Kolkata',
-                      day: '2-digit',
-                      month: '2-digit', 
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit'
-                    }) : ''
-
-                  return (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 px-3 py-2">{index + 1}</td>
-                      <td className="border border-gray-300 px-3 py-2">REQUEST</td>
-                      <td className="border border-gray-300 px-3 py-2 font-medium">{statusDisplay}</td>
-                      <td className="border border-gray-300 px-3 py-2">{transaction.remarks || ''}</td>
-                      <td className="border border-gray-300 px-3 py-2">
-                        {transaction.transaction_type === 'ANSWERED' ? transaction.remarks : ''}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2">
-                        {transaction.transaction_type === 'QUERIED' ? 'Reports' : ''}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2">No</td>
-                      <td className="border border-gray-300 px-3 py-2">
-                        {transaction.metadata?.action_required || ''}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2"></td>
-                      <td className="border border-gray-300 px-3 py-2 font-medium">
-                        {transaction.performed_by_name || transaction.performed_by_email}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2">{updatedTime}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-        <div className="text-sm text-gray-600 space-y-1">
-          <p><strong>Submitted by:</strong> {claim.submitted_by_email}</p>
-          <p><strong>Submission Date:</strong> {new Date(claim.submission_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</p>
-          <p><strong>Created:</strong> {new Date(claim.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</p>
-          {claim.updated_at && claim.updated_at !== claim.created_at && (
-            <p><strong>Last Updated:</strong> {new Date(claim.updated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</p>
-          )}
-        </div>
+        <ProcessorInfo claim={claim} />
       </div>
     </div>
   )
