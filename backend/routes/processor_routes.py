@@ -547,6 +547,28 @@ def process_claim(claim_id):
                     'locked_at': str(lock_timestamp) if lock_timestamp else 'Unknown'
                 }), 409  # Conflict status
         
+        # 🔒 CHECK MAXIMUM LOCK LIMIT - Processors can only lock up to 3 claims at a time
+        # Clean up expired locks first
+        cleanup_expired_locks(db)
+        
+        # Count how many claims are currently locked by this processor
+        locked_by_processor_claims = db.collection('claims').where('locked_by_processor', '==', request.user_id).get()
+        current_locked_count = len(locked_by_processor_claims)
+        
+        # If the current claim is already locked by this processor, don't count it
+        if current_processor == request.user_id:
+            current_locked_count = max(0, current_locked_count - 1)
+        
+        MAX_LOCKS_PER_PROCESSOR = 3
+        
+        if current_locked_count >= MAX_LOCKS_PER_PROCESSOR:
+            return jsonify({
+                'success': False,
+                'error': f'You have reached the maximum limit of {MAX_LOCKS_PER_PROCESSOR} locked claims. Please unlock a claim before processing another one.',
+                'current_locked_count': current_locked_count,
+                'max_allowed': MAX_LOCKS_PER_PROCESSOR
+            }), 400
+        
         # 🔒 LOCK THE CLAIM - Set lock before processing
         import pytz
         ist = pytz.timezone('Asia/Kolkata')
@@ -977,6 +999,28 @@ def lock_claim(claim_id):
                     'locked_by': current_processor_email,
                     'locked_at': str(lock_timestamp) if lock_timestamp else 'Unknown'
                 }), 409  # Conflict status
+        
+        # 🔒 CHECK MAXIMUM LOCK LIMIT - Processors can only lock up to 3 claims at a time
+        # Clean up expired locks first
+        cleanup_expired_locks(db)
+        
+        # Count how many claims are currently locked by this processor
+        locked_by_processor_claims = db.collection('claims').where('locked_by_processor', '==', request.user_id).get()
+        current_locked_count = len(locked_by_processor_claims)
+        
+        # If the current claim is already locked by this processor, don't count it
+        if current_processor == request.user_id:
+            current_locked_count = max(0, current_locked_count - 1)
+        
+        MAX_LOCKS_PER_PROCESSOR = 3
+        
+        if current_locked_count >= MAX_LOCKS_PER_PROCESSOR:
+            return jsonify({
+                'success': False,
+                'error': f'You have reached the maximum limit of {MAX_LOCKS_PER_PROCESSOR} locked claims. Please unlock a claim before locking another one.',
+                'current_locked_count': current_locked_count,
+                'max_allowed': MAX_LOCKS_PER_PROCESSOR
+            }), 400
         
         # Lock the claim for 1 hour
         import pytz
