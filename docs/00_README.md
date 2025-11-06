@@ -11,10 +11,25 @@ This is a comprehensive guide for frontend developers to integrate with the Hosp
 
 ## 📚 Documentation Structure
 
+### 🔐 Authentication & Setup
 1. **[01_AUTHENTICATION.md](./01_AUTHENTICATION.md)** - Authentication, Login, User Roles, Token Management
+
+### 👥 Role-Based Documentation
+
+#### Hospital User Role
 2. **[02_HOSPITAL_USER_CLAIMS.md](./02_HOSPITAL_USER_CLAIMS.md)** - Hospital User Claims APIs (View, Submit, Answer Queries)
 3. **[03_HOSPITAL_USER_DRAFTS.md](./03_HOSPITAL_USER_DRAFTS.md)** - Drafts Management APIs (Save, Update, Delete, Submit)
+
+#### Claim Processor Role
 4. **[04_PROCESSOR_CLAIMS.md](./04_PROCESSOR_CLAIMS.md)** - Processor APIs (View, Process, Approve, Reject, Query)
+
+#### RM (Relationship Manager) Role
+7. **[07_RM_SYSTEM.md](./07_RM_SYSTEM.md)** - RM APIs (Settlement, Reconciliation, Status Tracking)
+
+#### Review Request Role
+8. **[08_REVIEW_REQUEST.md](./08_REVIEW_REQUEST.md)** - Review Request APIs (Second-Level Review, Escalation) 📋 PLANNED
+
+### 📎 Shared Resources
 5. **[05_DOCUMENTS.md](./05_DOCUMENTS.md)** - Documents APIs (Upload, Download, Delete, View)
 6. **[06_RESOURCES_API.md](./06_RESOURCES_API.md)** - Master Data APIs (Specialties, Doctors, Dropdown Options)
 

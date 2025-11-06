@@ -168,11 +168,386 @@ Every RM action creates a transaction record:
 }
 ```
 
+## Frontend Integration
+
+### Base URL
+```
+http://localhost:5002
+```
+
+### Required Role
+- `rm` - Relationship Manager
+- `reconciler` - Reconciler (same access as RM)
+
+### Authentication Header
+```http
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+---
+
+## Frontend API Service
+
+### RM API Service (`/frontend/src/services/rmApi.ts`)
+
+The frontend uses a dedicated RM API service class:
+
+```typescript
+import { rmApi, type RMClaim, type RMClaimDetails } from '@/services/rmApi'
+
+// Get claims
+const data = await rmApi.getClaims({
+  tab: 'active',
+  start_date: '2024-01-01',
+  end_date: '2024-01-31',
+  limit: 50
+})
+
+// Get claim details
+const claimData = await rmApi.getClaimDetails(claimId)
+
+// Update claim
+await rmApi.updateClaim(claimId, {
+  rm_status: 'SETTLED',
+  status_raised_date: '2024-01-15',
+  status_raised_remarks: 'Settlement completed',
+  rm_data: { /* settlement fields */ }
+})
+
+// Re-evaluate claim
+await rmApi.reevaluateClaim(claimId, 'Reason for re-evaluation')
+```
+
+---
+
+## 1. Get RM Claims
+
+**Endpoint**: `GET /api/rm/get-claims`
+
+**Description**: Get claims filtered by RM's assigned payers and hospitals.
+
+**Query Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| tab | string | No | Filter by tab: 'active', 'settled', 'all' (default: 'active') |
+| start_date | string | No | Filter from date (YYYY-MM-DD) |
+| end_date | string | No | Filter to date (YYYY-MM-DD) |
+| limit | number | No | Number of claims to return (default: 50) |
+
+**Example Request**:
+```typescript
+const fetchRMClaims = async (tab: 'active' | 'settled' | 'all' = 'active') => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(
+    `http://localhost:5002/api/rm/get-claims?tab=${tab}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  const data = await response.json();
+  return data;
+};
+```
+
+**Using RM API Service**:
+```typescript
+import { rmApi } from '@/services/rmApi'
+
+const fetchClaims = async () => {
+  try {
+    const data = await rmApi.getClaims({
+      tab: 'active',
+      start_date: '2024-01-01',
+      end_date: '2024-01-31',
+      limit: 50
+    });
+    
+    if (data.success) {
+      setClaims(data.claims);
+    }
+  } catch (error) {
+    console.error('Error fetching RM claims:', error);
+  }
+};
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "success": true,
+  "claims": [
+    {
+      "claim_id": "CSHLSIP-20251023-2",
+      "patient_name": "John Doe",
+      "payer_name": "ABC Insurance",
+      "claimed_amount": 50000,
+      "claim_status": "dispatched",
+      "rm_status": "RECEIVED",
+      "hospital_name": "City Hospital",
+      "hospital_id": "hospital_123",
+      "submission_date": "2025-10-23T13:06:06.961000+00:00",
+      "created_at": "2025-10-23T13:06:06.961000+00:00",
+      "rm_updated_at": "",
+      "rm_updated_by": ""
+    }
+  ],
+  "total_claims": 1
+}
+```
+
+---
+
+## 2. Get Claim Details
+
+**Endpoint**: `GET /api/rm/get-claim-details/<claim_id>`
+
+**Description**: Get detailed claim information for RM processing.
+
+**Example Request**:
+```typescript
+const fetchRMClaimDetails = async (claimId: string) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(
+    `http://localhost:5002/api/rm/get-claim-details/${claimId}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+
+  const data = await response.json();
+  return data;
+};
+```
+
+**Using RM API Service**:
+```typescript
+import { rmApi } from '@/services/rmApi'
+
+const fetchClaimDetails = async (claimId: string) => {
+  try {
+    const data = await rmApi.getClaimDetails(claimId);
+    
+    if (data.success) {
+      setClaim(data.claim);
+    }
+  } catch (error) {
+    console.error('Error fetching claim details:', error);
+  }
+};
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "success": true,
+  "claim": {
+    "claim_id": "CSHLSIP-20251023-2",
+    "claim_status": "dispatched",
+    "rm_status": "RECEIVED",
+    "hospital_name": "City Hospital",
+    "patient_details": {
+      "patient_name": "John Doe",
+      "age": 45,
+      "gender": "Male"
+    },
+    "payer_details": {
+      "payer_name": "ABC Insurance",
+      "payer_type": "Insurance"
+    },
+    "financial_details": {
+      "claimed_amount": 50000,
+      "total_bill_amount": 50000
+    },
+    "rm_data": {},
+    "documents": [],
+    "transactions": []
+  }
+}
+```
+
+---
+
+## 3. Update Claim
+
+**Endpoint**: `POST /api/rm/update-claim/<claim_id>`
+
+**Description**: Update claim with RM status and settlement data.
+
+**Request Body**:
+```typescript
+interface UpdateClaimRequest {
+  rm_status: string;  // Required: One of 11 RM statuses
+  status_raised_date?: string;  // Format: YYYY-MM-DD
+  status_raised_remarks?: string;
+  rm_data?: {
+    // Settlement fields (required for SETTLED, PARTIALLY SETTLED, RECONCILIATION)
+    claim_settlement_date?: string;
+    payment_mode?: string;
+    settled_amount_without_tds?: number;
+    tds_percentage?: number;
+    tds_amount?: number;
+    settled_tds_amount?: number;
+    disallowed_amount?: number;
+    // ... other settlement fields
+  };
+}
+```
+
+**Example Request**:
+```typescript
+const updateRMClaim = async (claimId: string, updateData: UpdateClaimRequest) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(
+    `http://localhost:5002/api/rm/update-claim/${claimId}`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(updateData)
+    }
+  );
+
+  const data = await response.json();
+  return data;
+};
+```
+
+**Using RM API Service**:
+```typescript
+import { rmApi } from '@/services/rmApi'
+
+const handleUpdateClaim = async () => {
+  try {
+    const updateData = {
+      rm_status: 'SETTLED',
+      status_raised_date: '2024-01-15',
+      status_raised_remarks: 'Settlement completed successfully',
+      rm_data: {
+        claim_settlement_date: '2024-01-15',
+        payment_mode: 'NEFT',
+        settled_amount_without_tds: 50000,
+        tds_percentage: 10,
+        tds_amount: 5000,
+        settled_tds_amount: 55000,
+        payer_bank: 'HDFC Bank',
+        payment_reference_no: 'REF123456',
+        settled_remarks: 'Payment received successfully'
+      }
+    };
+    
+    const result = await rmApi.updateClaim(claimId, updateData);
+    
+    if (result.success) {
+      toast.success('Claim updated successfully');
+      router.push('/rm-inbox');
+    }
+  } catch (error) {
+    console.error('Error updating claim:', error);
+    toast.error('Failed to update claim');
+  }
+};
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "success": true,
+  "message": "Claim updated successfully",
+  "claim_id": "CSHLSIP-20251023-2",
+  "new_rm_status": "SETTLED"
+}
+```
+
+---
+
+## 4. Re-Evaluate Claim
+
+**Endpoint**: `POST /api/rm/reevaluate-claim/<claim_id>`
+
+**Description**: Mark claim for re-evaluation (sets status to INPROGRESS).
+
+**Request Body**:
+```json
+{
+  "remarks": "Reason for re-evaluation"
+}
+```
+
+**Example Request**:
+```typescript
+const reevaluateClaim = async (claimId: string, remarks: string) => {
+  const token = localStorage.getItem('auth_token');
+  
+  const response = await fetch(
+    `http://localhost:5002/api/rm/reevaluate-claim/${claimId}`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ remarks })
+    }
+  );
+
+  const data = await response.json();
+  return data;
+};
+```
+
+**Using RM API Service**:
+```typescript
+import { rmApi } from '@/services/rmApi'
+
+const handleReevaluate = async () => {
+  const remarks = prompt('Enter reason for re-evaluation:');
+  
+  if (!remarks) return;
+  
+  try {
+    const result = await rmApi.reevaluateClaim(claimId, remarks);
+    
+    if (result.success) {
+      toast.success('Claim marked for re-evaluation');
+      router.push('/rm-inbox');
+    }
+  } catch (error) {
+    console.error('Error re-evaluating claim:', error);
+    toast.error('Failed to re-evaluate claim');
+  }
+};
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "success": true,
+  "message": "Claim marked for re-evaluation",
+  "claim_id": "CSHLSIP-20251023-2",
+  "new_rm_status": "INPROGRESS"
+}
+```
+
+---
+
 ## Frontend Components
 
 ### 1. RM Inbox (`/rm-inbox/page.tsx`)
 
-Features:
+**Features**:
 - Three tabs: Active Claims, Settled Claims, All Claims
 - Filter by:
   - Search (patient name, claim ID, payer, hospital)
@@ -188,9 +563,49 @@ Features:
   - Submission Date
   - Process button
 
+**Example Implementation**:
+```typescript
+'use client'
+
+import { useState, useEffect } from 'react'
+import { rmApi, type RMClaim } from '@/services/rmApi'
+
+export default function RMInboxPage() {
+  const [claims, setClaims] = useState<RMClaim[]>([])
+  const [activeTab, setActiveTab] = useState<'active' | 'settled' | 'all'>('active')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchClaims()
+  }, [activeTab])
+
+  const fetchClaims = async () => {
+    try {
+      setLoading(true)
+      const data = await rmApi.getClaims({ tab: activeTab })
+      
+      if (data.success) {
+        setClaims(data.claims)
+      }
+    } catch (error) {
+      console.error('Error fetching claims:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div>
+      {/* Tab navigation */}
+      {/* Claims table */}
+    </div>
+  )
+}
+```
+
 ### 2. RM Process Claim (`/rm-inbox/process/[claimId]/page.tsx`)
 
-Features:
+**Features**:
 - **Claim Information Tabs**:
   - Patient Details
   - Payer Details
