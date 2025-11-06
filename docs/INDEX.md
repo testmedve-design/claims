@@ -51,6 +51,7 @@
    - Bulk process claims
    - Check claim lock status
    - Get processing statistics
+   - Complete frontend TypeScript examples
 
 6. **[LOCK_SYSTEM_IMPLEMENTATION.md](./LOCK_SYSTEM_IMPLEMENTATION.md)** 🔒 **NEW!**
    - Complete lock system documentation
@@ -60,6 +61,36 @@
    - Auto-unlock mechanism
    - Security validation
    - Testing guide
+
+---
+
+## 💼 RM (Relationship Manager) APIs
+
+### For Building RM Features:
+
+7. **[07_RM_SYSTEM.md](./07_RM_SYSTEM.md)** 📊 **UPDATED!**
+   - Get RM claims (Active, Settled, All tabs)
+   - Get claim details for RM processing
+   - Update claim with RM status and settlement data
+   - Re-evaluate claims
+   - Get RM statistics
+   - Complete frontend TypeScript examples
+   - Settlement fields documentation
+   - RM status workflow
+
+---
+
+## 🔍 Review Request APIs
+
+### For Building Review Request Features:
+
+8. **[08_REVIEW_REQUEST.md](./08_REVIEW_REQUEST.md)** 🔎 **📋 PLANNED**
+   - Second-level review system
+   - Get claims requiring review
+   - Review claim decisions
+   - Escalate claims to higher authority
+   - Review statistics and tracking
+   - ⚠️ Currently under development
 
 ---
 
@@ -134,7 +165,24 @@
 1. 00_README.md (Overview)
 2. 01_AUTHENTICATION.md (Login)
 3. 04_PROCESSOR_CLAIMS.md (Processing)
+4. LOCK_SYSTEM_IMPLEMENTATION.md (Claim Locking)
+5. 05_DOCUMENTS.md (View Files)
+```
+
+### For RM Module:
+```
+1. 00_README.md (Overview)
+2. 01_AUTHENTICATION.md (Login)
+3. 07_RM_SYSTEM.md (Settlement & Reconciliation)
 4. 05_DOCUMENTS.md (View Files)
+```
+
+### For Review Request Module:
+```
+1. 00_README.md (Overview)
+2. 01_AUTHENTICATION.md (Login)
+3. 08_REVIEW_REQUEST.md (Second-Level Review)
+⚠️ Currently under development
 ```
 
 ---
@@ -162,8 +210,10 @@ Authorization: Bearer <your_token>
 - `500` - Server Error
 
 ### User Roles
-- `hospital_user` - Can create/view claims
-- `claim_processor` or `claim_processor_l4` - Can process claims
+- `hospital_user` - Can create/view/submit claims
+- `claim_processor` (L1-L4) - Can process claims based on amount limits
+- `rm` or `reconciler` - Can handle settlements and reconciliation
+- `review_request` - Can perform second-level reviews (PLANNED)
 
 ### Claim Statuses
 - `qc_pending` - New, awaiting review
