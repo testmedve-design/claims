@@ -8,6 +8,7 @@ from middleware import require_claims_access
 from firebase_admin import firestore
 from datetime import datetime
 from utils.transaction_helper import create_transaction, get_claim_transactions, TransactionType
+from utils.notification_client import get_notification_client
 
 claims_bp = Blueprint('claims', __name__)
 
@@ -486,6 +487,26 @@ def answer_query(claim_id):
             remarks=query_response,
             metadata=transaction_metadata
         )
+        
+        # Send notification for QC answered
+        try:
+            notification_client = get_notification_client()
+            hospital_user_name = getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User'
+            # Update claim_data with new status
+            updated_claim_data = {**claim_data, **update_data}
+            notification_client.notify_qc_answered(
+                claim_id=claim_id,
+                claim_data=updated_claim_data,
+                hospital_user_id=request.user_id,
+                hospital_user_name=hospital_user_name,
+                hospital_user_email=request.user_email,
+                query_response=query_response,
+                uploaded_files=uploaded_files
+            )
+        except Exception as e:
+            # Log but don't fail the request if notification fails
+            import logging
+            logging.error(f"Failed to send qc_answered notification for claim {claim_id}: {str(e)}")
         
         return jsonify({
             'success': True,

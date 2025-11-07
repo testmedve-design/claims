@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import pytz
 from utils.transaction_helper import create_transaction, TransactionType
 from utils import lock_utils
+from utils.notification_client import get_notification_client
 
 processor_bp = Blueprint('processor_routes', __name__)
 
@@ -748,6 +749,64 @@ def process_claim(claim_id):
             metadata=metadata
         )
         
+        # Send notifications based on status
+        try:
+            notification_client = get_notification_client()
+            # Update claim_data with new status for notification payload
+            updated_claim_data = {**claim_data, **update_data}
+            
+            if new_status == 'qc_query':
+                notification_client.notify_qc_query(
+                    claim_id=claim_id,
+                    claim_data=updated_claim_data,
+                    processor_id=request.user_id,
+                    processor_name=user_name,
+                    processor_email=request.user_email,
+                    remarks=remarks,
+                    qc_query_details=cleaned_query_details
+                )
+            elif new_status == 'need_more_info':
+                notification_client.notify_need_more_info(
+                    claim_id=claim_id,
+                    claim_data=updated_claim_data,
+                    processor_id=request.user_id,
+                    processor_name=user_name,
+                    processor_email=request.user_email,
+                    remarks=remarks
+                )
+            elif new_status == 'qc_clear':
+                notification_client.notify_qc_clear(
+                    claim_id=claim_id,
+                    claim_data=updated_claim_data,
+                    processor_id=request.user_id,
+                    processor_name=user_name,
+                    processor_email=request.user_email,
+                    remarks=remarks
+                )
+            elif new_status == 'claim_approved':
+                notification_client.notify_approved(
+                    claim_id=claim_id,
+                    claim_data=updated_claim_data,
+                    processor_id=request.user_id,
+                    processor_name=user_name,
+                    processor_email=request.user_email,
+                    remarks=remarks
+                )
+            elif new_status == 'claim_denial':
+                notification_client.notify_denial(
+                    claim_id=claim_id,
+                    claim_data=updated_claim_data,
+                    processor_id=request.user_id,
+                    processor_name=user_name,
+                    processor_email=request.user_email,
+                    remarks=remarks,
+                    rejection_reason=remarks
+                )
+        except Exception as e:
+            # Log but don't fail the request if notification fails
+            import logging
+            logging.error(f"Failed to send notification for claim {claim_id} status {new_status}: {str(e)}")
+        
         return jsonify({
             'success': True,
             'message': f'Claim status updated to {new_status} successfully',
@@ -1398,6 +1457,55 @@ def bulk_process_claims():
                     }
                     
                     db.collection('claims').document(claim_id).update(update_data)
+                    
+                    # Send notification for each processed claim
+                    try:
+                        notification_client = get_notification_client()
+                        user_name = getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User'
+                        updated_claim_data = {**claim_data, **update_data}
+                        
+                        if new_status == 'need_more_info':
+                            notification_client.notify_need_more_info(
+                                claim_id=claim_id,
+                                claim_data=updated_claim_data,
+                                processor_id=request.user_id,
+                                processor_name=user_name,
+                                processor_email=request.user_email,
+                                remarks=remarks
+                            )
+                        elif new_status == 'qc_clear':
+                            notification_client.notify_qc_clear(
+                                claim_id=claim_id,
+                                claim_data=updated_claim_data,
+                                processor_id=request.user_id,
+                                processor_name=user_name,
+                                processor_email=request.user_email,
+                                remarks=remarks
+                            )
+                        elif new_status == 'claim_approved':
+                            notification_client.notify_approved(
+                                claim_id=claim_id,
+                                claim_data=updated_claim_data,
+                                processor_id=request.user_id,
+                                processor_name=user_name,
+                                processor_email=request.user_email,
+                                remarks=remarks
+                            )
+                        elif new_status == 'claim_denial':
+                            notification_client.notify_denial(
+                                claim_id=claim_id,
+                                claim_data=updated_claim_data,
+                                processor_id=request.user_id,
+                                processor_name=user_name,
+                                processor_email=request.user_email,
+                                remarks=remarks,
+                                rejection_reason=remarks
+                            )
+                    except Exception as notif_error:
+                        # Log but don't fail bulk processing if notification fails
+                        import logging
+                        logging.error(f"Failed to send notification for bulk processed claim {claim_id}: {str(notif_error)}")
+                    
                     processed_count += 1
                 else:
                     errors.append(f'Claim {claim_id} not found')
