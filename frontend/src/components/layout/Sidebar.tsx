@@ -13,7 +13,8 @@ import {
   LogOut,
   Menu,
   FileText,
-  Activity
+  Activity,
+  BarChart3
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -88,6 +89,11 @@ const getNavigationItems = (userRole: string): NavItem[] => {
         title: 'Claims',
         href: '/claims',
         icon: FileText,
+      },
+      {
+        title: 'Reports',
+        href: '/reports',
+        icon: BarChart3,
       },
       {
         title: 'Drafts',
