@@ -520,3 +520,15 @@ const safeApiCall = async (apiFunction: () => Promise<any>) => {
 };
 ```
 
+## Hospital Configuration
+
+Hospitals can configure the following for processors:
+
+- Assign claims to a processor
+- Set processor approval limits (per role)
+- Control optional processor statuses by toggling these booleans on the `hospitals/<hospital_id>` document:
+  - `need_more_info_option`
+  - `claim_approved_option`
+  - `claim_denial_option`
+- When `true`, the processor sees that status in the dropdown; otherwise it is hidden and blocked on the backend.
+

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://claims-2.onrender.com'
+import { API_BASE_URL } from '@/lib/apiConfig'
 
 // Import the main ClaimFormData from types
 import type { ClaimFormData } from '@/types/claims'
@@ -37,7 +37,7 @@ class ClaimsApi {
 
   async getSpecialties(hospitalId?: string): Promise<Specialty[]> {
     try {
-      let url = `${this.baseUrl}/api/resources/specialties`
+      let url = `${this.baseUrl}/resources/specialties`
       if (hospitalId) {
         url += `?hospital_id=${hospitalId}`
       }
@@ -60,7 +60,7 @@ class ClaimsApi {
 
   async getPayers(hospitalId?: string): Promise<Payer[]> {
     try {
-      let url = `${this.baseUrl}/api/resources/payers`
+      let url = `${this.baseUrl}/resources/payers`
       if (hospitalId) {
         url += `?hospital_id=${hospitalId}`
       }
@@ -84,7 +84,7 @@ class ClaimsApi {
   async getChecklist(payerName: string, specialty?: string): Promise<ChecklistResponse> {
     try {
       // Build URL with payer_name and optional specialty
-      let url = `${this.baseUrl}/api/new-claim/checklist/get-checklist?payer_name=${encodeURIComponent(payerName)}`
+      let url = `${this.baseUrl}/new-claim/checklist/get-checklist?payer_name=${encodeURIComponent(payerName)}`
       if (specialty) {
         url += `&specialty=${encodeURIComponent(specialty)}`
       }
@@ -102,7 +102,7 @@ class ClaimsApi {
 
   async submitClaim(claimData: ClaimFormData): Promise<{ success: boolean; message: string; claim_id?: string }> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/new-claim/submit-claim`, {
+      const response = await fetch(`${this.baseUrl}/new-claim/submit-claim`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,7 +124,7 @@ class ClaimsApi {
 
   async saveDraft(claimData: Partial<ClaimFormData>): Promise<{ success: boolean; message: string; draft_id?: string }> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/drafts/save-draft`, {
+      const response = await fetch(`${this.baseUrl}/v1/drafts/save-draft`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,7 +146,7 @@ class ClaimsApi {
 
   async getDrafts(): Promise<any[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/drafts/list`, {
+      const response = await fetch(`${this.baseUrl}/v1/drafts/list`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
@@ -164,7 +164,7 @@ class ClaimsApi {
 
   async getClaims(): Promise<any[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/claims/get-all-claims`, {
+      const response = await fetch(`${this.baseUrl}/v1/claims/get-all-claims`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
@@ -182,7 +182,7 @@ class ClaimsApi {
 
   async dispatchClaim(claimId: string, dispatchData: { dispatch_remarks?: string; dispatch_tracking_number?: string }): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/claims/dispatch-claim/${claimId}`, {
+      const response = await fetch(`${this.baseUrl}/v1/claims/dispatch-claim/${claimId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,7 +205,7 @@ class ClaimsApi {
 
   async getCouriers(): Promise<any[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/resources/couriers`, {
+      const response = await fetch(`${this.baseUrl}/resources/couriers`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
@@ -223,7 +223,7 @@ class ClaimsApi {
 
   async getClaimTransactions(claimId: string): Promise<any[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/claims/transactions/${claimId}`, {
+      const response = await fetch(`${this.baseUrl}/v1/claims/transactions/${claimId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }

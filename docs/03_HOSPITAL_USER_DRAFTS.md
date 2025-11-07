@@ -552,6 +552,15 @@ const submitDraftWithValidation = async (draftId: string) => {
 
 ---
 
+## Draft Visibility and Processor Interaction
+
+- Drafts are visible only to hospital users from the same hospital
+- Once submitted, the claim appears in the processor inbox
+- Processors can see only the statuses that the hospital enables on its `hospitals/<hospital_id>` document (`need_more_info_option`, `claim_approved_option`, `claim_denial_option`).
+- If processors raise a `qc_query`, they must supply the additional details described in the processor documentation.
+
+---
+
 ## Best Practices
 
 1. **Auto-save frequently** - Save drafts every 2-3 seconds after user stops typing
