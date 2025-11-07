@@ -9,70 +9,42 @@ from firebase_admin import firestore
 from datetime import datetime, timedelta
 import pytz
 from utils.transaction_helper import create_transaction, TransactionType
+from utils import lock_utils
 
 processor_bp = Blueprint('processor_routes', __name__)
 
 
-def cleanup_expired_locks(db):
-    """Utility to clear processor locks that have crossed their expiry time."""
-    ist = pytz.timezone('Asia/Kolkata')
-    current_time = datetime.now(ist)
+def get_processor_status_options(db, hospital_id):
+    """Fetch processor status toggles for a hospital."""
+    default_options = {
+        'need_more_info_option': False,
+        'claim_approved_option': False,
+        'claim_denial_option': False,
+    }
+
+    if not hospital_id:
+        return default_options
 
     try:
-        # Try fetching only claims that appear to have an expiry timestamp
-        locked_claims = list(db.collection('claims').where('lock_expires_at', '!=', None).limit(1000).stream())
-    except Exception as query_error:
-        # Some environments may not have the required composite index, so fall back gracefully
-        print(f"⚠️ cleanup_expired_locks: index-based query failed ({query_error}); falling back to full scan.")
-        locked_claims = list(db.collection('claims').stream())
+        hospital_doc = db.collection('hospitals').document(hospital_id).get()
+        if hospital_doc.exists:
+            hospital_data = hospital_doc.to_dict() or {}
+            for key in default_options.keys():
+                if key in hospital_data:
+                    default_options[key] = bool(hospital_data.get(key, False))
+    except Exception as err:  # pragma: no cover - logging only
+        print(
+            "⚠️ get_processor_status_options: Failed to fetch options for hospital"
+            f" {hospital_id}: {err}"
+        )
 
-    cleared_count = 0
+    return default_options
 
-    for doc in locked_claims:
-        claim_data = doc.to_dict() or {}
-        lock_expires_at = claim_data.get('lock_expires_at')
-        locked_by_processor = claim_data.get('locked_by_processor')
-
-        # Only proceed if there is a lock we might need to clear
-        if not lock_expires_at or not locked_by_processor:
-            continue
-
-        # Convert Firestore value to timezone-aware datetime
-        expires_time = None
-        if hasattr(lock_expires_at, 'to_pydatetime'):
-            expires_time = lock_expires_at.to_pydatetime()
-        elif isinstance(lock_expires_at, str):
-            try:
-                expires_time = datetime.fromisoformat(lock_expires_at.replace('Z', '+00:00'))
-            except ValueError:
-                print(f"⚠️ cleanup_expired_locks: unable to parse lock_expires_at '{lock_expires_at}' for claim {doc.id}")
-                continue
-        else:
-            # Unexpected format — skip
-            continue
-
-        if expires_time.tzinfo is None:
-            expires_time = ist.localize(expires_time)
-        else:
-            expires_time = expires_time.astimezone(ist)
-
-        if current_time > expires_time:
-            try:
-                db.collection('claims').document(doc.id).update({
-                    'locked_by_processor': None,
-                    'locked_by_processor_email': None,
-                    'locked_by_processor_name': None,
-                    'locked_at': None,
-                    'lock_expires_at': None
-                })
-                cleared_count += 1
-                print(f"🧹 cleanup_expired_locks: Cleared expired lock for claim {doc.id}")
-            except Exception as update_error:
-                print(f"❌ cleanup_expired_locks: Failed to clear lock for claim {doc.id}: {update_error}")
-
-    if cleared_count:
-        print(f"✅ cleanup_expired_locks: Cleared {cleared_count} expired lock(s)")
-
+OPTIONAL_STATUS_FLAG_MAP = {
+    'need_more_info': 'need_more_info_option',
+    'claim_approved': 'claim_approved_option',
+    'claim_denial': 'claim_denial_option',
+}
 
 @processor_bp.route('/test-simple', methods=['GET'])
 @require_processor_access
@@ -508,14 +480,15 @@ def process_claim(claim_id):
         data = request.get_json()
         status = data.get('status')  # 'qc_clear', 'qc_query', 'claim_approved', 'claim_denial', 'need_more_info'
         remarks = data.get('remarks', '')
-        
+        query_details = data.get('query_details')
+
         valid_statuses = ['qc_clear', 'qc_query', 'claim_approved', 'claim_denial', 'need_more_info']
         if status not in valid_statuses:
             return jsonify({
                 'success': False,
                 'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'
             }), 400
-        
+
         db = get_firestore()
         
         # First try to get the claim by document ID (most common case)
@@ -536,6 +509,69 @@ def process_claim(claim_id):
             claim_doc = claims_docs[0]
         
         claim_data = claim_doc.to_dict()
+
+        hospital_id = claim_data.get('hospital_id', '')
+        processor_status_options = get_processor_status_options(db, hospital_id)
+
+        cleaned_query_details = None
+        if status == 'qc_query':
+            if not isinstance(query_details, dict):
+                return jsonify({
+                    'success': False,
+                    'error': 'Query details are required when raising a QC query'
+                }), 400
+
+            issue_categories = query_details.get('issue_categories', [])
+            repeat_issue = query_details.get('repeat_issue', '')
+            action_required = (query_details.get('action_required') or '').strip()
+            query_remarks = query_details.get('remarks', '').strip()
+
+            if not isinstance(issue_categories, list) or not issue_categories:
+                return jsonify({
+                    'success': False,
+                    'error': 'At least one issue category must be selected for a QC query'
+                }), 400
+
+            if not repeat_issue:
+                return jsonify({
+                    'success': False,
+                    'error': 'Repeat issue selection is required for a QC query'
+                }), 400
+
+            if not action_required:
+                return jsonify({
+                    'success': False,
+                    'error': 'Action required by onsite team is mandatory for a QC query'
+                }), 400
+
+            normalized_categories = []
+            seen_categories = set()
+            for cat in issue_categories:
+                label = str(cat).strip()
+                if label and label.lower() not in seen_categories:
+                    normalized_categories.append(label)
+                    seen_categories.add(label.lower())
+
+            cleaned_query_details = {
+                'issue_categories': normalized_categories,
+                'repeat_issue': str(repeat_issue).lower(),
+                'action_required': action_required,
+                'remarks': query_remarks
+            }
+        else:
+            cleaned_query_details = None
+
+        optional_flag = OPTIONAL_STATUS_FLAG_MAP.get(status)
+        if optional_flag and not processor_status_options.get(optional_flag, False):
+            return jsonify({
+                'success': False,
+                'error': (
+                    f"The status '{status}' is disabled for this hospital. "
+                    'Please choose an enabled status.'
+                ),
+                'disabled_status': status,
+                'hospital_id': hospital_id
+            }), 400
         
         # 🔒 CHECK CLAIM LOCK - Prevent concurrent processing
         current_processor = claim_data.get('locked_by_processor', '')
@@ -612,7 +648,7 @@ def process_claim(claim_id):
         
         # 🔒 CHECK MAXIMUM LOCK LIMIT - Processors can only lock up to 3 claims at a time
         # Clean up expired locks first
-        cleanup_expired_locks(db)
+        lock_utils.cleanup_expired_locks(db)
         
         # Count how many claims are currently locked by this processor
         locked_by_processor_claims = db.collection('claims').where('locked_by_processor', '==', request.user_id).get()
@@ -675,7 +711,8 @@ def process_claim(claim_id):
             'locked_by_processor_email': None,
             'locked_by_processor_name': None,
             'locked_at': None,
-            'lock_expires_at': None
+            'lock_expires_at': None,
+            'qc_query_details': cleaned_query_details if new_status == 'qc_query' else firestore.DELETE_FIELD
         }
         
         # Update the claim
@@ -692,6 +729,12 @@ def process_claim(claim_id):
         
         transaction_type = transaction_type_map.get(new_status, TransactionType.UPDATED)
         
+        metadata = {
+            'processing_action': new_status
+        }
+        if cleaned_query_details:
+            metadata['query_details'] = cleaned_query_details
+
         create_transaction(
             claim_id=claim_id,
             transaction_type=transaction_type,
@@ -702,7 +745,7 @@ def process_claim(claim_id):
             previous_status=claim_data.get('claim_status'),
             new_status=new_status,
             remarks=remarks,
-            metadata={'processing_action': new_status}
+            metadata=metadata
         )
         
         return jsonify({
@@ -747,6 +790,9 @@ def get_claim_details(claim_id):
             claim_doc = claims_docs[0]
         
         claim_data = claim_doc.to_dict()
+
+        hospital_id = claim_data.get('hospital_id', '')
+        processor_status_options = get_processor_status_options(db, hospital_id)
         
         # Check processor approval limit
         form_data = claim_data.get('form_data', {})
@@ -844,6 +890,8 @@ def get_claim_details(claim_id):
                 'locked_by_processor_name': claim_data.get('locked_by_processor_name', ''),
                 'locked_at': str(claim_data.get('locked_at', '')) if claim_data.get('locked_at') else '',
                 'lock_expires_at': str(claim_data.get('lock_expires_at', '')) if claim_data.get('lock_expires_at') else '',
+                'processor_options': processor_status_options,
+                'qc_query_details': claim_data.get('qc_query_details'),
                 # Patient details
                 'patient_details': {
                     'patient_name': form_data.get('patient_name', ''),
@@ -1065,7 +1113,7 @@ def lock_claim(claim_id):
         
         # 🔒 CHECK MAXIMUM LOCK LIMIT - Processors can only lock up to 3 claims at a time
         # Clean up expired locks first
-        cleanup_expired_locks(db)
+        lock_utils.cleanup_expired_locks(db)
         
         # Count how many claims are currently locked by this processor
         locked_by_processor_claims = db.collection('claims').where('locked_by_processor', '==', request.user_id).get()
@@ -1301,7 +1349,13 @@ def bulk_process_claims():
                 'success': False,
                 'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'
             }), 400
-        
+
+        if status == 'qc_query':
+            return jsonify({
+                'success': False,
+                'error': 'Bulk processing for QC Query is not supported. Please process queries individually.'
+            }), 400
+
         db = get_firestore()
         
         # Process each claim
@@ -1322,6 +1376,15 @@ def bulk_process_claims():
                         claim_doc = claims_docs[0]
                 
                 if claim_doc.exists:
+                    claim_data = claim_doc.to_dict() or {}
+                    hospital_id = claim_data.get('hospital_id', '')
+                    processor_status_options = get_processor_status_options(db, hospital_id)
+                    optional_flag = OPTIONAL_STATUS_FLAG_MAP.get(status)
+                    if optional_flag and not processor_status_options.get(optional_flag, False):
+                        errors.append(
+                            f"Status '{status}' is disabled for hospital {hospital_id or 'UNKNOWN'}"
+                        )
+                        continue
                     # Use the provided status directly
                     new_status = status
                     

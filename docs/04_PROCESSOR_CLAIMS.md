@@ -511,46 +511,54 @@ const openClaimForProcessing = async (claimId: string) => {
 
 ---
 
-## Complete Example: Process Claim Flow
+## Processing (Processor Portal)
 
-```typescript
-// 1. Fetch claims to process
-const claims = await fetchClaimsToProcess('unprocessed');
-console.log('Claims to process:', claims.total_claims);
+Processors can take the following actions on an individual claim:
 
-// 2. Select a claim to process
-const claimId = claims.claims[0].claim_id;
+- View full claim details, financials, and supporting documents
+- Update the claim status when processing is complete (available statuses depend on the hospital's configuration; see below)
 
-// 3. Check if claim is locked
-const lockStatus = await checkClaimLock(claimId);
-if (lockStatus.is_locked) {
-  console.log('Claim is locked by:', lockStatus.locked_by_name);
-  return;
-}
+### Processing Actions
 
-// 4. Fetch claim details for processing
-const claimDetails = await fetchClaimForProcessing(claimId);
-console.log('Claim details:', claimDetails.claim);
+| Status | Description |
+|--------|-------------|
+| `qc_clear` | Claim is approved (if hospital allows this option) |
+| `qc_query` | Processor needs additional information from the hospital |
+| `claim_approved` | Claim is approved (if hospital allows this option) |
+| `claim_denial` | Claim is denied (if hospital allows this option) |
+| `need_more_info` | Processor requests extra documents/info (if hospital allows this option) |
 
-// 5. Review the claim and make a decision
-// - Review patient_details
-// - Review payer_details
-// - Review provider_details
-// - Review bill_details
-// - Review documents
+> **Hospital-controlled status toggles**
+>
+> Each hospital can choose whether processors are allowed to use the optional statuses `need_more_info`, `claim_approved`, and `claim_denial`. These are stored on the hospital document as boolean fields:
+>
+> - `need_more_info_option`
+> - `claim_approved_option`
+> - `claim_denial_option`
+>
+> When a flag is set to `true`, the corresponding status appears in the processor UI and can be submitted. If `false` or missing, the status is hidden and any API request that tries to use it is rejected. Hospitals can update these toggles in Firestore (collection: `hospitals`, document: `<hospital_id>`).
 
-// 6. Process the claim
-const result = await processClaim(
-  claimId,
-  'qc_query',
-  'Please provide additional discharge summary documents.'
-);
+### QC Query workflow requirements
 
-console.log('Processing result:', result.message);
+When a processor raises a `qc_query` status, the following details are now mandatory:
 
-// 7. Refresh the claims list
-const updatedClaims = await fetchClaimsToProcess('unprocessed');
-```
+- **Issue Category:** select one or more predefined categories (e.g. Bill Enhancement, Supporting Reports, etc.)
+- **Repeat Issue:** indicate whether this is a repeat issue (`Yes` / `No`)
+- **Action Required by Onsite Team:** free-text description of what the onsite team needs to do
+- **Remarks (optional):** additional context for the query
+
+These inputs are captured on the `Process Claim` page and validated server-side. The information is saved on the claim (`qc_query_details`) and recorded in the transaction metadata for auditing. Bulk processing to `qc_query` is disabled because it requires this extra detail per claim.
+
+### Bulk Processing
+
+Processors can update multiple claims at once:
+
+- Status (`qc_clear`, `qc_query`, `claim_approved`, `claim_denial`, `need_more_info`)
+- Remarks (optional)
+- Backend locks each claim while processing to avoid races
+- Any errors or failures are returned in the `errors` array
+
+> **Note:** bulk processing for `qc_query` is not supported because the workflow requires the per-claim fields described above.
 
 ---
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -10,10 +10,44 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Check, ChevronsUpDown, X as CloseIcon } from 'lucide-react'
+import clsx from 'clsx'
 import { ArrowLeft, Save, Plus, X } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { claimsApi } from '@/services/claimsApi'
 import { PROCESSOR_APPROVAL_LIMITS } from '@/lib/routes'
+import { API_BASE_URL } from '@/lib/apiConfig'
+
+const ISSUE_CATEGORY_OPTIONS = [
+  'Bill Enhancement',
+  'Supporting Reports',
+  'Billing',
+  'ICP papers with Drug administration chart',
+  'Images',
+  'Outer pouch/Stickers/Invoice',
+  'Code correction',
+  'Chemo performing chart',
+  'Justification from treating Dr',
+  'Feedback form',
+  'Discharge summary',
+  'Valid ID card',
+  'Approval letter / Appendix-A',
+  'Discrepancy / Mismatch',
+  'OT Notes',
+  'Seal & Signature of competent authority',
+  'Blood transfusion chart',
+  'Demographic details',
+  'Warranty card details'
+]
+
+const REPEAT_ISSUE_OPTIONS = [
+  { label: 'Yes', value: 'yes' },
+  { label: 'No', value: 'no' }
+]
+
+const normalizeCategory = (label: string) => label.trim()
 
 interface ClaimDetails {
   claim_id: string
@@ -23,6 +57,11 @@ interface ClaimDetails {
   updated_at?: string
   hospital_name: string
   created_by_email?: string
+  processor_options?: {
+    need_more_info_option?: boolean
+    claim_approved_option?: boolean
+    claim_denial_option?: boolean
+  }
   
   // Structured data sections from backend
   patient_details?: {
@@ -187,6 +226,13 @@ interface ClaimDetails {
   dispatched_at?: string
   dispatch_remarks?: string
   dispatch_tracking_number?: string
+  // QC Query details
+  qc_query_details?: {
+    issue_categories: string[];
+    repeat_issue: string;
+    action_required: string;
+    remarks: string;
+  }
 }
 
 interface Query {
@@ -209,8 +255,6 @@ interface ProcessingForm {
   new_query: string
 }
 
-const API_BASE_URL = 'https://claims-2.onrender.com'
-
 // Helper function to determine if a claim is already processed
 const isClaimProcessed = (claimStatus: string): boolean => {
   const processedStatuses = ['qc_query', 'qc_clear', 'claim_approved', 'claim_denial']
@@ -228,6 +272,21 @@ export default function ProcessClaimPage() {
   const [availableQueries, setAvailableQueries] = useState<string[]>([])
   const [transactions, setTransactions] = useState<any[]>([])
   const [transactionsLoading, setTransactionsLoading] = useState(false)
+  const [selectedIssueCategories, setSelectedIssueCategories] = useState<string[]>([])
+  const [repeatIssue, setRepeatIssue] = useState<string>('')
+  const [onsiteAction, setOnsiteAction] = useState<string>('')
+  const [issuePopoverOpen, setIssuePopoverOpen] = useState(false)
+  const normalizedIssueOptions = useMemo(
+    () => ISSUE_CATEGORY_OPTIONS.map(opt => ({
+      label: opt,
+      value: normalizeCategory(opt)
+    })),
+    []
+  )
+  const processorOptions = claim?.processor_options || {}
+  const allowNeedMoreInfo = !!processorOptions.need_more_info_option
+  const allowClaimApproved = !!processorOptions.claim_approved_option
+  const allowClaimDenial = !!processorOptions.claim_denial_option
   
   console.log('🔍 ProcessClaimPage component mounted')
   console.log('🔍 claimId:', claimId)
@@ -301,7 +360,7 @@ export default function ProcessClaimPage() {
         throw new Error('No authentication token found')
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/processor-routes/get-claim-details/${claimId}`, {
+      const response = await fetch(`${API_BASE_URL}/processor-routes/get-claim-details/${claimId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -333,11 +392,43 @@ export default function ProcessClaimPage() {
           }
         }
         
+        const processorOptions = data.claim?.processor_options || {}
+        const allowedStatuses = new Set(['qc_clear', 'qc_query'])
+        if (processorOptions.need_more_info_option) {
+          allowedStatuses.add('need_more_info')
+        }
+        if (processorOptions.claim_approved_option) {
+          allowedStatuses.add('claim_approved')
+        }
+        if (processorOptions.claim_denial_option) {
+          allowedStatuses.add('claim_denial')
+        }
+        
+        const initialStatus = allowedStatuses.has(data.claim?.claim_status)
+          ? data.claim.claim_status
+          : ''
+        
         setClaim(data.claim)
         setFormData(prev => ({
           ...prev,
-          status: data.claim.claim_status || 'pending'
+          status: initialStatus
         }))
+
+        const existingQueryDetails = data.claim?.qc_query_details
+        if (existingQueryDetails) {
+          setSelectedIssueCategories(
+            (existingQueryDetails.issue_categories || [])
+              .map((option: string) => normalizeCategory(option))
+              .filter((value: string) => normalizedIssueOptions.some(opt => opt.value === value))
+          )
+          setRepeatIssue(existingQueryDetails.repeat_issue || '')
+          setOnsiteAction(existingQueryDetails.action_required || '')
+        }
+        else {
+          setSelectedIssueCategories([])
+          setRepeatIssue('')
+          setOnsiteAction('')
+        }
         
         // Debug: Print creator information
         console.log('🔍 DEBUG: Creator info received:')
@@ -411,6 +502,13 @@ export default function ProcessClaimPage() {
       cqc_clear_date: '',
       queries: []
     }))
+
+    if (status !== 'qc_query') {
+      setSelectedIssueCategories([])
+      setRepeatIssue('')
+      setOnsiteAction('')
+      setIssuePopoverOpen(false)
+    }
   }
 
   const handleFieldChange = (field: keyof ProcessingForm, value: string | number) => {
@@ -461,7 +559,7 @@ export default function ProcessClaimPage() {
       }
 
       // Fallback: Use proxy endpoint with token as query parameter
-      const proxyUrl = `https://claims-2.onrender.com/api/v1/documents/proxy/${doc.document_id}?token=${encodeURIComponent(token)}`
+      const proxyUrl = `${API_BASE_URL}/api/v1/documents/proxy/${doc.document_id}?token=${encodeURIComponent(token)}`
       window.open(proxyUrl, '_blank')
       
     } catch (err: any) {
@@ -495,19 +593,33 @@ export default function ProcessClaimPage() {
         throw new Error('No authentication token found')
       }
 
-      // Send the actual status value to the backend
-      const requestData = {
+      if (formData.status === 'qc_query' && (!onsiteAction.trim() || selectedIssueCategories.length === 0 || !repeatIssue)) {
+        toast.error('Please complete the QC Query details before submitting.')
+        setProcessing(false)
+        return
+      }
+
+      const requestData: Record<string, any> = {
         status: formData.status,
         remarks: formData.remarks || ''
       }
 
+      if (formData.status === 'qc_query') {
+        requestData.query_details = {
+          issue_categories: selectedIssueCategories,
+          repeat_issue: repeatIssue,
+          action_required: onsiteAction.trim(),
+          remarks: formData.remarks || ''
+        }
+      }
+
       console.log('🔍 Sending claim update request:', {
-        url: `${API_BASE_URL}/api/processor-routes/process-claim/${claimId}`,
+        url: `${API_BASE_URL}/processor-routes/process-claim/${claimId}`,
         data: requestData,
         formData: formData
       })
 
-      const response = await fetch(`${API_BASE_URL}/api/processor-routes/process-claim/${claimId}`, {
+      const response = await fetch(`${API_BASE_URL}/processor-routes/process-claim/${claimId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -552,7 +664,7 @@ export default function ProcessClaimPage() {
       }
 
       console.log('🔍 Unlocking claim:', claimId)
-      const response = await fetch(`${API_BASE_URL}/api/processor-routes/unlock-claim/${claimId}`, {
+      const response = await fetch(`${API_BASE_URL}/processor-routes/unlock-claim/${claimId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -681,26 +793,151 @@ export default function ProcessClaimPage() {
                   <SelectContent>
                     <SelectItem value="qc_clear">QC Clear</SelectItem>
                     <SelectItem value="qc_query">QC Query</SelectItem>
-                    <SelectItem value="claim_approved">Claim Approved</SelectItem>
-                    <SelectItem value="claim_denial">Claim Denial</SelectItem>
-                    <SelectItem value="need_more_info">Need More Info</SelectItem>
+                    {allowClaimApproved && (
+                      <SelectItem value="claim_approved">Claim Approved</SelectItem>
+                    )}
+                    {allowClaimDenial && (
+                      <SelectItem value="claim_denial">Claim Denial</SelectItem>
+                    )}
+                    {allowNeedMoreInfo && (
+                      <SelectItem value="need_more_info">Need More Info</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="remarks">Processing Remarks</Label>
-                <Textarea
-                  id="remarks"
-                  placeholder="Enter remarks..."
-                  value={formData.remarks}
-                  onChange={(e) => handleFieldChange('remarks', e.target.value)}
-                  rows={3}
-                />
-              </div>
+              {formData.status !== 'qc_query' && (
+                <div>
+                  <Label htmlFor="remarks">Processing Remarks</Label>
+                  <Textarea
+                    id="remarks"
+                    placeholder="Enter remarks..."
+                    value={formData.remarks}
+                    onChange={(e) => handleFieldChange('remarks', e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              )}
             </div>
+            {formData.status === 'qc_query' && (
+              <div className="grid grid-cols-1 gap-6 border rounded-lg p-4 bg-white">
+                <div>
+                  <Label>Issue Category <span className="text-red-500">*</span></Label>
+                  <p className="text-sm text-gray-500 mb-2">Select one or more categories relevant to the query.</p>
+                  <Popover open={issuePopoverOpen} onOpenChange={setIssuePopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={issuePopoverOpen}
+                        className="w-full justify-between"
+                      >
+                        {selectedIssueCategories.length > 0
+                          ? `${selectedIssueCategories.length} option(s) selected`
+                          : 'Select issue categories'}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[320px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search issue categories..." />
+                        <CommandEmpty>No issue category found.</CommandEmpty>
+                        <CommandList>
+                          <CommandGroup>
+                            {normalizedIssueOptions.map(option => {
+                              const selected = selectedIssueCategories.includes(option.value)
+                              return (
+                                <CommandItem
+                                  key={option.value}
+                                  onSelect={() => {
+                                    setSelectedIssueCategories(prev => {
+                                      if (prev.includes(option.value)) {
+                                        return prev.filter(item => item !== option.value)
+                                      }
+                                      return [...prev, option.value]
+                                    })
+                                  }}
+                                >
+                                  <Check
+                                    className={clsx(
+                                      'mr-2 h-4 w-4',
+                                      selected ? 'opacity-100' : 'opacity-0'
+                                    )}
+                                  />
+                                  {option.label}
+                                </CommandItem>
+                              )
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  {selectedIssueCategories.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {selectedIssueCategories.map(category => {
+                        const optionLabel = ISSUE_CATEGORY_OPTIONS.find(opt => normalizeCategory(opt) === category) || category
+                        return (
+                          <span
+                            key={category}
+                            className="inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium px-3 py-1"
+                          >
+                            {optionLabel}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedIssueCategories(prev => prev.filter(item => item !== category))}
+                              className="ml-1 rounded-full hover:bg-blue-200"
+                              aria-label={`Remove ${optionLabel}`}
+                            >
+                              <CloseIcon className="h-3 w-3" />
+                            </button>
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Is this a repeat issue? <span className="text-red-500">*</span></Label>
+                    <Select value={repeatIssue} onValueChange={setRepeatIssue}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an option" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {REPEAT_ISSUE_OPTIONS.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Action Required by Onsite Team <span className="text-red-500">*</span></Label>
+                  <Textarea
+                    placeholder="Describe the action required from the onsite team"
+                    value={onsiteAction}
+                    onChange={(event) => setOnsiteAction(event.target.value)}
+                    rows={4}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">This field is mandatory when raising a QC query.</p>
+                </div>
+
+                <div>
+                  <Label>Remarks</Label>
+                  <Textarea
+                    placeholder="Add any additional context for the query"
+                    value={formData.remarks}
+                    onChange={(event) => handleFieldChange('remarks', event.target.value)}
+                    rows={3}
+                  />
+                </div>
+              </div>
+            )}
             <Button 
               onClick={handleSubmit}
-              disabled={processing || !formData.status}
+              disabled={processing || !formData.status || (formData.status === 'qc_query' && (!onsiteAction.trim() || selectedIssueCategories.length === 0 || !repeatIssue))}
               className="w-full"
             >
               {processing ? 'Processing...' : 'Submit Processing'}
