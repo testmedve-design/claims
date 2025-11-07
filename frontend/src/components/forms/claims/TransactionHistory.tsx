@@ -138,6 +138,53 @@ export function TransactionHistory({ transactions }: TransactionHistoryProps) {
       },
     },
     {
+      accessorKey: 'metadata',
+      header: 'QC Query Summary',
+      cell: ({ row }) => {
+        const metadata = row.original.metadata
+        if (!metadata || !metadata.query_details) {
+          return <span className="text-xs text-gray-400">-</span>
+        }
+
+        const details = metadata.query_details
+        const issueCategories: string[] = details.issue_categories || []
+        const repeatIssue = details.repeat_issue
+        const actionRequired = details.action_required
+
+        return (
+          <div className="text-xs space-y-2 text-gray-700">
+            {issueCategories.length > 0 && (
+              <div>
+                <span className="font-semibold text-gray-600">Issue Categories:</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {issueCategories.map((category) => (
+                    <span
+                      key={category}
+                      className="inline-flex items-center gap-1 rounded-full bg-orange-100 text-orange-700 px-2 py-0.5"
+                    >
+                      {category}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {repeatIssue && (
+              <div>
+                <span className="font-semibold text-gray-600">Repeat Issue:</span>{' '}
+                <span className="uppercase">{repeatIssue}</span>
+              </div>
+            )}
+            {actionRequired && (
+              <div>
+                <span className="font-semibold text-gray-600">Action Required:</span>
+                <p className="mt-1 whitespace-pre-line text-gray-600">{actionRequired}</p>
+              </div>
+            )}
+          </div>
+        )
+      },
+    },
+    {
       accessorKey: 'performed_at',
       header: ({ column }) => {
         return (

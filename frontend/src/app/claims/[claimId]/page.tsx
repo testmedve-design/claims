@@ -21,6 +21,8 @@ import { ProviderDetailsDisplay } from '@/components/forms/claims/ProviderDetail
 import { BillDetailsDisplay } from '@/components/forms/claims/BillDetailsDisplay'
 import { TransactionHistory } from '@/components/forms/claims/TransactionHistory'
 import { ProcessorInfo } from '@/components/forms/claims/ProcessorInfo'
+import { API_BASE_URL } from '@/lib/apiConfig'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function ClaimDetailsPage() {
   const params = useParams()
@@ -53,6 +55,12 @@ export default function ClaimDetailsPage() {
   const [contactPersonName, setContactPersonName] = useState('')
   const [contactPersonPhone, setContactPersonPhone] = useState('')
   const [submittingDispatch, setSubmittingDispatch] = useState(false)
+  const [qcQueryDetails, setQcQueryDetails] = useState<{
+    issue_categories: string[]
+    repeat_issue?: string
+    action_required?: string
+    remarks?: string
+  } | null>(null)
 
   useEffect(() => {
     if (claimId) {
@@ -120,7 +128,7 @@ export default function ClaimDetailsPage() {
       console.log('🔍 Token from localStorage:', token ? 'Token exists' : 'No token found')
       console.log('🔍 Token length:', token ? token.length : 0)
       
-      const response = await fetch(`https://claims-2.onrender.com/api/v1/claims/get-claim/${claimId}`, {
+      const response = await fetch(`${API_BASE_URL}/v1/claims/get-claim/${claimId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -146,6 +154,7 @@ export default function ClaimDetailsPage() {
       setError('Failed to fetch claim details')
     } finally {
       setLoading(false)
+      setQcQueryDetails(claim?.qc_query_details || null)
     }
   }
 
@@ -191,7 +200,7 @@ export default function ClaimDetailsPage() {
       formData.append('document_type', 'query_response')
       formData.append('document_name', `Query Response - ${file.name}`)
 
-      const response = await fetch('https://claims-2.onrender.com/api/v1/documents/upload', {
+      const response = await fetch(`${API_BASE_URL}/v1/documents/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -232,7 +241,7 @@ export default function ClaimDetailsPage() {
         setUploadingFiles(false)
       }
       
-      const response = await fetch(`https://claims-2.onrender.com/api/v1/claims/answer-query/${claimId}`, {
+      const response = await fetch(`${API_BASE_URL}/v1/claims/answer-query/${claimId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -332,7 +341,7 @@ export default function ClaimDetailsPage() {
       }
 
       // Use proxy endpoint to serve document content directly
-      const proxyUrl = `https://claims-2.onrender.com/api/v1/documents/proxy/${doc.document_id}`
+      const proxyUrl = `${API_BASE_URL}/v1/documents/proxy/${doc.document_id}`
       
       // Open document in new tab using proxy endpoint
       window.open(proxyUrl, '_blank')
@@ -396,6 +405,45 @@ export default function ClaimDetailsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {qcQueryDetails && (
+        <Alert className="border-orange-300 bg-orange-50">
+          <AlertDescription className="space-y-3 text-sm text-gray-700">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-orange-200 text-orange-800">
+                QC Query Raised
+              </Badge>
+              <span className="font-medium text-orange-900">Processor requires additional information</span>
+            </div>
+            <div>
+              <span className="font-semibold">Issue Categories:</span>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {(qcQueryDetails.issue_categories || []).map((category) => (
+                  <span key={category} className="inline-flex items-center text-xs font-medium bg-white border border-orange-200 text-orange-700 rounded-full px-3 py-1">
+                    {category}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {qcQueryDetails.repeat_issue && (
+              <div>
+                <span className="font-semibold">Repeat Issue:</span> {qcQueryDetails.repeat_issue.toUpperCase()}
+              </div>
+            )}
+            {qcQueryDetails.action_required && (
+              <div>
+                <span className="font-semibold">Action Required by Onsite Team:</span>
+                <p className="mt-1 whitespace-pre-line">{qcQueryDetails.action_required}</p>
+              </div>
+            )}
+            {qcQueryDetails.remarks && (
+              <div>
+                <span className="font-semibold">Processor Remarks:</span>
+                <p className="mt-1 whitespace-pre-line">{qcQueryDetails.remarks}</p>
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
