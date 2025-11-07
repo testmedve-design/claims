@@ -9,6 +9,7 @@ from firebase_admin import firestore
 from datetime import datetime
 import uuid
 from utils.transaction_helper import create_transaction, TransactionType
+from utils.notification_client import get_notification_client
 
 new_claim_bp = Blueprint('new_claim', __name__)
 
@@ -112,6 +113,22 @@ def submit_claim():
                 'payer_name': data.get('payer_name')
             }
         )
+        
+        # Send notification for pending claim
+        try:
+            notification_client = get_notification_client()
+            actor_name = getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or request.user_email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
+            notification_client.notify_pending(
+                claim_id=claim_id,
+                claim_data=claim_document,
+                actor_id=request.user_id,
+                actor_name=actor_name,
+                actor_email=request.user_email
+            )
+        except Exception as e:
+            # Log but don't fail the request if notification fails
+            import logging
+            logging.error(f"Failed to send pending notification for claim {claim_id}: {str(e)}")
         
         return jsonify({
             'success': True,

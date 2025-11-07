@@ -40,6 +40,9 @@ class Config:
     
     # Database settings
     FIRESTORE_DATABASE_ID = os.environ.get('FIRESTORE_DATABASE_ID', '(default)')
+    
+    # Notification service configuration
+    NOTIFICATION_SERVICE_URL = os.environ.get('NOTIFICATION_SERVICE_URL', '')
 
 class DevelopmentConfig(Config):
     """Development configuration"""
