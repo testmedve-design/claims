@@ -5,6 +5,8 @@ interface BillDetailsDisplayProps {
 }
 
 export function BillDetailsDisplay({ data }: BillDetailsDisplayProps) {
+  const dialysisBills = Array.isArray(data?.dialysis_bills) ? data.dialysis_bills : []
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -81,6 +83,37 @@ export function BillDetailsDisplay({ data }: BillDetailsDisplayProps) {
           </div>
         )}
       </div>
+
+      {dialysisBills.length > 0 && (
+        <div className="space-y-3 rounded-lg border border-blue-100 bg-blue-50/50 p-4">
+          <h4 className="text-base font-semibold text-blue-900">Dialysis Session Bills</h4>
+          <div className="space-y-2">
+            {dialysisBills.map((bill: any, index: number) => (
+              <div
+                key={`${bill.bill_number || 'bill'}-${bill.bill_date || index}`}
+                className="flex flex-col justify-between gap-2 rounded-md bg-white p-3 shadow-sm sm:flex-row sm:items-center"
+              >
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    #{bill.bill_number || `Bill ${index + 1}`}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {bill.bill_date
+                      ? new Date(bill.bill_date).toLocaleDateString('en-IN')
+                      : 'No date provided'}
+                  </p>
+                </div>
+                <p className="text-sm font-semibold text-blue-700">
+                  ₹{Number(bill.bill_amount || 0).toLocaleString('en-IN', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

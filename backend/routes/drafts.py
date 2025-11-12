@@ -419,6 +419,7 @@ def submit_draft(draft_id):
         
         # Get form data
         form_data = draft_data.get('form_data', {})
+        submission_mode = form_data.pop('submission_mode', draft_data.get('submission_mode', 'submit'))
         
         # Validate required fields for submission
         required_fields = [
@@ -487,6 +488,7 @@ def submit_draft(draft_id):
             'show_in_preauth': draft_data.get('show_in_preauth', False),
             'show_in_reimb': draft_data.get('show_in_reimb', False),
             'created_in_module': draft_data.get('created_in_module', 'claims'),
+            'submission_mode': submission_mode,
             
             # Patient Details
             'patient_details': {

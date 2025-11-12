@@ -69,6 +69,12 @@ export interface ClaimFormData {
     uploaded: boolean
     file?: File
   }>
+  submission_mode?: 'submit' | 'proceed_for_qc'
+  dialysis_bills?: Array<{
+    bill_number: string
+    bill_date: string
+    bill_amount: number
+  }>
 }
 
 export interface Specialty {

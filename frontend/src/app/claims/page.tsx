@@ -22,12 +22,28 @@ import { PayerDetailsSection } from '@/components/forms/claims/PayerDetailsSecti
 import { ProviderDetailsSection } from '@/components/forms/claims/ProviderDetailsSection'
 import { BillDetailsSection } from '@/components/forms/claims/BillDetailsSection'
 import { DocumentDisplay } from '@/components/forms/claims/DocumentDisplay'
-import { DocumentUpload } from '@/components/forms/claims/DocumentUpload'
 import { PageHeader } from '@/components/forms/claims/PageHeader'
 import { ReviewStep } from '@/components/forms/claims/ReviewStep'
 
 import { CheckCircle2, AlertCircle, UserCircle, CreditCard, Building2, Receipt, FileCheck } from 'lucide-react'
 import { API_BASE_URL } from '@/lib/apiConfig'
+
+type SubmissionMode = 'submit' | 'proceed_for_qc'
+
+const parseBooleanOption = (value: unknown): boolean | null => {
+  if (value === undefined || value === null) return null
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (normalized === 'true') return true
+    if (normalized === 'false') return false
+  }
+  if (typeof value === 'number') {
+    if (Number.isNaN(value)) return null
+    return value !== 0
+  }
+  return null
+}
 
 export default function ClaimsPage() {
   const { user } = useAuth()
@@ -56,7 +72,6 @@ export default function ClaimsPage() {
   const [loadingData, setLoadingData] = useState(true)
   
   // Document checklist states
-  const [showDocumentChecklist, setShowDocumentChecklist] = useState(false)
   const [checklistComplete, setChecklistComplete] = useState(true)
   const [checklistMeta, setChecklistMeta] = useState({
     requiredCount: 0,
@@ -65,7 +80,14 @@ export default function ClaimsPage() {
     hasChecklist: false
   })
   const [checklistDocuments, setChecklistDocuments] = useState<any[]>([])
-  const [manualDocuments, setManualDocuments] = useState<any[]>([])
+  const [submissionOptions, setSubmissionOptions] = useState<{
+    submitOption: boolean | null
+    proceedForQcOption: boolean | null
+  }>({
+    submitOption: null,
+    proceedForQcOption: null
+  })
+  const [activeSubmissionMode, setActiveSubmissionMode] = useState<SubmissionMode | null>(null)
 
   const combinedDocuments = useMemo(() => {
     const mergeMap = new Map<string, any>()
@@ -75,18 +97,14 @@ export default function ClaimsPage() {
     checklistDocuments.forEach(doc => {
       mergeMap.set(makeKey(doc), doc)
     })
-    manualDocuments.forEach(doc => {
-      mergeMap.set(makeKey(doc), doc)
-    })
 
     return Array.from(mergeMap.values())
-  }, [checklistDocuments, manualDocuments])
+  }, [checklistDocuments])
 
   const handleChecklistMetaChange = useCallback((meta: typeof checklistMeta) => {
     setChecklistMeta(meta)
-    if (meta.requiredCount === 0) {
-      setChecklistComplete(true)
-    }
+    const isComplete = meta.requiredCount === 0 || meta.checkedRequiredCount === meta.requiredCount
+    setChecklistComplete(isComplete)
   }, [])
   
   // Get hospital ID from logged-in user
@@ -130,6 +148,8 @@ export default function ClaimsPage() {
   const watchedDateOfBirth = form.watch('date_of_birth')
   const watchedAge = form.watch('age')
   const watchedAgeUnit = form.watch('age_unit')
+  const watchedClaimType = form.watch('claim_type')
+  const watchedDialysisBills = form.watch('dialysis_bills')
   const watchedTotalBill = form.watch('total_bill_amount')
   const watchedPatientDiscount = form.watch('patient_discount_amount')
   const watchedAmountPaidByPatient = form.watch('amount_paid_by_patient')
@@ -265,16 +285,29 @@ export default function ClaimsPage() {
   }, [watchedAmountChargedToPayer, watchedMouDiscount])
 
   useEffect(() => {
+    if (watchedClaimType !== 'DIALYSIS') {
+      return
+    }
+    const totalFromDialysisBills = (watchedDialysisBills || []).reduce((sum: number, bill: any) => {
+      const amount = Number(bill?.bill_amount)
+      return sum + (Number.isFinite(amount) ? amount : 0)
+    }, 0)
+
+    const roundedTotal = Number(totalFromDialysisBills.toFixed(2))
+    if (Number.isNaN(roundedTotal)) {
+      return
+    }
+
+    if (Math.abs((watchedTotalBill || 0) - roundedTotal) > 0.01) {
+      form.setValue('total_bill_amount', roundedTotal, { shouldDirty: true })
+    }
+  }, [watchedClaimType, watchedDialysisBills, watchedTotalBill, form])
+
+  useEffect(() => {
     if (watchedPayerType && watchedPayerType !== 'TPA') {
       form.setValue('insurer_name', '')
     }
   }, [watchedPayerType])
-
-  useEffect(() => {
-    if (watchedPayerName) {
-      setShowDocumentChecklist(true)
-    }
-  }, [watchedPayerName])
 
   useEffect(() => {
     if (watchedBeneficiaryType) {
@@ -333,7 +366,12 @@ export default function ClaimsPage() {
         fetch(`${API_BASE_URL}/resources/ward-types`, { headers })
       ])
 
-      if (!specialtiesRes.ok || !payersRes.ok || !insurersRes.ok || !wardsRes.ok) {
+      if (
+        !specialtiesRes.ok ||
+        !payersRes.ok ||
+        !insurersRes.ok ||
+        !wardsRes.ok
+      ) {
         throw new Error('One or more API calls failed')
       }
 
@@ -360,6 +398,28 @@ export default function ClaimsPage() {
         )
         
         setWards(uniqueWards)
+      }
+
+      try {
+        const hospitalConfigRes = await fetch(`${API_BASE_URL}/resources/hospital-config?hospital_id=${hospitalId}`, { headers })
+        if (hospitalConfigRes.ok) {
+          const hospitalConfigData = await hospitalConfigRes.json()
+          if (hospitalConfigData.success && hospitalConfigData.config) {
+            const config = hospitalConfigData.config
+            setSubmissionOptions({
+              submitOption: parseBooleanOption(config.submit_option),
+              proceedForQcOption: parseBooleanOption(config.proceed_for_qc_option)
+            })
+          }
+        } else {
+          console.warn('Failed to load hospital submission configuration', await hospitalConfigRes.text())
+        }
+      } catch (configError) {
+        console.warn('Error fetching hospital submission configuration', configError)
+        setSubmissionOptions({
+          submitOption: null,
+          proceedForQcOption: null
+        })
       }
     } catch (error) {
       console.error('Error fetching initial data:', error)
@@ -479,10 +539,6 @@ export default function ClaimsPage() {
             documents: documents
           })
 
-          if (draftData.payer_name) {
-            setShowDocumentChecklist(true)
-          }
-
           toast({
             title: "Success",
             description: `Resuming: ${draftData.patient_name || 'Untitled Draft'}`
@@ -576,7 +632,7 @@ export default function ClaimsPage() {
     }
   }
 
-  const onSubmit = async (formValues: ClaimFormValues) => {
+  const onSubmit = async (formValues: ClaimFormValues, mode: SubmissionMode) => {
     try {
       if (checklistMeta.hasChecklist && checklistMeta.requiredCount > 0 && !checklistComplete) {
         toast({
@@ -603,7 +659,8 @@ export default function ClaimsPage() {
         amount_charged_to_payer: Number(formValues.amount_charged_to_payer) || 0,
         mou_discount_amount: Number(formValues.mou_discount_amount) || 0,
         claimed_amount: Number(formValues.claimed_amount) || 0,
-        documents: combinedDocuments
+        documents: combinedDocuments,
+        submission_mode: mode
       }
 
       const result = await claimsApi.submitClaim(submissionData as any)
@@ -643,12 +700,11 @@ export default function ClaimsPage() {
       
       toast({
         title: "Success",
-        description: `Claim submitted successfully. Claim ID: ${result.claim_id}`
+        description: `${mode === 'proceed_for_qc' ? 'Claim forwarded for QC' : 'Claim submitted'} successfully. Claim ID: ${result.claim_id}`
       })
 
       form.reset(defaultClaimFormValues)
       setChecklistDocuments([])
-      setManualDocuments([])
       setChecklistMeta({
         requiredCount: 0,
         checkedRequiredCount: 0,
@@ -656,7 +712,6 @@ export default function ClaimsPage() {
         hasChecklist: false
       })
       setChecklistComplete(true)
-      setShowDocumentChecklist(false)
       setOpenAccordion(['patient'])
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error) {
@@ -668,6 +723,22 @@ export default function ClaimsPage() {
       })
     }
   }
+
+  const handleSubmitAction = async (mode: SubmissionMode) => {
+    setActiveSubmissionMode(mode)
+    try {
+      await form.handleSubmit((values) => onSubmit(values, mode))()
+    } finally {
+      setActiveSubmissionMode(null)
+    }
+  }
+
+  const isSubmitting = form.formState.isSubmitting
+  const submitEnabled = submissionOptions.submitOption === true
+  const proceedEnabled = submissionOptions.proceedForQcOption === true
+  const showSubmitButton = submitEnabled
+  const showProceedButton =
+    proceedEnabled || (!submitEnabled && submissionOptions.proceedForQcOption === null)
 
   if (loadingDraft) {
     return (
@@ -689,7 +760,7 @@ export default function ClaimsPage() {
       <PageHeader />
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit((values) => onSubmit(values, 'submit'))} className="space-y-6">
           <Card className="border-0 shadow-sm">
               <Accordion
                 type="multiple"
@@ -815,11 +886,6 @@ export default function ClaimsPage() {
                         </AlertDescription>
                       </Alert>
                     )}
-                    <DocumentUpload
-                      payerName={watchedPayerName}
-                      specialty={watchedSpecialty}
-                      onDocumentsUploaded={setManualDocuments}
-                    />
                   </AccordionContent>
                 </AccordionItem>
 
@@ -875,13 +941,26 @@ export default function ClaimsPage() {
                   >
                     Cancel
                   </Button>
-                  <Button
-                    onClick={form.handleSubmit(onSubmit)}
-                    disabled={form.formState.isSubmitting}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
-                  >
-                    {form.formState.isSubmitting ? 'Submitting...' : 'Submit Claim'}
-                  </Button>
+                  {showSubmitButton && (
+                    <Button
+                      type="button"
+                      onClick={() => handleSubmitAction('submit')}
+                      disabled={isSubmitting}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+                    >
+                      {isSubmitting && activeSubmissionMode === 'submit' ? 'Submitting...' : 'Submit Claim'}
+                    </Button>
+                  )}
+                  {showProceedButton && (
+                    <Button
+                      type="button"
+                      onClick={() => handleSubmitAction('proceed_for_qc')}
+                      disabled={isSubmitting}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+                    >
+                      {isSubmitting && activeSubmissionMode === 'proceed_for_qc' ? 'Proceeding...' : 'Proceed for QC'}
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
