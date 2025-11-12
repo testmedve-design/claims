@@ -12,6 +12,8 @@ A comprehensive hospital claims management system built with Flask (Python) back
 - **Authentication**: Role-based access control with Firebase Auth
 - **Workflow Management**: Inbox system for claim processing
 - **User Management**: Complete user administration system
+- **Letter Generation**: Processor actions auto-generate approval, denial, and need-more-info letters that can be downloaded from transaction history
+- **Dispute Resolution**: Hospital users can answer queries, supply additional information, or contest denials with supporting documents
 
 ### ✅ API Modules (9 Complete Modules)
 1. **Authentication API** - User login and token management
@@ -150,6 +152,16 @@ FIREBASE_CREDENTIALS_PATH=ServiceAccountKey.json
 FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
 ```
 
+For the frontend, create `frontend/.env.local` (or set the variables in your hosting environment):
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your-web-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=1234567890
+NEXT_PUBLIC_FIREBASE_APP_ID=1:1234567890:web:abcdef123456
+```
+
 ### Firebase Setup
 1. Create a Firebase project
 2. Enable Firestore Database
@@ -181,6 +193,7 @@ FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
 │   ├── start_backend.sh          # Backend startup script
 │   └── start_frontend.sh         # Frontend startup script
 └── README.md                     # This file
+└── docs/CHANGELOG.md             # Recent feature updates and release notes
 ```
 
 ## 🚀 Deployment

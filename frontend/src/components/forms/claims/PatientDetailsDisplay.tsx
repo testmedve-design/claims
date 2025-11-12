@@ -5,6 +5,43 @@ interface PatientDetailsDisplayProps {
 }
 
 export function PatientDetailsDisplay({ data }: PatientDetailsDisplayProps) {
+  const ageUnitLabels: Record<string, string> = {
+    DAYS: 'days',
+    MONTHS: 'months',
+    YRS: 'yrs',
+  }
+
+  const renderAgeValue = () => {
+    const ageValue = data?.age
+    const unit = data?.age_unit
+
+    if (ageValue !== undefined && ageValue !== null && ageValue !== '') {
+      const numericAge = Number(ageValue)
+      const label = ageUnitLabels[unit] || 'yrs'
+      if (!Number.isNaN(numericAge)) {
+        return `${numericAge} ${label}`
+      }
+      return `${ageValue} ${label}`
+    }
+
+    if (data?.date_of_birth) {
+      const dob = new Date(data.date_of_birth)
+      if (!Number.isNaN(dob.getTime())) {
+        const today = new Date()
+        let age = today.getFullYear() - dob.getFullYear()
+        const monthDiff = today.getMonth() - dob.getMonth()
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+          age -= 1
+        }
+        if (age >= 0) {
+          return `${age} yrs`
+        }
+      }
+    }
+
+    return 'N/A'
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -14,8 +51,21 @@ export function PatientDetailsDisplay({ data }: PatientDetailsDisplayProps) {
         </div>
 
         <div>
+          <span className="text-sm font-medium text-gray-500">Date of Birth</span>
+          <p className="mt-1">
+            {data?.date_of_birth
+              ? new Date(data.date_of_birth).toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })
+              : 'N/A'}
+          </p>
+        </div>
+
+        <div>
           <span className="text-sm font-medium text-gray-500">Age</span>
-          <p className="mt-1">{data?.age || 'N/A'} {data?.age_unit || ''}</p>
+          <p className="mt-1">{renderAgeValue()}</p>
         </div>
 
         <div>

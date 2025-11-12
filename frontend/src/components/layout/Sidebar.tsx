@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { useNotifications } from '@/contexts/NotificationsContext'
 import {
   ChevronDown,
   ChevronRight,
@@ -14,7 +15,9 @@ import {
   Menu,
   FileText,
   Activity,
-  BarChart3
+  BarChart3,
+  Bell,
+  CheckCircle2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -43,19 +46,41 @@ interface NavItem {
   badge?: string
   children?: NavItem[]
   divider?: boolean // Add divider after this item
+  exact?: boolean
 }
 
-const getNavigationItems = (userRole: string): NavItem[] => {
+const getNavigationItems = (userRole: string, unreadCount: number): NavItem[] => {
+  const notificationsBadge = unreadCount > 99 ? '99+' : unreadCount > 0 ? String(unreadCount) : undefined
   // Different navigation based on user role
-  if (userRole === 'claim_processor' || userRole === 'claim_processor_l4') {
-    // Claim processors only see Processor Inbox and Profile
+  const processorRoles = [
+    'claim_processor',
+    'claim_processor_l1',
+    'claim_processor_l2',
+    'claim_processor_l3',
+    'claim_processor_l4',
+  ]
+
+  const reportsNavItem: NavItem = {
+    title: 'Reports',
+    href: '/reports',
+    icon: BarChart3,
+    divider: true,
+  }
+
+  if (processorRoles.includes(userRole)) {
     return [
+      {
+        title: 'Notifications',
+        href: '/notifications',
+        icon: Bell,
+        badge: notificationsBadge,
+      },
       {
         title: 'Processor Inbox',
         href: '/processor-inbox',
         icon: Activity,
-        divider: true,
       },
+      reportsNavItem,
       {
         title: 'Profile',
         href: '/profile',
@@ -63,14 +88,39 @@ const getNavigationItems = (userRole: string): NavItem[] => {
       },
     ]
   } else if (userRole === 'rm' || userRole === 'reconciler') {
-    // RM and Reconciler users see RM Inbox and Profile (same functionality)
     return [
+      {
+        title: 'Notifications',
+        href: '/notifications',
+        icon: Bell,
+        badge: notificationsBadge,
+      },
       {
         title: 'RM Inbox',
         href: '/rm-inbox',
         icon: Activity,
-        divider: true,
       },
+      reportsNavItem,
+      {
+        title: 'Profile',
+        href: '/profile',
+        icon: User,
+      },
+    ]
+  } else if (userRole === 'review_request') {
+    return [
+      {
+        title: 'Review Inbox',
+        href: '/review-request-inbox',
+        icon: Activity,
+        exact: true,
+      },
+      {
+        title: 'Reviewed Claims',
+        href: '/review-request-inbox/reviewed',
+        icon: CheckCircle2,
+      },
+      reportsNavItem,
       {
         title: 'Profile',
         href: '/profile',
@@ -78,9 +128,14 @@ const getNavigationItems = (userRole: string): NavItem[] => {
       },
     ]
   } else {
-    // Regular hospital users see Claims, Drafts, Claims Inbox, and Profile
     return [
-       {
+      {
+        title: 'Notifications',
+        href: '/notifications',
+        icon: Bell,
+        badge: notificationsBadge,
+      },
+      {
         title: 'Claims Inbox',
         href: '/claims-inbox',
         icon: Activity,        
@@ -90,11 +145,7 @@ const getNavigationItems = (userRole: string): NavItem[] => {
         href: '/claims',
         icon: FileText,
       },
-      {
-        title: 'Reports',
-        href: '/reports',
-        icon: BarChart3,
-      },
+      reportsNavItem,
       {
         title: 'Drafts',
         href: '/drafts',
@@ -114,6 +165,8 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggle, isMobi
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout } = useAuth()
+  const searchParams = useSearchParams()
+  const { unreadCount } = useNotifications()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const [isMounted, setIsMounted] = useState(false)
 
@@ -131,8 +184,19 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggle, isMobi
     }
   }
 
-  const isActive = (href: string) => {
-    return pathname === href || pathname.startsWith(href + '/')
+  const isActive = (item: NavItem) => {
+    const [baseHref, queryString] = item.href.split('?')
+    const pathMatches = item.exact ? pathname === baseHref : (pathname === baseHref || pathname.startsWith(baseHref + '/'))
+    if (!pathMatches) return false
+    if (!queryString || !searchParams) return pathMatches
+
+    const desiredParams = new URLSearchParams(queryString)
+    for (const [key, value] of desiredParams.entries()) {
+      if ((searchParams.get(key) || '') !== value) {
+        return false
+      }
+    }
+    return true
   }
 
   const handleSignOut = () => {
@@ -143,7 +207,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggle, isMobi
   const NavItemComponent = ({ item, level = 0 }: { item: NavItem; level?: number }) => {
     const hasChildren = item.children && item.children.length > 0
     const isExpanded = expandedItems.includes(item.title)
-    const active = isActive(item.href)
+    const active = isActive(item)
 
     if (hasChildren) {
       return (
@@ -192,7 +256,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggle, isMobi
                     active ? "text-white" : "text-foreground group-hover:text-primary"
                   )}>{item.title}</span>
                   {item.badge && (
-                    <Badge variant="secondary" className="ml-auto">
+                    <Badge variant="destructive" className="ml-auto bg-red-500 hover:bg-red-600 text-white font-semibold min-w-[20px] h-5 flex items-center justify-center px-1.5 animate-pulse">
                       {item.badge}
                     </Badge>
                   )}
@@ -245,7 +309,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggle, isMobi
                 active ? "text-white" : "text-foreground group-hover:text-primary"
               )}>{item.title}</span>
               {item.badge && (
-                <Badge variant="secondary" className="ml-auto">
+                <Badge variant="destructive" className="ml-auto bg-red-500 hover:bg-red-600 text-white font-semibold min-w-[20px] h-5 flex items-center justify-center px-1.5 animate-pulse">
                   {item.badge}
                 </Badge>
               )}
@@ -373,7 +437,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggle, isMobi
             isMounted && (isCollapsed ? "px-2" : "px-4")
           )}>
             <div className="space-y-2">
-              {getNavigationItems(user?.role || '').map((item, index) => (
+              {getNavigationItems(user?.role || '', unreadCount).map((item, index) => (
                 <div key={item.title}>
                   <NavItemComponent item={item} />
                   {item.divider && (

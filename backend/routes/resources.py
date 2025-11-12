@@ -30,20 +30,40 @@ def get_payers():
         affiliations_docs = affiliations_query.get()
         
         payers = []
+        payer_details_cache = {}
         for doc in affiliations_docs:
             affiliation_data = doc.to_dict()
             affiliated_payers = affiliation_data.get('affiliated_payers', [])
             
             # Extract payer information from affiliations
             for payer_affiliation in affiliated_payers:
+                payer_id = payer_affiliation.get('payer_id')
+                payer_details = {}
+
+                if payer_id:
+                    if payer_id in payer_details_cache:
+                        payer_details = payer_details_cache[payer_id]
+                    else:
+                        payer_doc = db.collection('payers').document(payer_id).get()
+                        if payer_doc.exists:
+                            payer_details = payer_doc.to_dict() or {}
+                            payer_details_cache[payer_id] = payer_details
+                        else:
+                            payer_details_cache[payer_id] = {}
+                
                 payer_data = {
-                    'payer_id': payer_affiliation.get('payer_id'),
+                    'payer_id': payer_id,
                     'payer_name': payer_affiliation.get('payer_name'),
                     'payer_type': payer_affiliation.get('payer_type'),
                     'payer_code': payer_affiliation.get('payer_code'),
                     'affiliated_at': payer_affiliation.get('affiliated_at'),
                     'affiliated_by': payer_affiliation.get('affiliated_by'),
-                    'affiliated_by_email': payer_affiliation.get('affiliated_by_email')
+                    'affiliated_by_email': payer_affiliation.get('affiliated_by_email'),
+                    'to_address': payer_details.get('to_address'),
+                    'address': payer_details.get('address'),
+                    'city': payer_details.get('city'),
+                    'state': payer_details.get('state'),
+                    'pincode': payer_details.get('pincode')
                 }
                 payers.append(payer_data)
         

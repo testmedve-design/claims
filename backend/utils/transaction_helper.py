@@ -23,6 +23,10 @@ class TransactionType:
     CLEARED = "CLEARED"
     DISPATCHED = "DISPATCHED"
     UPDATED = "UPDATED"
+    CONTESTED = "CONTESTED"
+    REVIEWED = "REVIEWED"
+    REVIEW_STATUS_UPDATED = "REVIEW_STATUS_UPDATED"
+    ESCALATED = "ESCALATED"
 
 def create_transaction(
     claim_id,
@@ -101,7 +105,7 @@ def create_transaction(
             transaction_data['metadata'] = metadata
         
         # Create transaction document in claim's subcollection
-        db.collection('claims').document(claim_id).collection('transactions').document(transaction_id).set(transaction_data)
+        db.collection('direct_claims').document(claim_id).collection('transactions').document(transaction_id).set(transaction_data)
         
         return transaction_id
         
@@ -122,7 +126,7 @@ def get_claim_transactions(claim_id, limit=None):
     """
     try:
         db = get_firestore()
-        query = db.collection('claims').document(claim_id).collection('transactions').order_by('performed_at', direction=firestore.Query.DESCENDING)
+        query = db.collection('direct_claims').document(claim_id).collection('transactions').order_by('performed_at', direction=firestore.Query.DESCENDING)
         
         if limit:
             query = query.limit(limit)

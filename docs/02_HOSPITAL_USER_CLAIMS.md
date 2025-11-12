@@ -72,7 +72,6 @@ const fetchClaims = async () => {
       "claimed_amount": 50000,
       "total_bill_amount": 60000,
       "hospital_name": "City Hospital",
-      "submission_date": "2025-10-23T13:06:06.961000+00:00",
       "created_at": "2025-10-23T13:06:06.961000+00:00",
       "created_by_email": "user@hospital.com",
       "created_by_name": "Jane Smith",
@@ -136,7 +135,6 @@ const fetchClaimDetails = async (claimId: string) => {
     "claim_id": "CSHLSIP-20251023-2",
     "claim_status": "qc_query",
     "created_at": "2025-10-23T13:06:06.961000+00:00",
-    "submission_date": "2025-10-23T13:06:06.961000+00:00",
     "hospital_name": "City Hospital",
     "created_by_email": "user@hospital.com",
     "created_by_name": "Jane Smith",
@@ -147,7 +145,9 @@ const fetchClaimDetails = async (claimId: string) => {
     "processed_at": "2025-10-24T10:30:00.000000+00:00",
     "form_data": {
       "patient_name": "John Doe",
+      "date_of_birth": "1979-04-15",
       "age": 45,
+      "age_unit": "YRS",
       "gender": "Male",
       "id_card_type": "Aadhar",
       "id_card_number": "1234-5678-9012",
@@ -164,8 +164,9 @@ const fetchClaimDetails = async (claimId: string) => {
       "patient_registration_number": "REG001",
       "specialty": "Cardiology",
       "doctor": "Dr. Smith",
-      "treatment_line": "Medical Management",
-      "claim_type": "Inpatient",
+      "treatment_line": "MEDICAL",
+      "policy_type": "FAMILY",
+      "claim_type": "INPATIENT",
       "hospitalization_type": "Emergency",
       "admission_type": "Emergency",
       "ward_type": "General Ward",
@@ -215,7 +216,9 @@ Content-Type: application/json
 ```json
 {
   "patient_name": "John Doe",
+  "date_of_birth": "1979-04-15",
   "age": 45,
+  "age_unit": "YRS",
   "gender": "Male",
   "id_card_type": "Aadhar",
   "id_card_number": "1234-5678-9012",
@@ -236,8 +239,9 @@ Content-Type: application/json
   "patient_registration_number": "REG001",
   "specialty": "Cardiology",
   "doctor": "Dr. Smith",
-  "treatment_line": "Medical Management",
-  "claim_type": "Inpatient",
+  "treatment_line": "MEDICAL",
+  "policy_type": "FAMILY",
+  "claim_type": "INPATIENT",
   "service_start_date": "2025-10-20",
   "service_end_date": "2025-10-23",
   "inpatient_number": "IP001",
@@ -260,10 +264,13 @@ Content-Type: application/json
 }
 ```
 
+> **Patient Age / DOB Requirement**  
+> Provide either `date_of_birth` **or** both `age` and `age_unit`. If `date_of_birth` is supplied, the system auto-calculates age and stores it with units; if only age/unit is provided the backend derives a DOB.
+
 **Required Fields**:
-- patient_name, age, gender, id_card_type, beneficiary_type, relationship
+- patient_name, (date_of_birth **or** age + age_unit), gender, id_card_type, beneficiary_type, relationship
 - payer_patient_id, authorization_number, total_authorized_amount, payer_type, payer_name
-- patient_registration_number, specialty, doctor, treatment_line, claim_type
+- patient_registration_number, specialty, doctor, treatment_line, policy_type, claim_type
 - service_start_date, service_end_date, inpatient_number, admission_type
 - hospitalization_type, ward_type, final_diagnosis, treatment_done
 - bill_number, bill_date, total_bill_amount, claimed_amount

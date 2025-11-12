@@ -6,6 +6,26 @@ interface ProviderDetailsDisplayProps {
 }
 
 export function ProviderDetailsDisplay({ data, hospitalName }: ProviderDetailsDisplayProps) {
+  const claimTypeLabels: Record<string, string> = {
+    INPATIENT: 'Inpatient',
+    DIALYSIS: 'Dialysis',
+    KIMO: 'Kimo',
+    OTHERS: 'Others',
+  }
+
+  const policyTypeLabels: Record<string, string> = {
+    FAMILY: 'Family',
+    GROUP: 'Group',
+    INDIVIDUAL: 'Individual',
+  }
+
+  const treatmentLineLabels: Record<string, string> = {
+    MEDICAL: 'Medical',
+    SURGICAL: 'Surgical',
+    INTENSIVE_CARE: 'Intensive Care',
+    NON_ALLOPATHY: 'Non Allopathy',
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -32,13 +52,18 @@ export function ProviderDetailsDisplay({ data, hospitalName }: ProviderDetailsDi
         </div>
 
         <div>
+          <span className="text-sm font-medium text-gray-500">Policy Type</span>
+          <p className="mt-1">{policyTypeLabels[data?.policy_type] || 'N/A'}</p>
+        </div>
+
+        <div>
           <span className="text-sm font-medium text-gray-500">Treatment Line</span>
-          <p className="mt-1">{data?.treatment_line || 'N/A'}</p>
+          <p className="mt-1">{treatmentLineLabels[data?.treatment_line] || data?.treatment_line || 'N/A'}</p>
         </div>
 
         <div>
           <span className="text-sm font-medium text-gray-500">Claim Type</span>
-          <p className="mt-1">{data?.claim_type || 'N/A'}</p>
+          <p className="mt-1">{claimTypeLabels[data?.claim_type] || 'N/A'}</p>
         </div>
 
         <div>

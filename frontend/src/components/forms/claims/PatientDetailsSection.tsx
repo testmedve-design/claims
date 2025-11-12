@@ -9,8 +9,8 @@ import {
   FormMessage,
   FormDescription,
 } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import type { ClaimFormValues } from '@/schemas/claimSchema'
 
 interface PatientDetailsSectionProps {
@@ -19,6 +19,7 @@ interface PatientDetailsSectionProps {
 }
 
 export function PatientDetailsSection({ form, watchedBeneficiaryType }: PatientDetailsSectionProps) {
+
   const getRelationshipOptions = () => {
     if (watchedBeneficiaryType === 'SELF' || watchedBeneficiaryType === 'SELF (Individual Policy)') {
       return ['SELF']
@@ -45,8 +46,34 @@ export function PatientDetailsSection({ form, watchedBeneficiaryType }: PatientD
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="date_of_birth"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Date of Birth</FormLabel>
+              <FormControl>
+                <Input
+                  type="date"
+                  placeholder="YYYY-MM-DD"
+                  {...field}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    field.onChange(value)
+
+                    if (!value) {
+                      form.setValue('age', undefined, { shouldDirty: true, shouldTouch: true })
+                    }
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="space-y-2">
-          <FormLabel>Age <span className="text-destructive">*</span></FormLabel>
+          <FormLabel>Age</FormLabel>
           <div className="flex gap-2">
             <FormField
               control={form.control}
@@ -54,11 +81,19 @@ export function PatientDetailsSection({ form, watchedBeneficiaryType }: PatientD
               render={({ field }) => (
                 <FormItem className="flex-1">
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      placeholder="Age" 
-                      {...field} 
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} 
+                    <Input
+                      type="number"
+                      placeholder="Age"
+                      value={field.value ?? ''}
+                      onChange={event => {
+                        const raw = event.target.value
+                        if (raw === '') {
+                          field.onChange(undefined)
+                          return
+                        }
+                        const parsed = Number(raw)
+                        field.onChange(Number.isNaN(parsed) ? undefined : parsed)
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -69,10 +104,12 @@ export function PatientDetailsSection({ form, watchedBeneficiaryType }: PatientD
               control={form.control}
               name="age_unit"
               render={({ field }) => (
-                <FormItem className="w-[120px]">
+                <FormItem className="w-[140px]">
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Units" />
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="DAYS">Days</SelectItem>

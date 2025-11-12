@@ -2,15 +2,144 @@
 Shared Claims Routes - For all authenticated users
 These routes handle general claim viewing and shared functionality
 """
-from flask import Blueprint, request, jsonify
+import csv
+from io import StringIO
+from datetime import datetime, timedelta
+
+from flask import Blueprint, request, jsonify, make_response
 from firebase_config import get_firestore
 from middleware import require_claims_access
 from firebase_admin import firestore
-from datetime import datetime
 from utils.transaction_helper import create_transaction, get_claim_transactions, TransactionType
 from utils.notification_client import get_notification_client
 
 claims_bp = Blueprint('claims', __name__)
+
+
+def _fetch_claims_for_user(status, limit, start_date, end_date, user_hospital_id, user_hospital_name, user_email):
+    db = get_firestore()
+
+    query = db.collection('direct_claims')
+
+    if status != 'all':
+        query = query.where('claim_status', '==', status)
+
+    if start_date:
+        start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
+        query = query.where('created_at', '>=', start_datetime)
+        print(f"DEBUG: Filtering from date: {start_date}")
+
+    if end_date:
+        end_datetime = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+        query = query.where('created_at', '<', end_datetime)
+        print(f"DEBUG: Filtering to date: {end_date}")
+
+    claims = query.get()
+
+    claims_list = []
+    excluded_count = 0
+    included_count = 0
+
+    for doc in claims:
+        claim_data = doc.to_dict()
+        claim_id = claim_data.get('claim_id', doc.id)
+
+        claim_hospital_id = (claim_data.get('hospital_id') or '').strip()
+        claim_hospital_name = (claim_data.get('hospital_name') or '').strip()
+
+        print(f"\n--- Checking Claim: {claim_id} ---")
+        print(f"  Claim Hospital ID: '{claim_hospital_id}'")
+        print(f"  Claim Hospital Name: '{claim_hospital_name}'")
+        print(f"  User Hospital ID: '{user_hospital_id}'")
+        print(f"  User Hospital Name: '{user_hospital_name}'")
+
+        belongs_to_user_hospital = False
+        match_reason = None
+
+        if claim_hospital_id and user_hospital_id and claim_hospital_id == user_hospital_id:
+            belongs_to_user_hospital = True
+            match_reason = "hospital_id exact match"
+            print("  ✓ MATCH: Hospital ID exact match")
+        elif claim_hospital_name and user_hospital_name and claim_hospital_name.upper() == user_hospital_name.upper():
+            belongs_to_user_hospital = True
+            match_reason = "hospital_name case-insensitive match"
+            print("  ✓ MATCH: Hospital Name match (case-insensitive)")
+        else:
+            print("  ✗ NO MATCH: Hospital mismatch")
+
+        if not belongs_to_user_hospital:
+            excluded_count += 1
+            print("  ❌ EXCLUDED: Different hospital")
+            continue
+
+        included_count += 1
+        print(f"  ✅ INCLUDED: {match_reason}")
+
+        is_draft = claim_data.get('is_draft', False)
+        status_value = claim_data.get('claim_status', '') or claim_data.get('status', '')
+        claim_id_value = claim_data.get('claim_id', doc.id)
+
+        if (is_draft is True or status_value == 'draft' or 'draft' in claim_id_value.lower()):
+            continue
+
+        if not (claim_id_value.startswith('CSHLSIP') or claim_id_value.startswith('CLS')):
+            print(f"DEBUG: Excluded claim {claim_id_value} - not a claim form submission")
+            continue
+
+        form_data = claim_data.get('form_data', {})
+        patient_name = (
+            form_data.get('patient_name', '') or
+            claim_data.get('email', '') or
+            claim_data.get('created_by_name', '')
+        )
+        claimed_amount = form_data.get('claimed_amount', '') or claim_data.get('total_bill_amount', '')
+        specialty = form_data.get('specialty', '') or claim_data.get('stage', '')
+
+        created_at = claim_data.get('created_at', '')
+        if hasattr(created_at, 'isoformat'):
+            created_at = created_at.isoformat()
+
+        submission_date = claim_data.get('submission_date', '')
+        if hasattr(submission_date, 'isoformat'):
+            submission_date = submission_date.isoformat()
+
+        claims_list.append({
+            'claim_id': claim_id_value,
+            'claim_status': status_value,
+            'created_at': str(created_at),
+            'submission_date': str(submission_date),
+            'patient_name': patient_name,
+            'claimed_amount': claimed_amount,
+            'specialty': specialty,
+            'hospital_name': claim_data.get('hospital_name', ''),
+            'hospital_id': claim_data.get('hospital_id', ''),
+            'created_by_email': claim_data.get('created_by_email', '') or claim_data.get('email', '')
+        })
+
+    total_matched = len(claims_list)
+    if limit is not None:
+        claims_list = claims_list[:limit]
+
+    print(f"\n{'='*80}")
+    print("FILTERING SUMMARY:")
+    print(f"  User Email: {user_email}")
+    print(f"  Total claims queried: {len(claims)}")
+    print(f"  Included (matching hospital): {included_count}")
+    print(f"  Excluded (different hospital): {excluded_count}")
+    print(f"  Final claims returned: {len(claims_list)} (limit={limit})")
+    print(f"{'='*80}\n")
+
+    debug_info = {
+        'user_hospital': user_hospital_name,
+        'user_hospital_id': user_hospital_id,
+        'total_queried': len(claims),
+        'included': included_count,
+        'excluded': excluded_count,
+        'returned': len(claims_list),
+        'limit_applied': limit is not None and len(claims_list) < total_matched
+    }
+
+    return claims_list, debug_info
 
 
 @claims_bp.route('/get-all-claims', methods=['GET'])
@@ -18,189 +147,258 @@ claims_bp = Blueprint('claims', __name__)
 def get_all_claims():
     """Get all claims - ALL ROLES (for viewing/listing)"""
     try:
-        db = get_firestore()
-        
-        # Get query parameters
-        status = request.args.get('status', 'all')  # Default to 'all' to show all claims
+        status = request.args.get('status', 'all')
         limit = int(request.args.get('limit', 50))
-        start_date = request.args.get('start_date')  # Format: YYYY-MM-DD
-        end_date = request.args.get('end_date')      # Format: YYYY-MM-DD
-        
-        # Get user's hospital information from request (set by middleware)
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
         user_hospital_id = getattr(request, 'hospital_id', '')
         user_hospital_name = getattr(request, 'hospital_name', '')
         user_email = getattr(request, 'user_email', '')
-        
+
         print(f"\n{'='*80}")
-        print(f"DEBUG GET-ALL-CLAIMS: User Info")
+        print("DEBUG GET-ALL-CLAIMS: User Info")
         print(f"  Email: {user_email}")
         print(f"  Hospital ID: '{user_hospital_id}'")
         print(f"  Hospital Name: '{user_hospital_name}'")
         print(f"{'='*80}\n")
-        
-        # CRITICAL: If hospital info is missing, return error
+
         if not user_hospital_id and not user_hospital_name:
             return jsonify({
                 'success': False,
                 'error': 'Hospital information not found for user. Please contact support.',
                 'details': 'User profile does not have proper hospital assignment'
             }), 400
-        
-        # Build query - filter by user's hospital and status
-        query = db.collection('claims')
-        
-        # TEMPORARILY DISABLED: Filter by claim_type = 'claims' to show only claims module submissions
-        # query = query.where('claim_type', '==', 'claims')
-        
-        if status != 'all':
-            query = query.where('claim_status', '==', status)
-        
-        # Apply date filtering if provided
-        if start_date:
-            from datetime import datetime
-            start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
-            query = query.where('created_at', '>=', start_datetime)
-            print(f"DEBUG: Filtering from date: {start_date}")
-        
-        if end_date:
-            from datetime import datetime
-            end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
-            # Add one day to include the entire end date
-            from datetime import timedelta
-            end_datetime = end_datetime + timedelta(days=1)
-            query = query.where('created_at', '<', end_datetime)
-            print(f"DEBUG: Filtering to date: {end_date}")
-        
-        # Get all claims first, then filter by hospital, then apply limit
-        claims = query.get()
-        
-        claims_list = []
-        excluded_count = 0
-        included_count = 0
-        
-        for doc in claims:
-            claim_data = doc.to_dict()
-            claim_id = claim_data.get('claim_id', doc.id)
-            
-            # HOSPITAL FILTERING: Only show claims from user's hospital
-            claim_hospital_id = (claim_data.get('hospital_id') or '').strip()
-            claim_hospital_name = (claim_data.get('hospital_name') or '').strip()
-            
-            print(f"\n--- Checking Claim: {claim_id} ---")
-            print(f"  Claim Hospital ID: '{claim_hospital_id}'")
-            print(f"  Claim Hospital Name: '{claim_hospital_name}'")
-            print(f"  User Hospital ID: '{user_hospital_id}'")
-            print(f"  User Hospital Name: '{user_hospital_name}'")
-            
-            # STRICT HOSPITAL FILTERING: Only show claims from user's hospital
-            belongs_to_user_hospital = False
-            match_reason = None
-            
-            # Check hospital_id match (case-sensitive, exact match)
-            if claim_hospital_id and user_hospital_id:
-                if claim_hospital_id == user_hospital_id:
-                    belongs_to_user_hospital = True
-                    match_reason = "hospital_id exact match"
-                    print(f"  ✓ MATCH: Hospital ID exact match")
-                else:
-                    print(f"  ✗ NO MATCH: Hospital ID mismatch ('{claim_hospital_id}' != '{user_hospital_id}')")
-            
-            # Check hospital_name match (case-insensitive)
-            if claim_hospital_name and user_hospital_name:
-                if claim_hospital_name.upper() == user_hospital_name.upper():
-                    belongs_to_user_hospital = True
-                    match_reason = "hospital_name case-insensitive match"
-                    print(f"  ✓ MATCH: Hospital Name match (case-insensitive)")
-                else:
-                    print(f"  ✗ NO MATCH: Hospital Name mismatch ('{claim_hospital_name}' != '{user_hospital_name}')")
-            
-            # EXCLUDE claims from different hospitals - STRICT FILTERING
-            if not belongs_to_user_hospital:
-                excluded_count += 1
-                print(f"  ❌ EXCLUDED: Different hospital")
-                print(f"     Claim: '{claim_hospital_name}' (ID: {claim_hospital_id})")
-                print(f"     User: '{user_hospital_name}' (ID: {user_hospital_id})")
-                continue
-            
-            included_count += 1
-            print(f"  ✅ INCLUDED: {match_reason}")
-            
-            # Filter out drafts - only check explicit draft indicators
-            is_draft = claim_data.get('is_draft', False)
-            status = claim_data.get('claim_status', '') or claim_data.get('status', '')
-            claim_id = claim_data.get('claim_id', doc.id)
-            
-            # Skip only if explicitly marked as draft (handle "NOT_SET" values)
-            if (is_draft == True or 
-                status == 'draft' or
-                'draft' in claim_id.lower()):
-                continue  # Skip drafts
-            
-            # ONLY SHOW CLAIMS FROM CLAIM FORM (CSHLSIP or CLS prefix)
-            if not (claim_id.startswith('CSHLSIP') or claim_id.startswith('CLS')):
-                print(f"DEBUG: Excluded claim {claim_id} - not a claim form submission")
-                continue
-            
-            # Include claims with "NOT_SET" status as they might be valid claims
-            # TODO: Update these claims to have proper status
-            
-            # Handle different data structures
-            form_data = claim_data.get('form_data', {})
-            
-            # Try to get patient name from form_data first, then from direct fields
-            patient_name = form_data.get('patient_name', '') or claim_data.get('email', '') or claim_data.get('created_by_name', '')
-            
-            # Try to get claimed amount from form_data first, then from direct fields
-            claimed_amount = form_data.get('claimed_amount', '') or claim_data.get('total_bill_amount', '')
-            
-            # Try to get specialty from form_data first, then from direct fields
-            specialty = form_data.get('specialty', '') or claim_data.get('stage', '')
-            
-            claims_list.append({
-                'claim_id': claim_data.get('claim_id', doc.id),
-                'claim_status': claim_data.get('claim_status', '') or claim_data.get('status', ''),
-                'created_at': str(claim_data.get('created_at', '')),
-                'submission_date': str(claim_data.get('submission_date', '')),
-                'patient_name': patient_name,
-                'claimed_amount': claimed_amount,
-                'specialty': specialty,
-                'hospital_name': claim_data.get('hospital_name', ''),
-                'created_by_email': claim_data.get('created_by_email', '') or claim_data.get('email', '')
-            })
-        
-        # Apply limit after filtering
-        claims_list = claims_list[:limit]
-        
-        print(f"\n{'='*80}")
-        print(f"FILTERING SUMMARY:")
-        print(f"  Total claims queried: {len(claims)}")
-        print(f"  Included (matching hospital): {included_count}")
-        print(f"  Excluded (different hospital): {excluded_count}")
-        print(f"  Final claims returned: {len(claims_list)}")
-        print(f"{'='*80}\n")
-        
+
+        claims_list, debug_info = _fetch_claims_for_user(
+            status=status,
+            limit=limit,
+            start_date=start_date,
+            end_date=end_date,
+            user_hospital_id=user_hospital_id,
+            user_hospital_name=user_hospital_name,
+            user_email=user_email
+        )
+
         return jsonify({
             'success': True,
             'total_claims': len(claims_list),
             'claims': claims_list,
-            'debug': {
-                'user_hospital': user_hospital_name,
-                'total_queried': len(claims),
-                'included': included_count,
-                'excluded': excluded_count
-            }
+            'debug': debug_info
         }), 200
-        
+
     except Exception as e:
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
 
-@claims_bp.route('/get-claim/<claim_id>', methods=['GET'])
+@claims_bp.route('/contest-denial/<claim_id>', methods=['POST'])
 @require_claims_access
-def get_claim(claim_id):
-    """Get specific claim details - ALL ROLES"""
+def contest_denial(claim_id):
+    """Contest a denied claim - HOSPITAL USERS ONLY"""
+    try:
+        data = request.get_json()
+        contest_reason = (data.get('contest_reason') or '').strip()
+        uploaded_files = data.get('uploaded_files', [])
+
+        if not contest_reason and not uploaded_files:
+            return jsonify({
+                'success': False,
+                'error': 'Please provide a contest reason or upload supporting documents'
+            }), 400
+
+        db = get_firestore()
+
+        # Locate claim (claims or direct_claims collection)
+        claim_ref = db.collection('claims').document(claim_id)
+        claim_doc = claim_ref.get()
+
+        if not claim_doc.exists:
+            claim_ref = db.collection('direct_claims').document(claim_id)
+            claim_doc = claim_ref.get()
+
+            if not claim_doc.exists:
+                return jsonify({
+                    'success': False,
+                    'error': 'Claim not found'
+                }), 404
+
+        claim_data = claim_doc.to_dict() or {}
+        canonical_claim_id = claim_data.get('claim_id') or claim_id
+        canonical_claim_id = claim_data.get('claim_id') or claim_id
+
+        if source_collection != 'claims':
+            claims_ref = db.collection('claims').document(canonical_claim_id)
+        current_status = claim_data.get('claim_status')
+
+        if current_status != 'claim_denial':
+            return jsonify({
+                'success': False,
+                'error': f'This claim cannot be contested. Current status: {current_status or "unknown"}'
+            }), 400
+
+        user_name = getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User'
+        timestamp = firestore.SERVER_TIMESTAMP
+
+        update_data = {
+            'claim_status': 'claim_contested',
+            'contest_reason': contest_reason,
+            'contest_submitted_by': request.user_id,
+            'contest_submitted_by_email': request.user_email,
+            'contest_submitted_by_name': user_name,
+            'contest_submitted_at': timestamp,
+            'updated_at': timestamp
+        }
+
+        if uploaded_files:
+            update_data['contest_supporting_files'] = uploaded_files
+
+        claim_ref.update(update_data)
+
+        transaction_metadata = {
+            'contest_reason': contest_reason,
+            'uploaded_files_count': len(uploaded_files or [])
+        }
+
+        create_transaction(
+            claim_id=claim_id,
+            transaction_type=TransactionType.CONTESTED,
+            performed_by=request.user_id,
+            performed_by_email=request.user_email,
+            performed_by_name=user_name,
+            performed_by_role='hospital_user',
+            previous_status=current_status,
+            new_status='claim_contested',
+            remarks=contest_reason,
+            metadata=transaction_metadata
+        )
+
+        try:
+            notification_client = get_notification_client()
+            updated_claim_data = {**claim_data, **update_data}
+            notification_client.notify_claim_contested(
+                claim_id=claim_id,
+                claim_data=updated_claim_data,
+                hospital_user_id=request.user_id,
+                hospital_user_name=user_name,
+                hospital_user_email=request.user_email,
+                contest_reason=contest_reason,
+                uploaded_files=uploaded_files
+            )
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to send contest notification for claim {claim_id}: {str(e)}")
+
+        return jsonify({
+            'success': True,
+            'message': 'Contest submitted successfully',
+            'claim_id': claim_id,
+            'new_status': 'claim_contested'
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@claims_bp.route('/export', methods=['GET'])
+@require_claims_access
+def export_claims():
+    """Export claims as CSV for the authenticated hospital user."""
+    try:
+        status = request.args.get('status', 'all')
+        limit_param = request.args.get('limit', '1000')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        limit: int | None
+        if limit_param == 'all':
+            limit = None
+        else:
+            try:
+                limit = int(limit_param)
+            except ValueError:
+                limit = 1000
+
+        user_hospital_id = getattr(request, 'hospital_id', '')
+        user_hospital_name = getattr(request, 'hospital_name', '')
+        user_email = getattr(request, 'user_email', '')
+
+        if not user_hospital_id and not user_hospital_name:
+            return jsonify({
+                'success': False,
+                'error': 'Hospital information not found for user. Please contact support.',
+                'details': 'User profile does not have proper hospital assignment'
+            }), 400
+
+        claims_list, debug_info = _fetch_claims_for_user(
+            status=status,
+            limit=limit,
+            start_date=start_date,
+            end_date=end_date,
+            user_hospital_id=user_hospital_id,
+            user_hospital_name=user_hospital_name,
+            user_email=user_email
+        )
+
+        if not claims_list:
+            return jsonify({
+                'success': False,
+                'error': 'No claims found for the specified filters'
+            }), 404
+
+        csv_buffer = StringIO()
+        writer = csv.writer(csv_buffer)
+        headers = [
+            'Claim ID',
+            'Status',
+            'Patient Name',
+            'Claimed Amount',
+            'Specialty',
+            'Hospital Name',
+            'Hospital ID',
+            'Created By (Email)',
+            'Created At',
+            'Submission Date'
+        ]
+        writer.writerow(headers)
+
+        for claim in claims_list:
+            writer.writerow([
+                claim.get('claim_id', ''),
+                claim.get('claim_status', ''),
+                claim.get('patient_name', ''),
+                claim.get('claimed_amount', ''),
+                claim.get('specialty', ''),
+                claim.get('hospital_name', ''),
+                claim.get('hospital_id', ''),
+                claim.get('created_by_email', ''),
+                claim.get('created_at', ''),
+                claim.get('submission_date', '')
+            ])
+
+        csv_buffer.seek(0)
+        filename_date = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"claims_report_{filename_date}.csv"
+
+        response = make_response(csv_buffer.getvalue())
+        response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['X-Report-Records'] = str(len(claims_list))
+        response.headers['X-Report-Debug'] = str(debug_info)
+
+        return response
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+def _generate_claim_details_response(claim_id: str, *, skip_hospital_check: bool = False):
     try:
         # Debug: Check what token is being received
         auth_header = request.headers.get('Authorization', '')
@@ -208,30 +406,59 @@ def get_claim(claim_id):
         
         db = get_firestore()
         
-        # Get the claim by searching for the claim_id field
-        claims_query = db.collection('claims').where('claim_id', '==', claim_id)
-        claims_docs = claims_query.get()
-        
-        if not claims_docs:
-            return jsonify({
+        normalized_claim_id = str(claim_id).replace('CSHLSIP ', 'CSHLSIP-').replace('CLS ', 'CLS-').replace('  ', ' ').replace(' ', '-')
+        print(f"DEBUG get_claim: raw='{claim_id}' normalized='{normalized_claim_id}'")
+
+        direct_claims = (
+            db.collection('direct_claims')
+            .where('claim_id', '>=', normalized_claim_id)
+            .where('claim_id', '<=', normalized_claim_id + '\uf8ff')
+            .limit(1)
+            .get()
+        )
+        claim_doc = direct_claims[0] if direct_claims else None
+
+        if not claim_doc:
+            fallback_ids = {
+                str(claim_id),
+                normalized_claim_id,
+                str(claim_id).replace(' ', '-'),
+                str(claim_id).replace(' ', ''),
+                str(claim_id).upper(),
+                str(claim_id).lower(),
+            }
+
+            for fallback_id in fallback_ids:
+                doc_candidate = db.collection('direct_claims').document(fallback_id).get()
+                if doc_candidate.exists:
+                    claim_doc = doc_candidate
+                    break
+
+        if not claim_doc:
+            claims_collection = db.collection('claims').document(str(claim_id)).get()
+            if claims_collection.exists:
+                claim_doc = claims_collection
+
+        if not claim_doc:
+            return 404, {
                 'success': False,
                 'error': 'Claim not found'
-            }), 404
+            }
         
-        # Get the first matching claim
-        claim_doc = claims_docs[0]
         claim_data = claim_doc.to_dict()
+        claim_doc_id = claim_doc.id
+        source_collection = 'direct_claims'
         
         # HOSPITAL FILTERING: Check if user can access this claim
         user_hospital_id = getattr(request, 'hospital_id', '')
         user_hospital_name = getattr(request, 'hospital_name', '')
         user_role = getattr(request, 'user_role', '')
         
-        claim_hospital_id = claim_data.get('hospital_id', '')
-        claim_hospital_name = claim_data.get('hospital_name', '')
+        claim_hospital_id = claim_data.get('hospital_id', '') or claim_data.get('hospital', {}).get('id', '')
+        claim_hospital_name = claim_data.get('hospital_name', '') or claim_data.get('hospital', {}).get('name', '')
         
         # Check if claim belongs to user's hospital (except for processors who can see from affiliated hospitals)
-        if user_role not in ['claim_processor', 'claim_processor_l4']:
+        if (not skip_hospital_check) and user_role not in ['claim_processor', 'claim_processor_l4']:
             belongs_to_user_hospital = (
                 (claim_hospital_id and claim_hospital_id == user_hospital_id) or
                 (claim_hospital_name and user_hospital_name and 
@@ -239,13 +466,60 @@ def get_claim(claim_id):
             )
             
             if not belongs_to_user_hospital:
-                return jsonify({
+                return 403, {
                     'success': False,
                     'error': 'Access denied - claim belongs to different hospital'
-                }), 403
+                }
         
         # Get documents for this claim
         documents = claim_data.get('documents', [])
+        if not documents and source_collection == 'direct_claims':
+            # Check if documents stored in nested structure
+            documents = claim_data.get('document_uploads', [])
+        
+        # Resolve payer details (address for cover letter)
+        payer_details = {}
+        form_data = claim_data.get('form_data', {}) or {}
+        payer_name = (form_data.get('payer_name') or '').strip()
+        hospital_id_for_payer = claim_hospital_id or user_hospital_id
+        if payer_name and hospital_id_for_payer:
+            affiliation_doc_id = f'{hospital_id_for_payer}_payers'
+            try:
+                affiliation_doc = db.collection('payer_affiliations').document(affiliation_doc_id).get()
+                if affiliation_doc.exists:
+                    affiliation_data = affiliation_doc.to_dict() or {}
+                    affiliated_payers = affiliation_data.get('affiliated_payers', []) or []
+                    matched_payer_id = None
+                    for payer in affiliated_payers:
+                        if (payer.get('payer_name') or '').strip().lower() == payer_name.lower():
+                            matched_payer_id = payer.get('payer_id')
+                            payer_details.update({
+                                'payer_id': matched_payer_id,
+                                'payer_name': payer.get('payer_name'),
+                                'payer_type': payer.get('payer_type'),
+                                'payer_code': payer.get('payer_code'),
+                                'affiliated_at': payer.get('affiliated_at'),
+                                'affiliated_by': payer.get('affiliated_by'),
+                                'affiliated_by_email': payer.get('affiliated_by_email')
+                            })
+                            break
+                    if matched_payer_id:
+                        payer_doc = db.collection('payers').document(matched_payer_id).get()
+                        if payer_doc.exists:
+                            payer_doc_data = payer_doc.to_dict() or {}
+                            payer_details.update({
+                                'to_address': payer_doc_data.get('to_address'),
+                                'address': payer_doc_data.get('address'),
+                                'city': payer_doc_data.get('city'),
+                                'state': payer_doc_data.get('state'),
+                                'pincode': payer_doc_data.get('pincode'),
+                                'contact_person': payer_doc_data.get('contact_person'),
+                                'contact_phone': payer_doc_data.get('contact_phone'),
+                                'contact_email': payer_doc_data.get('contact_email')
+                            })
+            except Exception as payer_lookup_error:
+                print(f"⚠️ Warning: Failed to fetch payer details for '{payer_name}': {payer_lookup_error}")
+                payer_details = payer_details or {}
         
         # Get detailed document information
         detailed_documents = []
@@ -268,7 +542,7 @@ def get_claim(claim_id):
                     })
         
         # Return claim information
-        return jsonify({
+        return 200, {
             'success': True,
             'claim': {
                 'claim_id': claim_data.get('claim_id', claim_id),
@@ -287,10 +561,27 @@ def get_claim(claim_id):
                 'processed_by_email': claim_data.get('processed_by_email', ''),
                 'processed_by_name': claim_data.get('processed_by_name', ''),
                 'processed_at': str(claim_data.get('processed_at', '')),
-                'documents': detailed_documents
+                'source_collection': source_collection,
+                'document_count': len(detailed_documents),
+                'documents': detailed_documents,
+                'payer_details': payer_details
             }
-        }), 200
+        }
         
+    except Exception as e:
+        return 500, {
+            'success': False,
+            'error': str(e)
+        }
+
+
+@claims_bp.route('/get-claim/<claim_id>', methods=['GET'])
+@require_claims_access
+def get_claim(claim_id):
+    """Get specific claim details - ALL ROLES"""
+    try:
+        status, payload = _generate_claim_details_response(claim_id, skip_hospital_check=False)
+        return jsonify(payload), status
     except Exception as e:
         return jsonify({
             'success': False,
@@ -309,12 +600,12 @@ def get_claims_stats():
         user_hospital_name = getattr(request, 'hospital_name', '')
         
         # Get all claims and filter by hospital in Python
-        qc_pending_all = db.collection('claims').where('claim_status', '==', 'qc_pending').where('is_draft', '==', False).get()
-        pending_all = db.collection('claims').where('claim_status', '==', 'pending').where('is_draft', '==', False).get()
-        approved_all = db.collection('claims').where('claim_status', '==', 'approved').where('is_draft', '==', False).get()
-        rejected_all = db.collection('claims').where('claim_status', '==', 'rejected').where('is_draft', '==', False).get()
-        queried_all = db.collection('claims').where('claim_status', '==', 'queried').where('is_draft', '==', False).get()
-        dispatched_all = db.collection('claims').where('claim_status', '==', 'dispatched').where('is_draft', '==', False).get()
+        qc_pending_all = db.collection('direct_claims').where('claim_status', '==', 'qc_pending').where('is_draft', '==', False).get()
+        pending_all = db.collection('direct_claims').where('claim_status', '==', 'pending').where('is_draft', '==', False).get()
+        approved_all = db.collection('direct_claims').where('claim_status', '==', 'approved').where('is_draft', '==', False).get()
+        rejected_all = db.collection('direct_claims').where('claim_status', '==', 'rejected').where('is_draft', '==', False).get()
+        queried_all = db.collection('direct_claims').where('claim_status', '==', 'queried').where('is_draft', '==', False).get()
+        dispatched_all = db.collection('direct_claims').where('claim_status', '==', 'dispatched').where('is_draft', '==', False).get()
         
         # Filter by hospital
         def filter_by_hospital(claims_list):
@@ -435,41 +726,70 @@ def answer_query(claim_id):
         db = get_firestore()
         
         # Get the claim
-        claim_doc = db.collection('claims').document(claim_id).get()
+        claim_ref = db.collection('claims').document(claim_id)
+        claim_doc = claim_ref.get()
+        claim_collection = 'claims'
+
         if not claim_doc.exists:
+            direct_claim_ref = db.collection('direct_claims').document(claim_id)
+            direct_claim_doc = direct_claim_ref.get()
+            
+            if not direct_claim_doc.exists:
+                return jsonify({
+                    'success': False,
+                    'error': 'Claim not found'
+                }), 404
+            
+            claim_ref = direct_claim_ref
+            claim_doc = direct_claim_doc
+            claim_collection = 'direct_claims'
+        
+        claim_data = claim_doc.to_dict() or {}
+        
+        current_status = claim_data.get('claim_status')
+        if current_status not in ['qc_query', 'need_more_info']:
             return jsonify({
                 'success': False,
-                'error': 'Claim not found'
-            }), 404
-        
-        claim_data = claim_doc.to_dict()
-        
-        # Check if claim is in qc_query status
-        if claim_data.get('claim_status') != 'qc_query':
-            return jsonify({
-                'success': False,
-                'error': 'This claim is not in query status. Current status: ' + claim_data.get('claim_status', 'unknown')
+                'error': f'This claim is not awaiting a response. Current status: {current_status or "unknown"}'
             }), 400
         
-        # Update claim with query response
-        update_data = {
-            'claim_status': 'qc_answered',
-            'query_response': query_response,
-            'query_answered_by': request.user_id,
-            'query_answered_by_email': request.user_email,
-            'query_answered_by_name': getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User',
-            'query_answered_at': firestore.SERVER_TIMESTAMP,
-            'updated_at': firestore.SERVER_TIMESTAMP
-        }
+        is_need_more_info = current_status == 'need_more_info'
+        user_name = getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User'
+        timestamp = firestore.SERVER_TIMESTAMP
         
-        # Add uploaded files to claim if any
-        if uploaded_files:
-            update_data['query_response_files'] = uploaded_files
+        # Prepare update data based on the status
+        if is_need_more_info:
+            new_status = 'qc_answered'
+            update_data = {
+                'claim_status': new_status,
+                'need_more_info_response': query_response,
+                'need_more_info_response_by': request.user_id,
+                'need_more_info_response_by_email': request.user_email,
+                'need_more_info_response_by_name': user_name,
+                'need_more_info_response_at': timestamp,
+                'updated_at': timestamp
+            }
+            if uploaded_files:
+                update_data['need_more_info_response_files'] = uploaded_files
+        else:
+            new_status = 'qc_answered'
+            update_data = {
+                'claim_status': new_status,
+                'query_response': query_response,
+                'query_answered_by': request.user_id,
+                'query_answered_by_email': request.user_email,
+                'query_answered_by_name': user_name,
+                'query_answered_at': timestamp,
+                'updated_at': timestamp
+            }
+            if uploaded_files:
+                update_data['query_response_files'] = uploaded_files
         
-        db.collection('claims').document(claim_id).update(update_data)
+        claim_ref.update(update_data)
         
         # Create transaction record
         transaction_metadata = {
+            'response_type': 'need_more_info' if is_need_more_info else 'qc_query',
             'query_response': query_response
         }
         if uploaded_files:
@@ -480,39 +800,49 @@ def answer_query(claim_id):
             transaction_type=TransactionType.ANSWERED,
             performed_by=request.user_id,
             performed_by_email=request.user_email,
-            performed_by_name=getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User',
+            performed_by_name=user_name,
             performed_by_role='hospital_user',
-            previous_status='qc_query',
-            new_status='qc_answered',
+            previous_status=current_status,
+            new_status=new_status,
             remarks=query_response,
             metadata=transaction_metadata
         )
         
-        # Send notification for QC answered
+        # Send notifications based on the flow
         try:
             notification_client = get_notification_client()
-            hospital_user_name = getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User'
-            # Update claim_data with new status
             updated_claim_data = {**claim_data, **update_data}
-            notification_client.notify_qc_answered(
-                claim_id=claim_id,
-                claim_data=updated_claim_data,
-                hospital_user_id=request.user_id,
-                hospital_user_name=hospital_user_name,
-                hospital_user_email=request.user_email,
-                query_response=query_response,
-                uploaded_files=uploaded_files
-            )
+            if is_need_more_info:
+                notification_client.notify_need_more_info_response(
+                    claim_id=claim_id,
+                    claim_data=updated_claim_data,
+                    hospital_user_id=request.user_id,
+                    hospital_user_name=user_name,
+                    hospital_user_email=request.user_email,
+                    response=query_response,
+                    uploaded_files=uploaded_files
+                )
+            else:
+                notification_client.notify_qc_answered(
+                    claim_id=claim_id,
+                    claim_data=updated_claim_data,
+                    hospital_user_id=request.user_id,
+                    hospital_user_name=user_name,
+                    hospital_user_email=request.user_email,
+                    query_response=query_response,
+                    uploaded_files=uploaded_files
+                )
         except Exception as e:
-            # Log but don't fail the request if notification fails
             import logging
-            logging.error(f"Failed to send qc_answered notification for claim {claim_id}: {str(e)}")
+            logging.error(f"Failed to send response notification for claim {claim_id}: {str(e)}")
+        
+        success_message = 'Additional information submitted successfully' if is_need_more_info else 'Query response submitted successfully'
         
         return jsonify({
             'success': True,
-            'message': 'Query response submitted successfully',
+            'message': success_message,
             'claim_id': claim_id,
-            'new_status': 'qc_answered'
+            'new_status': new_status
         }), 200
         
     except Exception as e:
@@ -540,15 +870,36 @@ def dispatch_claim(claim_id):
         
         db = get_firestore()
         
-        # Get the claim
-        claim_doc = db.collection('claims').document(claim_id).get()
+        # Get the claim (support both legacy `claims` and new `direct_claims` collections)
+        claims_ref = db.collection('claims').document(claim_id)
+        claim_doc = claims_ref.get()
+        source_collection = 'claims'
         if not claim_doc.exists:
-            return jsonify({
-                'success': False,
-                'error': 'Claim not found'
-            }), 404
+            direct_claims_ref = db.collection('direct_claims').document(claim_id)
+            claim_doc = direct_claims_ref.get()
+            source_collection = 'direct_claims'
+
+            if not claim_doc.exists:
+                # Fallback: search by `claim_id` field (some documents use generated IDs)
+                fallback = (
+                    db.collection('direct_claims')
+                    .where('claim_id', '==', claim_id)
+                    .limit(1)
+                    .get()
+                )
+                if fallback:
+                    claim_doc = fallback[0]
+                    direct_claims_ref = db.collection('direct_claims').document(claim_doc.id)
+                    source_collection = 'direct_claims'
+                else:
+                    return jsonify({
+                        'success': False,
+                        'error': 'Claim not found'
+                    }), 404
+        else:
+            direct_claims_ref = db.collection('direct_claims').document(claim_id)
         
-        claim_data = claim_doc.to_dict()
+        claim_data = claim_doc.to_dict() or {}
         
         # Check if claim is in qc_clear status (cleared by processor)
         if claim_data.get('claim_status') != 'qc_clear':
@@ -565,7 +916,8 @@ def dispatch_claim(claim_id):
             'dispatched_by_name': getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or 'Unknown User',
             'dispatched_at': firestore.SERVER_TIMESTAMP,
             'updated_at': firestore.SERVER_TIMESTAMP,
-            'dispatch_mode': dispatch_mode
+            'dispatch_mode': dispatch_mode,
+            'review_status': 'REVIEW PENDING'
         }
         
         # Add optional dispatch information
@@ -589,7 +941,37 @@ def dispatch_claim(claim_id):
             if contact_person_phone:
                 update_data['contact_person_phone'] = contact_person_phone
         
-        db.collection('claims').document(claim_id).update(update_data)
+        # Persist updates to the primary collection
+        if source_collection == 'claims':
+            claims_ref.update(update_data)
+        else:
+            direct_claims_ref.update(update_data)
+
+        # Mirror updates across collections to keep data in sync
+        try:
+            # Update `claims` collection if the primary document was in `direct_claims`
+            if source_collection == 'direct_claims':
+                mirror_claim_ref = db.collection('claims').document(canonical_claim_id)
+                if mirror_claim_ref.get().exists:
+                    mirror_claim_ref.update(update_data)
+            else:
+                # Primary document was in `claims`; ensure `direct_claims` reflects the same status
+                direct_doc = direct_claims_ref.get()
+                if direct_doc.exists:
+                    direct_claims_ref.update(update_data)
+                else:
+                    # Handle documents stored under generated IDs
+                    fallback = (
+                        db.collection('direct_claims')
+                        .where('claim_id', '==', canonical_claim_id)
+                        .limit(1)
+                        .get()
+                    )
+                    if fallback:
+                        db.collection('direct_claims').document(fallback[0].id).update(update_data)
+        except Exception as sync_error:
+            # Log and continue without failing the dispatch if mirror updates fail
+            print(f"⚠️ Dispatch mirror update failed for claim {claim_id}: {sync_error}")
         
         # Create transaction record
         transaction_metadata = {

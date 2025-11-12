@@ -5,8 +5,17 @@ export const claimFormSchema = z.object({
   // Patient Details
   patient_name: z.string().min(2, 'Patient name must be at least 2 characters'),
   patient_id: z.string().optional(),
-  age: z.coerce.number().min(0, 'Age must be 0 or greater'),
-  age_unit: z.enum(['DAYS', 'MONTHS', 'YRS']),
+  date_of_birth: z
+    .union([
+      z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date of birth must be in YYYY-MM-DD format'),
+      z.literal('')
+    ])
+    .optional(),
+  age: z
+    .number()
+    .min(0, 'Age must be 0 or greater')
+    .optional(),
+  age_unit: z.enum(['DAYS', 'MONTHS', 'YRS']).optional(),
   gender: z.string().min(1, 'Gender is required'),
   id_card_type: z.string().min(1, 'ID card type is required'),
   id_card_number: z.string().optional(),
@@ -32,7 +41,8 @@ export const claimFormSchema = z.object({
   specialty: z.string().min(1, 'Specialty is required'),
   doctor: z.string().min(1, 'Doctor is required'),
   treatment_line: z.string().min(1, 'Treatment line is required'),
-  claim_type: z.enum(['INPATIENT', 'DIALYSIS']),
+  policy_type: z.enum(['FAMILY', 'GROUP', 'INDIVIDUAL']),
+  claim_type: z.enum(['INPATIENT', 'DIALYSIS', 'KIMO', 'OTHERS']),
   service_start_date: z.string().min(1, 'Service start date is required'),
   service_end_date: z.string().min(1, 'Service end date is required'),
   inpatient_number: z.string().min(1, 'Inpatient number is required'),
@@ -79,6 +89,21 @@ export const claimFormSchema = z.object({
 }, {
   message: 'Insurer name is required for TPA payer type',
   path: ['insurer_name'],
+}).refine((data) => {
+  const hasDob = typeof data.date_of_birth === 'string' && data.date_of_birth.trim() !== ''
+  const hasAge = typeof data.age === 'number' && !Number.isNaN(data.age)
+  return hasDob || hasAge
+}, {
+  message: 'Either date of birth or age is required',
+  path: ['date_of_birth'],
+}).refine((data) => {
+  if (typeof data.age === 'number' && !Number.isNaN(data.age)) {
+    return !!data.age_unit
+  }
+  return true
+}, {
+  message: 'Age unit is required when age is provided',
+  path: ['age_unit'],
 })
 
 export type ClaimFormValues = z.infer<typeof claimFormSchema>
@@ -88,7 +113,8 @@ export const defaultClaimFormValues: ClaimFormValues = {
   // Patient Details
   patient_name: '',
   patient_id: '',
-  age: 0,
+  date_of_birth: '',
+  age: undefined,
   age_unit: 'YRS',
   gender: '',
   id_card_type: '',
@@ -115,6 +141,7 @@ export const defaultClaimFormValues: ClaimFormValues = {
   specialty: '',
   doctor: '',
   treatment_line: '',
+  policy_type: 'FAMILY',
   claim_type: 'INPATIENT',
   service_start_date: '',
   service_end_date: '',

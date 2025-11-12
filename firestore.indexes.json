@@ -1,0 +1,163 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "direct_claims",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "claim_status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "direct_claims",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "claim_status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "direct_claims",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "rm_status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "direct_claims",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "rm_status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "direct_claims",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "hospital_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_draft",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "direct_claims",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "hospital_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_draft",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "claim_status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "direct_claims",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "claim_status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_draft",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "checklist",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "payer_name",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "specialty",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "doctors",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "hospital_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "specialty_name",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "claim_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "claim_transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "claim_id",
+          "order": "ASCENDING"
+    },
+        {
+          "fieldPath": "performed_at",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

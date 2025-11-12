@@ -93,7 +93,7 @@ const uploadDocument = async (
 - Images: `.jpg`, `.jpeg`, `.png`
 - Spreadsheets: `.xls`, `.xlsx`
 
-**Max File Size**: 10MB per file
+**Max File Size**: 25 MB per file (images are auto-compressed client-side when possible)
 
 ---
 
@@ -310,9 +310,9 @@ const handleFileUpload = async (
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      errors.push(`${file.name}: File size exceeds 10MB`);
+    // Validate file size (25 MB max after compression)
+    if (file.size > 25 * 1024 * 1024) {
+      errors.push(`${file.name}: File size exceeds 25 MB`);
       continue;
     }
     
@@ -457,5 +457,5 @@ const DocumentViewer = ({ documentId }: { documentId: string }) => {
 7. **Download vs View** - Use proxy endpoint for viewing PDFs in browser
 8. **Security** - Always pass authentication token for document access
 9. **File Names** - Sanitize file names before upload
-10. **Compression** - Consider compressing large images before upload
+10. **Compression** - The UI auto-compresses large images, but non-image files should be reduced below 25 MB before upload
 

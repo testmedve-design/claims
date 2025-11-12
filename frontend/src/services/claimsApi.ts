@@ -203,6 +203,29 @@ class ClaimsApi {
     }
   }
 
+  async contestClaim(claimId: string, payload: { contest_reason?: string; uploaded_files?: string[] }): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/v1/claims/contest-denial/${claimId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error contesting denial:', error)
+      throw error
+    }
+  }
+
   async getCouriers(): Promise<any[]> {
     try {
       const response = await fetch(`${this.baseUrl}/resources/couriers`, {

@@ -2,8 +2,9 @@ export interface ClaimFormData {
   // Patient Details
   patient_name: string
   patient_id: string
-  age: number
-  age_unit: string
+  date_of_birth: string
+  age?: number
+  age_unit?: 'DAYS' | 'MONTHS' | 'YRS'
   gender: string
   id_card_type: string
   id_card_number: string
@@ -28,6 +29,7 @@ export interface ClaimFormData {
   patient_registration_number: string
   doctor: string
   treatment_line: string
+  policy_type: string
   claim_type: string
   service_start_date: string
   service_end_date: string

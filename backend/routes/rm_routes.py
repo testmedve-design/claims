@@ -45,7 +45,7 @@ def get_rm_claims():
         end_date = request.args.get('end_date')
         
         # Build base query - only get dispatched claims for RM
-        query = db.collection('claims')
+        query = db.collection('direct_claims')
         
         # Filter by claim_status - RMs work with dispatched claims
         if tab == 'active':
@@ -170,11 +170,11 @@ def get_rm_claim_details(claim_id):
         db = get_firestore()
         
         # Get claim by document ID
-        claim_doc = db.collection('claims').document(claim_id).get()
+        claim_doc = db.collection('direct_claims').document(claim_id).get()
         
         if not claim_doc.exists:
             # Search by claim_id field
-            claims_query = db.collection('claims').where('claim_id', '==', claim_id)
+            claims_query = db.collection('direct_claims').where('claim_id', '==', claim_id)
             claims_docs = claims_query.get()
             
             if not claims_docs:
@@ -334,10 +334,10 @@ def update_rm_claim(claim_id):
         db = get_firestore()
         
         # Get claim
-        claim_doc = db.collection('claims').document(claim_id).get()
+        claim_doc = db.collection('direct_claims').document(claim_id).get()
         
         if not claim_doc.exists:
-            claims_query = db.collection('claims').where('claim_id', '==', claim_id)
+            claims_query = db.collection('direct_claims').where('claim_id', '==', claim_id)
             claims_docs = claims_query.get()
             
             if not claims_docs:
@@ -380,7 +380,7 @@ def update_rm_claim(claim_id):
             update_data['rm_data'] = existing_rm_data
         
         # Update claim
-        db.collection('claims').document(claim_doc.id).update(update_data)
+        db.collection('direct_claims').document(claim_doc.id).update(update_data)
         
         # Create transaction record
         create_transaction(
@@ -422,10 +422,10 @@ def reevaluate_rm_claim(claim_id):
         db = get_firestore()
         
         # Get claim
-        claim_doc = db.collection('claims').document(claim_id).get()
+        claim_doc = db.collection('direct_claims').document(claim_id).get()
         
         if not claim_doc.exists:
-            claims_query = db.collection('claims').where('claim_id', '==', claim_id)
+            claims_query = db.collection('direct_claims').where('claim_id', '==', claim_id)
             claims_docs = claims_query.get()
             
             if not claims_docs:
@@ -453,7 +453,7 @@ def reevaluate_rm_claim(claim_id):
         }
         
         # Update claim
-        db.collection('claims').document(claim_doc.id).update(update_data)
+        db.collection('direct_claims').document(claim_doc.id).update(update_data)
         
         # Create transaction record
         create_transaction(
@@ -495,7 +495,7 @@ def get_rm_stats():
         assigned_hospitals = request.assigned_hospitals if hasattr(request, 'assigned_hospitals') else []
         
         # Get all dispatched claims (base for RM)
-        claims_query = db.collection('claims').where('claim_status', '==', 'dispatched')
+        claims_query = db.collection('direct_claims').where('claim_status', '==', 'dispatched')
         all_claims = claims_query.get()
         
         # Filter by assigned payer and hospital
