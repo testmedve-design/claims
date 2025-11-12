@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FileText, Upload, CheckCircle, AlertCircle, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { API_BASE_URL } from '@/lib/apiConfig'
 
 interface DocumentItem {
   id: string
@@ -59,7 +60,7 @@ export default function DocumentChecklist({
     try {
       setChecklistLoading(true)
       // Build URL with payer_name and optional specialty
-      let url = `https://claims-2.onrender.com/api/new-claim/checklist/get-checklist?payer_name=${encodeURIComponent(payerName)}`
+      let url = `${API_BASE_URL}/new-claim/checklist/get-checklist?payer_name=${encodeURIComponent(payerName)}`
       if (specialty) {
         url += `&specialty=${encodeURIComponent(specialty)}`
       }
@@ -136,7 +137,7 @@ export default function DocumentChecklist({
         formData.append('document_type', itemId)
         formData.append('document_name', file.name)
         
-        const response = await fetch(`https://claims-2.onrender.com/api/v1/drafts/upload-document/${draftId}`, {
+        const response = await fetch(`${API_BASE_URL}/v1/drafts/upload-document/${draftId}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('auth_token')}`

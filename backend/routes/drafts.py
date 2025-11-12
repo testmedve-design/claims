@@ -6,8 +6,70 @@ from flask import Blueprint, request, jsonify
 from firebase_config import get_firestore
 from middleware import require_claims_access
 from firebase_admin import firestore
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import uuid
+
+
+def _calculate_age_details(dob_str):
+    if not dob_str:
+        return None, None
+    try:
+        dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
+    except Exception:
+        return None, None
+
+    today = date.today()
+
+    if dob > today:
+        return 0, "DAYS"
+
+    delta_days = (today - dob).days
+    if delta_days < 30:
+        return delta_days, "DAYS"
+
+    years = today.year - dob.year
+    months = today.month - dob.month
+    days = today.day - dob.day
+
+    if days < 0:
+        months -= 1
+    if months < 0:
+        years -= 1
+        months += 12
+
+    if years <= 0:
+        if months > 0:
+            return months, "MONTHS"
+        return delta_days, "DAYS"
+
+    return years, "YRS"
+
+
+def _calculate_dob_from_age(age_value, age_unit):
+    if age_value is None or age_unit not in ("DAYS", "MONTHS", "YRS"):
+        return None
+    try:
+        age_int = int(age_value)
+    except (TypeError, ValueError):
+        return None
+
+    today = date.today()
+    dob = date(today.year, today.month, today.day)
+
+    if age_unit == "DAYS":
+        dob = dob - timedelta(days=age_int)
+    elif age_unit == "MONTHS":
+        month = dob.month - age_int
+        year = dob.year + month // 12
+        month = month % 12
+        if month <= 0:
+            month += 12
+            year -= 1
+        dob = dob.replace(year=year, month=month)
+    else:
+        dob = dob.replace(year=dob.year - age_int)
+
+    return dob.strftime("%Y-%m-%d")
 
 drafts_bp = Blueprint('drafts', __name__)
 
@@ -360,9 +422,9 @@ def submit_draft(draft_id):
         
         # Validate required fields for submission
         required_fields = [
-            'patient_name', 'age', 'gender', 'id_card_type', 'beneficiary_type', 'relationship',
+            'patient_name', 'gender', 'id_card_type', 'beneficiary_type', 'relationship',
             'payer_patient_id', 'authorization_number', 'total_authorized_amount', 'payer_type', 'payer_name',
-            'patient_registration_number', 'specialty', 'doctor', 'treatment_line', 'claim_type',
+            'patient_registration_number', 'specialty', 'doctor', 'treatment_line', 'policy_type', 'claim_type',
             'service_start_date', 'service_end_date', 'inpatient_number', 'admission_type',
             'hospitalization_type', 'ward_type', 'final_diagnosis', 'treatment_done',
             'bill_number', 'bill_date', 'total_bill_amount', 'claimed_amount'
@@ -374,10 +436,43 @@ def submit_draft(draft_id):
                 'success': False,
                 'error': f'Missing required fields to submit: {", ".join(missing_fields)}'
             }), 400
+
+        has_dob = bool(form_data.get('date_of_birth'))
+        has_age = form_data.get('age') not in (None, '',)
+
+        if not has_dob and not has_age:
+            return jsonify({
+                'success': False,
+                'error': 'Either date_of_birth or age must be provided before submitting a draft'
+            }), 400
+
+        if has_age and form_data.get('age_unit') not in ('DAYS', 'MONTHS', 'YRS'):
+            return jsonify({
+                'success': False,
+                'error': 'Age unit must be one of DAYS, MONTHS, or YRS when age is provided'
+            }), 400
         
         # Generate new claim ID for submission
         claim_id = f"claim_{uuid.uuid4().hex[:8]}"
         
+        age_value_auto, age_unit_auto = _calculate_age_details(form_data.get('date_of_birth'))
+        age_from_form = form_data.get('age')
+        try:
+            age_from_form = int(age_from_form)
+        except (TypeError, ValueError):
+            age_from_form = None
+
+        if age_value_auto is not None:
+            age_value = age_value_auto
+            age_unit = age_unit_auto or 'YRS'
+        else:
+            age_value = age_from_form if age_from_form is not None else 0
+            age_unit = form_data.get('age_unit') if form_data.get('age_unit') in ('DAYS', 'MONTHS', 'YRS') else 'YRS'
+            if not form_data.get('date_of_birth'):
+                derived_dob = _calculate_dob_from_age(age_value, age_unit)
+                if derived_dob:
+                    form_data['date_of_birth'] = derived_dob
+
         # Prepare claim document (similar to claims/submit)
         claim_document = {
             # Claim Metadata
@@ -396,8 +491,9 @@ def submit_draft(draft_id):
             # Patient Details
             'patient_details': {
                 'patient_name': form_data.get('patient_name'),
-                'age': int(form_data.get('age') or 0),
-                'age_unit': form_data.get('age_unit', 'YRS'),
+                'date_of_birth': form_data.get('date_of_birth', ''),
+                'age': age_value,
+                'age_unit': age_unit,
                 'gender': form_data.get('gender'),
                 'id_card_type': form_data.get('id_card_type'),
                 'id_card_number': form_data.get('id_card_number', ''),
@@ -427,6 +523,7 @@ def submit_draft(draft_id):
                 'specialty': form_data.get('specialty'),
                 'doctor': form_data.get('doctor'),
                 'treatment_line': form_data.get('treatment_line'),
+                'policy_type': form_data.get('policy_type'),
                 'claim_type': form_data.get('claim_type'),
                 'service_start_date': form_data.get('service_start_date'),
                 'service_end_date': form_data.get('service_end_date'),
@@ -463,7 +560,7 @@ def submit_draft(draft_id):
         }
         
         # Save new claim document
-        db.collection('claims').document(claim_id).set(claim_document)
+        db.collection('direct_claims').document(claim_id).set(claim_document)
         
         # Delete the original draft
         draft_ref.delete()

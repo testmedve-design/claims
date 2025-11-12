@@ -26,8 +26,7 @@ import { PageHeader } from '@/components/forms/claims/PageHeader'
 import { ReviewStep } from '@/components/forms/claims/ReviewStep'
 
 import { CheckCircle2, AlertCircle, UserCircle, CreditCard, Building2, Receipt, FileCheck } from 'lucide-react'
-
-const API_BASE_URL = 'https://claims-2.onrender.com'
+import { API_BASE_URL } from '@/lib/apiConfig'
 
 export default function ClaimsPage() {
   const { user } = useAuth()
@@ -98,6 +97,9 @@ export default function ClaimsPage() {
   const watchedPayerType = form.watch('payer_type')
   const watchedPayerName = form.watch('payer_name')
   const watchedBeneficiaryType = form.watch('beneficiary_type')
+  const watchedDateOfBirth = form.watch('date_of_birth')
+  const watchedAge = form.watch('age')
+  const watchedAgeUnit = form.watch('age_unit')
   const watchedTotalBill = form.watch('total_bill_amount')
   const watchedPatientDiscount = form.watch('patient_discount_amount')
   const watchedAmountPaidByPatient = form.watch('amount_paid_by_patient')
@@ -112,6 +114,109 @@ export default function ClaimsPage() {
       form.setValue('doctor', '')
     }
   }, [watchedSpecialty])
+
+  const calculateAgeDetails = (dob?: string | null) => {
+    if (!dob) return undefined
+    const dobDate = new Date(dob)
+    if (Number.isNaN(dobDate.getTime())) return undefined
+    const today = new Date()
+
+    if (dobDate > today) {
+      return { value: 0, unit: 'DAYS' as const }
+    }
+
+    const diffMs = today.getTime() - dobDate.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    if (diffDays < 30) {
+      return { value: diffDays, unit: 'DAYS' as const }
+    }
+
+    let years = today.getFullYear() - dobDate.getFullYear()
+    let months = today.getMonth() - dobDate.getMonth()
+    const days = today.getDate() - dobDate.getDate()
+
+    if (days < 0) {
+      months -= 1
+    }
+
+    if (months < 0) {
+      years -= 1
+      months += 12
+    }
+
+    if (years <= 0) {
+      if (months > 0) {
+        return { value: months, unit: 'MONTHS' as const }
+      }
+      return { value: diffDays, unit: 'DAYS' as const }
+    }
+
+    return { value: years, unit: 'YRS' as const }
+  }
+
+  const resolveAgeDetails = (values: Pick<ClaimFormValues, 'age' | 'age_unit' | 'date_of_birth'>) => {
+    if (typeof values.age === 'number' && !Number.isNaN(values.age)) {
+      const unit = values.age_unit && ['DAYS', 'MONTHS', 'YRS'].includes(values.age_unit)
+        ? values.age_unit
+        : 'YRS'
+      return { value: values.age, unit: unit as 'DAYS' | 'MONTHS' | 'YRS' }
+    }
+    return calculateAgeDetails(values.date_of_birth)
+  }
+
+  const calculateDobFromAge = (age?: number | null, unit?: string | null) => {
+    if (age === undefined || age === null || Number.isNaN(age)) return undefined
+    const ageInt = Math.max(0, Math.floor(age))
+
+    const today = new Date()
+    const dob = new Date(today)
+
+    switch (unit) {
+      case 'DAYS':
+        dob.setDate(dob.getDate() - ageInt)
+        break
+      case 'MONTHS': {
+        dob.setMonth(dob.getMonth() - ageInt)
+        break
+      }
+      case 'YRS':
+      default:
+        dob.setFullYear(dob.getFullYear() - ageInt)
+        break
+    }
+
+    const year = dob.getFullYear()
+    const month = String(dob.getMonth() + 1).padStart(2, '0')
+    const day = String(dob.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  useEffect(() => {
+    if (!watchedDateOfBirth) return
+    const ageDetails = calculateAgeDetails(watchedDateOfBirth)
+    if (!ageDetails) return
+
+    const currentAge = form.getValues('age')
+    const currentUnit = form.getValues('age_unit')
+
+    if (ageDetails.value !== currentAge) {
+      form.setValue('age', ageDetails.value, { shouldDirty: true, shouldTouch: true })
+    }
+    if (ageDetails.unit !== currentUnit) {
+      form.setValue('age_unit', ageDetails.unit, { shouldDirty: true, shouldTouch: true })
+    }
+  }, [watchedDateOfBirth, form])
+
+  useEffect(() => {
+    const hasDob = typeof watchedDateOfBirth === 'string' && watchedDateOfBirth.trim() !== ''
+    if (hasDob) return
+    if (typeof watchedAge !== 'number' || Number.isNaN(watchedAge) || watchedAge < 0) return
+
+    const dob = calculateDobFromAge(watchedAge, watchedAgeUnit || 'YRS')
+    if (dob && dob !== watchedDateOfBirth) {
+      form.setValue('date_of_birth', dob, { shouldDirty: true, shouldTouch: true })
+    }
+  }, [watchedAge, watchedAgeUnit, watchedDateOfBirth, form])
 
   // Auto-calculate bill amounts
   useEffect(() => {
@@ -192,10 +297,10 @@ export default function ClaimsPage() {
       }
       
       const [specialtiesRes, payersRes, insurersRes, wardsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/resources/specialties?hospital_id=${hospitalId}`, { headers }),
-        fetch(`${API_BASE_URL}/api/resources/payers?hospital_id=${hospitalId}`, { headers }),
-        fetch(`${API_BASE_URL}/api/resources/insurers?hospital_id=${hospitalId}`, { headers }),
-        fetch(`${API_BASE_URL}/api/resources/ward-types`, { headers })
+        fetch(`${API_BASE_URL}/resources/specialties?hospital_id=${hospitalId}`, { headers }),
+        fetch(`${API_BASE_URL}/resources/payers?hospital_id=${hospitalId}`, { headers }),
+        fetch(`${API_BASE_URL}/resources/insurers?hospital_id=${hospitalId}`, { headers }),
+        fetch(`${API_BASE_URL}/resources/ward-types`, { headers })
       ])
 
       if (!specialtiesRes.ok || !payersRes.ok || !insurersRes.ok || !wardsRes.ok) {
@@ -242,7 +347,7 @@ export default function ClaimsPage() {
     try {
       setLoadingDraft(true)
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/drafts/get-draft/${draftId}`, {
+      const response = await fetch(`${API_BASE_URL}/v1/drafts/get-draft/${draftId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -256,7 +361,13 @@ export default function ClaimsPage() {
 
       if (data.success && data.draft) {
         const draftFormData = data.draft.form_data
-        form.reset(draftFormData)
+        form.reset({
+          ...defaultClaimFormValues,
+          ...draftFormData,
+          date_of_birth: draftFormData?.date_of_birth || '',
+          age_unit: draftFormData?.age_unit || defaultClaimFormValues.age_unit,
+          policy_type: draftFormData?.policy_type || defaultClaimFormValues.policy_type,
+        })
 
         toast({
           title: "Success",
@@ -283,7 +394,7 @@ export default function ClaimsPage() {
       }
       
       const response = await fetch(
-        `${API_BASE_URL}/api/resources/doctors?hospital_id=${hospitalId}&specialty=${encodeURIComponent(specialty)}`,
+        `${API_BASE_URL}/resources/doctors?hospital_id=${hospitalId}&specialty=${encodeURIComponent(specialty)}`,
         { headers }
       )
       
@@ -315,7 +426,7 @@ export default function ClaimsPage() {
     try {
       setLoadingDraft(true)
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/drafts/get-draft/${draftId}`, {
+      const response = await fetch(`${API_BASE_URL}/v1/drafts/get-draft/${draftId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -330,7 +441,11 @@ export default function ClaimsPage() {
           const documents = data.draft.documents || []
 
           form.reset({
+            ...defaultClaimFormValues,
             ...draftData,
+            date_of_birth: draftData?.date_of_birth || '',
+            age_unit: draftData?.age_unit || defaultClaimFormValues.age_unit,
+            policy_type: draftData?.policy_type || defaultClaimFormValues.policy_type,
             documents: documents
           })
 
@@ -362,11 +477,17 @@ export default function ClaimsPage() {
     if (form.formState.isSubmitting) return
 
     const formValues = form.getValues()
+    const ageDetails = resolveAgeDetails(formValues)
+    const normalizedFormValues = {
+      ...formValues,
+      age: ageDetails?.value ?? undefined,
+      age_unit: ageDetails?.unit ?? formValues.age_unit ?? defaultClaimFormValues.age_unit,
+    }
 
     const currentDataHash = JSON.stringify({
-      patient_name: formValues.patient_name,
-      specialty: formValues.specialty,
-      total_bill_amount: formValues.total_bill_amount
+      patient_name: normalizedFormValues.patient_name,
+      specialty: normalizedFormValues.specialty,
+      total_bill_amount: normalizedFormValues.total_bill_amount
     })
 
     const lastSaveHash = localStorage.getItem('lastDraftSaveHash')
@@ -385,8 +506,8 @@ export default function ClaimsPage() {
     try {
       const isUpdating = isEditingDraft && editingDraftId
       const url = isUpdating
-        ? `${API_BASE_URL}/api/v1/drafts/update-draft/${editingDraftId}`
-        : `${API_BASE_URL}/api/v1/drafts/save-draft`
+        ? `${API_BASE_URL}/v1/drafts/update-draft/${editingDraftId}`
+        : `${API_BASE_URL}/v1/drafts/save-draft`
 
       const response = await fetch(url, {
         method: isUpdating ? 'PUT' : 'POST',
@@ -394,7 +515,7 @@ export default function ClaimsPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
-        body: JSON.stringify(formValues)
+        body: JSON.stringify(normalizedFormValues)
       })
 
       if (!response.ok) {
@@ -427,9 +548,12 @@ export default function ClaimsPage() {
 
   const onSubmit = async (formValues: ClaimFormValues) => {
     try {
+      const ageDetails = resolveAgeDetails(formValues)
+
       const submissionData = {
         ...formValues,
-        age: Number(formValues.age) || 0,
+        age: ageDetails?.value ?? 0,
+        age_unit: ageDetails?.unit ?? formValues.age_unit ?? defaultClaimFormValues.age_unit,
         total_authorized_amount: Number(formValues.total_authorized_amount) || 0,
         security_deposit: Number(formValues.security_deposit) || 0,
         total_bill_amount: Number(formValues.total_bill_amount) || 0,
@@ -455,7 +579,7 @@ export default function ClaimsPage() {
               formData.append('document_type', doc.document_type)
               formData.append('document_name', doc.document_name)
 
-              const response = await fetch(`${API_BASE_URL}/api/v1/documents/upload`, {
+              const response = await fetch(`${API_BASE_URL}/v1/documents/upload`, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${localStorage.getItem('auth_token')}`

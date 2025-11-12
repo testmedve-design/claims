@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://claims-2.onrender.com/api';
+import { API_BASE_URL } from '@/lib/apiConfig'
 
 export interface RMClaim {
   claim_id: string
@@ -23,6 +23,12 @@ export interface RMClaimDetails {
   hospital_id: string
   created_at: string
   submission_date: string
+  rm_updated_at?: string
+  rm_updated_by?: string
+  rm_updated_by_email?: string
+  rm_updated_by_name?: string
+  rm_status_raised_date?: string
+  rm_status_raised_remarks?: string
   rm_data?: any
   patient_details: any
   payer_details: any

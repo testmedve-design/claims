@@ -12,6 +12,32 @@ interface ReviewStepProps {
   onEditStep: (sectionId: string) => void
 }
 
+const CLAIM_TYPE_LABELS: Record<string, string> = {
+  INPATIENT: 'Inpatient',
+  DIALYSIS: 'Dialysis',
+  KIMO: 'Kimo',
+  OTHERS: 'Others',
+}
+
+const POLICY_TYPE_LABELS: Record<string, string> = {
+  FAMILY: 'Family',
+  GROUP: 'Group',
+  INDIVIDUAL: 'Individual',
+}
+
+const TREATMENT_LINE_LABELS: Record<string, string> = {
+  MEDICAL: 'Medical',
+  SURGICAL: 'Surgical',
+  INTENSIVE_CARE: 'Intensive Care',
+  NON_ALLOPATHY: 'Non Allopathy',
+}
+
+const AGE_UNIT_LABELS: Record<string, string> = {
+  DAYS: 'days',
+  MONTHS: 'months',
+  YRS: 'yrs',
+}
+
 export function ReviewStep({ formData, onEditStep }: ReviewStepProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -27,6 +53,36 @@ export function ReviewStep({ formData, onEditStep }: ReviewStepProps) {
       month: 'short',
       year: 'numeric',
     })
+  }
+
+  const getFormattedAge = () => {
+    const ageValue = formData.age
+
+    if (ageValue !== undefined && ageValue !== null && ageValue !== '') {
+      const label = AGE_UNIT_LABELS[formData.age_unit || 'YRS'] || 'yrs'
+      const numericAge = Number(ageValue)
+      if (!Number.isNaN(numericAge)) {
+        return `${numericAge} ${label}`
+      }
+      return `${ageValue} ${label}`
+    }
+
+    if (formData.date_of_birth) {
+      const dob = new Date(formData.date_of_birth)
+      if (!Number.isNaN(dob.getTime())) {
+        const today = new Date()
+        let age = today.getFullYear() - dob.getFullYear()
+        const monthDiff = today.getMonth() - dob.getMonth()
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+          age -= 1
+        }
+        if (age >= 0) {
+          return `${age} yrs`
+        }
+      }
+    }
+
+    return 'N/A'
   }
 
   return (
@@ -64,10 +120,20 @@ export function ReviewStep({ formData, onEditStep }: ReviewStepProps) {
               <p className="font-medium">{formData.patient_name || 'N/A'}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Age</p>
+              <p className="text-sm text-muted-foreground">Date of Birth</p>
               <p className="font-medium">
-                {formData.age} {formData.age_unit}
+                {formData.date_of_birth
+                  ? new Date(formData.date_of_birth).toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : 'N/A'}
               </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Age</p>
+              <p className="font-medium">{getFormattedAge()}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Gender</p>
@@ -188,8 +254,18 @@ export function ReviewStep({ formData, onEditStep }: ReviewStepProps) {
               <p className="font-medium">{formData.doctor || 'N/A'}</p>
             </div>
             <div>
+              <p className="text-sm text-muted-foreground">Treatment Line</p>
+              <p className="font-medium">
+                {TREATMENT_LINE_LABELS[formData.treatment_line] || formData.treatment_line || 'N/A'}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Policy Type</p>
+              <p className="font-medium">{POLICY_TYPE_LABELS[formData.policy_type] || 'N/A'}</p>
+            </div>
+            <div>
               <p className="text-sm text-muted-foreground">Claim Type</p>
-              <Badge>{formData.claim_type || 'N/A'}</Badge>
+              <Badge>{CLAIM_TYPE_LABELS[formData.claim_type] || 'N/A'}</Badge>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Service Period</p>

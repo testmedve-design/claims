@@ -1,9 +1,15 @@
 """
-Authentication middleware for hospital users with role-based access control
+Authentication middleware for hospital users with role-based access control.
+
+All decorators now require a fully verified Firebase ID token. Unsigned or
+tampered tokens are explicitly rejected.
 """
 from functools import wraps
+from typing import Dict, Tuple
+
 from flask import request, jsonify
 from firebase_admin import auth
+
 from firebase_config import get_firestore
 
 # Allowed roles for claims module
@@ -15,7 +21,8 @@ ALLOWED_CLAIMS_ROLES = [
     'claim_processor_l3',  # Up to 2 lakhs
     'claim_processor_l4',  # All amounts
     'reconciler',
-    'rm'  # Relationship Manager
+    'rm',  # Relationship Manager
+    'review_request'  # Second level review team
 ]
 
 # Blocked roles (NO ACCESS to Claims Module)
@@ -28,60 +35,94 @@ BLOCKED_ROLES = [
     'employee'
 ]
 
+PROCESSOR_ROLES = {
+    'claim_processor',
+    'claim_processor_l1',
+    'claim_processor_l2',
+    'claim_processor_l3',
+    'claim_processor_l4',
+}
+
+RM_ROLES = {'rm', 'reconciler'}
+HOSPITAL_ROLE = 'hospital_user'
+REVIEW_REQUEST_ROLE = 'review_request'
+
+
+def _extract_and_verify_token(raw_token: str) -> Tuple[Dict, str]:
+    """
+    Normalize the Authorization header value, verify it against Firebase,
+    and return the decoded token & uid.
+    """
+    if not raw_token:
+        raise ValueError('No token provided')
+
+    token = raw_token.strip()
+    if token.lower().startswith('bearer '):
+        token = token[7:]
+    token = token.strip()
+
+    if not token:
+        raise ValueError('No token provided')
+
+    # Debug logging for token verification issues (truncate token for safety)
+    token_preview = f"{token[:10]}..." if len(token) > 10 else token
+    print(f"[AUTH] Verifying Firebase token: {token_preview}")
+
+    try:
+        decoded_token = auth.verify_id_token(token)
+    except auth.ExpiredIdTokenError as exc:
+        raise ValueError('Token has expired') from exc
+    except auth.RevokedIdTokenError as exc:
+        raise ValueError('Token has been revoked') from exc
+    except auth.InvalidIdTokenError as exc:
+        raise ValueError(f'Failed to verify Firebase ID token: {exc}') from exc
+    except Exception as exc:  # pragma: no cover - defensive safeguard
+        raise ValueError(f'Failed to verify Firebase token: {exc}') from exc
+
+    uid = decoded_token.get('uid')
+    if not uid:
+        raise ValueError('Token missing uid claim')
+
+    return decoded_token, uid
+
+
+def _get_user_record(uid: str) -> Dict:
+    """
+    Fetch the user document from Firestore.
+    """
+    db = get_firestore()
+    user_doc = db.collection('users').document(uid).get()
+    if not user_doc.exists:
+        raise LookupError('User not found')
+    return user_doc.to_dict()
+
+
+def _derive_user_name(user_data: Dict) -> str:
+    """
+    Compute a display name from the available user data fields.
+    """
+    return (
+        user_data.get('name', '') or
+        user_data.get('display_name', '') or
+        user_data.get('full_name', '') or
+        f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or
+        user_data.get('email', '').split('@')[0].replace('.', ' ').replace('_', ' ').title() or
+        'Unknown User'
+    )
+
+
 def require_claims_access(f):
     """Decorator for claims module - allows hospital_user, claim_processor, reconciler ONLY"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Skip authentication for OPTIONS requests (CORS preflight)
         if request.method == 'OPTIONS':
             return f(*args, **kwargs)
             
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({'error': 'No token provided'}), 401
-        
         try:
-            # Remove 'Bearer ' prefix if present
-            if token.startswith('Bearer '):
-                token = token[7:]
-            
-            # Verify the token - handle both ID tokens and custom tokens
-            try:
-                # First, try to verify as ID token
-                decoded_token = auth.verify_id_token(token)
-                uid = decoded_token['uid']
-            except Exception as id_token_error:
-                # If ID token verification fails, it might be a custom token or backend token
-                try:
-                    import jwt
-                    decoded_token = jwt.decode(token, options={"verify_signature": False})
-                    uid = decoded_token.get('uid')
-                    if not uid:
-                        raise ValueError("Invalid token format - no UID found")
-                except Exception as custom_token_error:
-                    # If JWT decoding fails, it might be a Firebase custom token
-                    # Firebase custom tokens contain the UID directly in the payload
-                    try:
-                        import jwt
-                        decoded_token = jwt.decode(token, options={"verify_signature": False})
-                        uid = decoded_token.get('uid')
-                        if uid:
-                            print(f"DEBUG: Using Firebase custom token for UID: {uid}")
-                        else:
-                            raise ValueError("No UID found in custom token")
-                    except Exception as firebase_error:
-                        raise ValueError(f"Invalid token: {str(custom_token_error)}")
-            
-            # Get user data from Firestore
-            db = get_firestore()
-            user_doc = db.collection('users').document(uid).get()
-            if not user_doc.exists:
-                return jsonify({'error': 'User not found'}), 404
-            
-            user_data = user_doc.to_dict()
+            decoded_token, uid = _extract_and_verify_token(request.headers.get('Authorization'))
+            user_data = _get_user_record(uid)
             user_role = user_data.get('role', '').lower()
             
-            # Check if role is blocked (Admin roles are NOT allowed)
             if user_role in BLOCKED_ROLES:
                 return jsonify({
                     'error': 'Access denied',
@@ -89,7 +130,6 @@ def require_claims_access(f):
                     'allowed_roles': ALLOWED_CLAIMS_ROLES
                 }), 403
             
-            # Check if role is allowed
             if user_role not in ALLOWED_CLAIMS_ROLES:
                 return jsonify({
                     'error': 'Access denied',
@@ -97,12 +137,10 @@ def require_claims_access(f):
                     'allowed_roles': ALLOWED_CLAIMS_ROLES
                 }), 403
             
-            # Store user info in request
             request.user = decoded_token
             request.user_data = user_data
             request.user_role = user_role
             
-            # Extract hospital information from entity_assignments
             entity_assignments = user_data.get('entity_assignments', {})
             hospitals = entity_assignments.get('hospitals', [])
             
@@ -113,10 +151,9 @@ def require_claims_access(f):
             print(f"  Entity Assignments: {entity_assignments}")
             print(f"  Hospitals: {hospitals}")
             
-            # Get the first hospital assignment (most users have one hospital)
             hospital_id = ''
             hospital_name = ''
-            if hospitals and len(hospitals) > 0:
+            if hospitals:
                 hospital_id = hospitals[0].get('id', '')
                 hospital_name = hospitals[0].get('name', '')
                 print(f"  ✓ Extracted Hospital ID: '{hospital_id}'")
@@ -126,34 +163,17 @@ def require_claims_access(f):
                 print(f"  Full user_data keys: {list(user_data.keys())}")
             print(f"{'='*80}\n")
             
-            # Set request attributes for use in routes
             request.user_id = uid
             request.user_email = user_data.get('email', '')
-            
-            # Debug: Print user data to see what fields are available
-            print(f"🔍 User data fields: {list(user_data.keys())}")
-            print(f"🔍 User name field: {user_data.get('name', 'NOT_FOUND')}")
-            print(f"🔍 User display_name field: {user_data.get('display_name', 'NOT_FOUND')}")
-            print(f"🔍 User full_name field: {user_data.get('full_name', 'NOT_FOUND')}")
-            print(f"🔍 User first_name field: {user_data.get('first_name', 'NOT_FOUND')}")
-            print(f"🔍 User last_name field: {user_data.get('last_name', 'NOT_FOUND')}")
-            
-            # Try multiple name fields
-            user_name = (user_data.get('name', '') or 
-                        user_data.get('display_name', '') or 
-                        user_data.get('full_name', '') or 
-                        f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or
-                        user_data.get('email', '').split('@')[0].replace('.', ' ').replace('_', ' ').title() or
-                        'Unknown User')
-            
-            print(f"🔍 Extracted user name: '{user_name}'")
-            request.user_name = user_name
+            request.user_name = _derive_user_name(user_data)
             request.hospital_id = hospital_id
             request.hospital_name = hospital_name
             
             return f(*args, **kwargs)
-        except Exception as e:
-            return jsonify({'error': 'Invalid token', 'details': str(e)}), 401
+        except ValueError as err:
+            return jsonify({'error': 'Invalid token', 'details': str(err)}), 401
+        except LookupError as err:
+            return jsonify({'error': str(err)}), 404
     
     return decorated_function
 
@@ -161,321 +181,182 @@ def require_processor_access(f):
     """Decorator for claim processor role ONLY"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Skip authentication for OPTIONS requests (CORS preflight)
         if request.method == 'OPTIONS':
             return f(*args, **kwargs)
             
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({'error': 'No token provided'}), 401
-        
         try:
-            # Remove 'Bearer ' prefix if present
-            if token.startswith('Bearer '):
-                token = token[7:]
-            
-            # Verify the token - handle both ID tokens and custom tokens
-            try:
-                # First, try to verify as ID token
-                decoded_token = auth.verify_id_token(token)
-                uid = decoded_token['uid']
-            except Exception as id_token_error:
-                # If ID token verification fails, it might be a custom token
-                try:
-                    import jwt
-                    decoded_token = jwt.decode(token, options={"verify_signature": False})
-                    uid = decoded_token.get('uid')
-                    if not uid:
-                        raise ValueError("Invalid token format - no UID found")
-                except Exception as custom_token_error:
-                    # If JWT decoding fails, it might be a Firebase custom token
-                    # Firebase custom tokens contain the UID directly in the payload
-                    try:
-                        import jwt
-                        decoded_token = jwt.decode(token, options={"verify_signature": False})
-                        uid = decoded_token.get('uid')
-                        if uid:
-                            print(f"DEBUG: Using Firebase custom token for UID: {uid}")
-                        else:
-                            raise ValueError("No UID found in custom token")
-                    except Exception as firebase_error:
-                        raise ValueError(f"Invalid token: {str(custom_token_error)}")
-            
-            # Get user data from Firestore
-            db = get_firestore()
-            user_doc = db.collection('users').document(uid).get()
-            if not user_doc.exists:
-                return jsonify({'error': 'User not found'}), 404
-            
-            user_data = user_doc.to_dict()
+            decoded_token, uid = _extract_and_verify_token(request.headers.get('Authorization'))
+            user_data = _get_user_record(uid)
             user_role = user_data.get('role', '').lower()
             
-            # Check if user is a claim processor (including all levels L1-L4)
-            if user_role not in ['claim_processor', 'claim_processor_l1', 'claim_processor_l2', 'claim_processor_l3', 'claim_processor_l4']:
+            if user_role not in PROCESSOR_ROLES:
                 return jsonify({
                     'error': 'Access denied',
                     'message': f'Claim processor access required. Your role: {user_role}',
                     'required_role': 'claim_processor (any level)'
                 }), 403
             
-            # Store user info in request
             request.user = decoded_token
             request.user_data = user_data
             request.user_role = user_role
             request.user_id = uid
             request.user_email = user_data.get('email', '')
-            
-            # Debug: Print user data to see what fields are available
-            print(f"🔍 User data fields: {list(user_data.keys())}")
-            print(f"🔍 User name field: {user_data.get('name', 'NOT_FOUND')}")
-            print(f"🔍 User display_name field: {user_data.get('display_name', 'NOT_FOUND')}")
-            print(f"🔍 User full_name field: {user_data.get('full_name', 'NOT_FOUND')}")
-            print(f"🔍 User first_name field: {user_data.get('first_name', 'NOT_FOUND')}")
-            print(f"🔍 User last_name field: {user_data.get('last_name', 'NOT_FOUND')}")
-            
-            # Try multiple name fields
-            user_name = (user_data.get('name', '') or 
-                        user_data.get('display_name', '') or 
-                        user_data.get('full_name', '') or 
-                        f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or
-                        user_data.get('email', '').split('@')[0].replace('.', ' ').replace('_', ' ').title() or
-                        'Unknown User')
-            
-            print(f"🔍 Extracted user name: '{user_name}'")
-            request.user_name = user_name
-            
-            # Extract hospital information from entity_assignments
+            request.user_name = _derive_user_name(user_data)
+
             entity_assignments = user_data.get('entity_assignments', {})
             hospitals = entity_assignments.get('hospitals', [])
-            
-            # Get the first hospital assignment
-            hospital_id = ''
-            hospital_name = ''
-            if hospitals and len(hospitals) > 0:
-                hospital_id = hospitals[0].get('id', '')
-                hospital_name = hospitals[0].get('name', '')
+            hospital_id = hospitals[0].get('id', '') if hospitals else ''
+            hospital_name = hospitals[0].get('name', '') if hospitals else ''
             
             request.hospital_id = hospital_id
             request.hospital_name = hospital_name
             
             return f(*args, **kwargs)
-        except Exception as e:
-            return jsonify({'error': 'Invalid token', 'details': str(e)}), 401
+        except ValueError as err:
+            return jsonify({'error': 'Invalid token', 'details': str(err)}), 401
+        except LookupError as err:
+            return jsonify({'error': str(err)}), 404
     
     return decorated_function
+
 
 def require_hospital_access(f):
     """Decorator for hospital users ONLY - strict role checking"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Skip authentication for OPTIONS requests (CORS preflight)
         if request.method == 'OPTIONS':
             return f(*args, **kwargs)
             
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({'error': 'No token provided'}), 401
-        
         try:
-            # Remove 'Bearer ' prefix if present
-            if token.startswith('Bearer '):
-                token = token[7:]
-            
-            # Verify the token - handle both ID tokens and custom tokens
-            try:
-                # First, try to verify as ID token
-                decoded_token = auth.verify_id_token(token)
-                uid = decoded_token['uid']
-            except Exception as id_token_error:
-                # If ID token verification fails, it might be a custom token
-                try:
-                    import jwt
-                    decoded_token = jwt.decode(token, options={"verify_signature": False})
-                    uid = decoded_token.get('uid')
-                    if not uid:
-                        raise ValueError("Invalid token format - no UID found")
-                except Exception as custom_token_error:
-                    # If JWT decoding fails, it might be a Firebase custom token
-                    # Firebase custom tokens contain the UID directly in the payload
-                    try:
-                        import jwt
-                        decoded_token = jwt.decode(token, options={"verify_signature": False})
-                        uid = decoded_token.get('uid')
-                        if uid:
-                            print(f"DEBUG: Using Firebase custom token for UID: {uid}")
-                        else:
-                            raise ValueError("No UID found in custom token")
-                    except Exception as firebase_error:
-                        raise ValueError(f"Invalid token: {str(custom_token_error)}")
-            
-            # Get user data from Firestore
-            db = get_firestore()
-            user_doc = db.collection('users').document(uid).get()
-            if not user_doc.exists:
-                return jsonify({'error': 'User not found'}), 404
-            
-            user_data = user_doc.to_dict()
+            decoded_token, uid = _extract_and_verify_token(request.headers.get('Authorization'))
+            user_data = _get_user_record(uid)
             user_role = user_data.get('role', '').lower()
             
-            # STRICT CHECK: Only allow hospital_user role
-            if user_role != 'hospital_user':
+            if user_role != HOSPITAL_ROLE:
                 return jsonify({
                     'error': 'Access denied',
                     'message': f'Hospital user access required. Your role: {user_role}',
-                    'required_role': 'hospital_user'
+                    'required_role': HOSPITAL_ROLE
                 }), 403
             
-            # Store user info in request
             request.user = decoded_token
             request.user_data = user_data
             request.user_role = user_role
             
-            # Extract hospital information from entity_assignments
             entity_assignments = user_data.get('entity_assignments', {})
             hospitals = entity_assignments.get('hospitals', [])
-            
-            # Get the first hospital assignment (most users have one hospital)
-            hospital_id = ''
-            hospital_name = ''
-            if hospitals and len(hospitals) > 0:
-                hospital_id = hospitals[0].get('id', '')
-                hospital_name = hospitals[0].get('name', '')
-            
-            # Set request attributes for use in routes
+            hospital_id = hospitals[0].get('id', '') if hospitals else ''
+            hospital_name = hospitals[0].get('name', '') if hospitals else ''
+
             request.user_id = uid
             request.user_email = user_data.get('email', '')
-            
-            # Debug: Print user data to see what fields are available
-            print(f"🔍 User data fields: {list(user_data.keys())}")
-            print(f"🔍 User name field: {user_data.get('name', 'NOT_FOUND')}")
-            print(f"🔍 User display_name field: {user_data.get('display_name', 'NOT_FOUND')}")
-            print(f"🔍 User full_name field: {user_data.get('full_name', 'NOT_FOUND')}")
-            print(f"🔍 User first_name field: {user_data.get('first_name', 'NOT_FOUND')}")
-            print(f"🔍 User last_name field: {user_data.get('last_name', 'NOT_FOUND')}")
-            
-            # Try multiple name fields
-            user_name = (user_data.get('name', '') or 
-                        user_data.get('display_name', '') or 
-                        user_data.get('full_name', '') or 
-                        f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or
-                        user_data.get('email', '').split('@')[0].replace('.', ' ').replace('_', ' ').title() or
-                        'Unknown User')
-            
-            print(f"🔍 Extracted user name: '{user_name}'")
-            request.user_name = user_name
+            request.user_name = _derive_user_name(user_data)
             request.hospital_id = hospital_id
             request.hospital_name = hospital_name
             
             return f(*args, **kwargs)
-        except Exception as e:
-            return jsonify({'error': 'Invalid token', 'details': str(e)}), 401
+        except ValueError as err:
+            return jsonify({'error': 'Invalid token', 'details': str(err)}), 401
+        except LookupError as err:
+            return jsonify({'error': str(err)}), 404
     
     return decorated_function
+
 
 def require_rm_access(f):
     """Decorator for RM (Relationship Manager) and Reconciler roles"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Skip authentication for OPTIONS requests (CORS preflight)
         if request.method == 'OPTIONS':
             return f(*args, **kwargs)
             
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({'error': 'No token provided'}), 401
-        
         try:
-            # Remove 'Bearer ' prefix if present
-            if token.startswith('Bearer '):
-                token = token[7:]
-            
-            # Verify the token - handle both ID tokens and custom tokens
-            try:
-                # First, try to verify as ID token
-                decoded_token = auth.verify_id_token(token)
-                uid = decoded_token['uid']
-            except Exception as id_token_error:
-                # If ID token verification fails, it might be a custom token
-                try:
-                    import jwt
-                    decoded_token = jwt.decode(token, options={"verify_signature": False})
-                    uid = decoded_token.get('uid')
-                    if not uid:
-                        raise ValueError("Invalid token format - no UID found")
-                except Exception as custom_token_error:
-                    raise ValueError(f"Invalid token: {str(custom_token_error)}")
-            
-            # Get user data from Firestore
-            db = get_firestore()
-            user_doc = db.collection('users').document(uid).get()
-            if not user_doc.exists:
-                return jsonify({'error': 'User not found'}), 404
-            
-            user_data = user_doc.to_dict()
+            decoded_token, uid = _extract_and_verify_token(request.headers.get('Authorization'))
+            user_data = _get_user_record(uid)
             user_role = user_data.get('role', '').lower()
             
-            # Check if user is an RM or Reconciler (both have same access)
-            if user_role not in ['rm', 'reconciler']:
+            if user_role not in RM_ROLES:
                 return jsonify({
                     'error': 'Access denied',
                     'message': f'RM/Reconciler access required. Your role: {user_role}',
                     'required_role': 'rm or reconciler'
                 }), 403
             
-            # Store user info in request
             request.user = decoded_token
             request.user_data = user_data
             request.user_role = user_role
             request.user_id = uid
             request.user_email = user_data.get('email', '')
-            
-            # Try multiple name fields
-            user_name = (user_data.get('name', '') or 
-                        user_data.get('display_name', '') or 
-                        user_data.get('full_name', '') or 
-                        f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or
-                        user_data.get('email', '').split('@')[0].replace('.', ' ').replace('_', ' ').title() or
-                        'Unknown User')
-            
-            request.user_name = user_name
-            
-            # Extract entity assignments for payers and hospitals
+            request.user_name = _derive_user_name(user_data)
+
             entity_assignments = user_data.get('entity_assignments', {})
-            payers = entity_assignments.get('payers', [])
-            hospitals = entity_assignments.get('hospitals', [])
-            
             request.entity_assignments = entity_assignments
-            request.assigned_payers = payers
-            request.assigned_hospitals = hospitals
+            request.assigned_payers = entity_assignments.get('payers', [])
+            request.assigned_hospitals = entity_assignments.get('hospitals', [])
             
             return f(*args, **kwargs)
-        except Exception as e:
-            return jsonify({'error': 'Invalid token', 'details': str(e)}), 401
+        except ValueError as err:
+            return jsonify({'error': 'Invalid token', 'details': str(err)}), 401
+        except LookupError as err:
+            return jsonify({'error': str(err)}), 404
     
     return decorated_function
+
+
+def require_review_request_access(f):
+    """Decorator for Review Request role (second-level reviewers)"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+
+        try:
+            decoded_token, uid = _extract_and_verify_token(request.headers.get('Authorization'))
+            user_data = _get_user_record(uid)
+            user_role = user_data.get('role', '').lower()
+
+            if user_role != REVIEW_REQUEST_ROLE:
+                return jsonify({
+                    'error': 'Access denied',
+                    'message': f'Review Request access required. Your role: {user_role}',
+                    'required_role': REVIEW_REQUEST_ROLE
+                }), 403
+
+            request.user = decoded_token
+            request.user_data = user_data
+            request.user_role = user_role
+            request.user_id = uid
+            request.user_email = user_data.get('email', '')
+            request.user_name = _derive_user_name(user_data)
+
+            entity_assignments = user_data.get('entity_assignments', {}) or {}
+            request.entity_assignments = entity_assignments
+            request.assigned_payers = entity_assignments.get('payers', [])
+            request.assigned_hospitals = entity_assignments.get('hospitals', [])
+            request.review_level = entity_assignments.get('review_level')
+            request.max_claim_amount = entity_assignments.get('max_claim_amount')
+
+            return f(*args, **kwargs)
+        except ValueError as err:
+            return jsonify({'error': 'Invalid token', 'details': str(err)}), 401
+        except LookupError as err:
+            return jsonify({'error': str(err)}), 404
+
+    return decorated_function
+
 
 def require_auth(f):
     """General authentication decorator"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Skip authentication for OPTIONS requests (CORS preflight)
         if request.method == 'OPTIONS':
             return f(*args, **kwargs)
             
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({'error': 'No token provided'}), 401
-        
         try:
-            # Remove 'Bearer ' prefix if present
-            if token.startswith('Bearer '):
-                token = token[7:]
-            
-            # Verify the token
-            decoded_token = auth.verify_id_token(token)
+            decoded_token, _ = _extract_and_verify_token(request.headers.get('Authorization'))
             request.user = decoded_token
             return f(*args, **kwargs)
-        except Exception as e:
-            return jsonify({'error': 'Invalid token', 'details': str(e)}), 401
+        except ValueError as err:
+            return jsonify({'error': 'Invalid token', 'details': str(err)}), 401
     
     return decorated_function

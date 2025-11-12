@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { signInWithEmail, signOutUser } from './firebaseClient';
+import { API_BASE_URL } from '@/lib/apiConfig';
 import type {
   LoginCredentials,
   LoginResponse,
@@ -11,7 +12,7 @@ import type {
 
 class AuthService {
   private api: AxiosInstance;
-  private baseURL = process.env.NEXT_PUBLIC_API_URL || 'https://claims-2.onrender.com/api';
+  private baseURL = API_BASE_URL;
 
   constructor() {
     this.api = axios.create({
@@ -65,17 +66,22 @@ class AuthService {
         password: credentials.password
       });
 
-      if (response.data.success && response.data.user && response.data.token) {
+      const sessionToken = response.data.id_token || response.data.token;
+
+      if (response.data.success && response.data.user && sessionToken) {
         // Store the token and user data
-        this.storeAuth(response.data.token, response.data.user);
+        this.storeAuth(sessionToken, response.data.user);
 
         console.log('💾 Auth data stored successfully');
 
         return {
           success: response.data.success,
           message: response.data.message,
-          access_token: response.data.token,
-          token: response.data.token,
+          access_token: sessionToken,
+          token: sessionToken,
+          id_token: response.data.id_token,
+          custom_token: response.data.custom_token,
+          refresh_token: response.data.refresh_token,
           user: response.data.user
         };
       }

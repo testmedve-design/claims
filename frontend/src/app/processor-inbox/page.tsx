@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { FileText, Search, Filter, Clock, CheckCircle, AlertCircle, XCircle, Lock, Unlock } from 'lucide-react'
 import { PROCESSOR_APPROVAL_LIMITS, canAccessRoute } from '@/lib/routes'
+import { API_BASE_URL } from '@/lib/apiConfig'
 
 interface Claim {
   claim_id: string
@@ -29,8 +30,6 @@ interface Claim {
   lock_expires_at?: string
 }
 
-const API_BASE_URL = 'https://claims-2.onrender.com'
-
 // Helper function to determine if a claim is already processed
 const isClaimProcessed = (claimStatus: string): boolean => {
   const processedStatuses = ['qc_query', 'qc_clear', 'claim_approved', 'claim_denial']
@@ -46,6 +45,7 @@ export default function ProcessorInboxPage() {
   const [error, setError] = useState<string | null>(null)
   const [fetchingClaims, setFetchingClaims] = useState(false)
   const fetchingRef = useRef(false)
+  const claimsRef = useRef<Claim[]>([]) // Ref to track current claims without causing re-renders
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [startDate, setStartDate] = useState('')
@@ -63,24 +63,19 @@ export default function ProcessorInboxPage() {
   useEffect(() => {
     fetchClaims()
     
-    // Auto-refresh every 30 seconds to update lock status
+    // Auto-refresh only if user has locked claims (to prevent lock expiry)
+    // Reduced frequency to 2 minutes and only when needed
     const refreshInterval = setInterval(() => {
-      console.log('🔍 Auto-refreshing claims list...')
-      // Only refresh if we're not in the middle of a lock operation
-      if (!fetchingRef.current) {
-        // Check if any claims are locked by current user - if so, preserve their lock states
-        const hasLockedClaims = claims.some(claim => claim.locked_by_processor === user?.uid)
-        if (hasLockedClaims) {
-          console.log('🔍 Auto-refresh with lock preservation')
-        }
+      // Only refresh if user has locked claims (to prevent lock expiry)
+      const hasLockedClaims = claimsRef.current.some(claim => claim.locked_by_processor === user?.uid)
+      if (hasLockedClaims && !fetchingRef.current) {
         fetchClaims()
-      } else {
-        console.log('🔍 Skipping auto-refresh - lock operation in progress')
       }
-    }, 30000) // 30 seconds
+    }, 120000) // 2 minutes - only refresh if user has locked claims
     
     return () => clearInterval(refreshInterval)
-  }, []) // Remove fetchingClaims from dependencies to prevent infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on mount
 
   // Refetch claims when tab changes
   useEffect(() => {
@@ -117,7 +112,7 @@ export default function ProcessorInboxPage() {
         params.append('end_date', endDate)
       }
       
-      const url = `https://claims-2.onrender.com/api/processor-routes/get-claims-to-process?${params.toString()}`
+      const url = `${API_BASE_URL}/processor-routes/get-claims-to-process?${params.toString()}`
       
       console.log('🔍 Fetching claims for tab:', activeTab)
       console.log('🔍 API URL:', url)
@@ -149,6 +144,8 @@ export default function ProcessorInboxPage() {
       }
       
       if (data.success) {
+        // Update ref for interval checks
+        claimsRef.current = data.claims || []
         // Transform the data structure from processor API
         const transformedClaims = data.claims.map((claim: any) => ({
           claim_id: claim.claim_id,
@@ -200,6 +197,7 @@ export default function ProcessorInboxPage() {
             return serverClaim
           })
           
+          claimsRef.current = updatedClaims // Update ref
           return updatedClaims
         })
       } else {
@@ -227,7 +225,7 @@ export default function ProcessorInboxPage() {
     // Filter by tab (unprocessed vs processed)
     if (activeTab === 'unprocessed') {
       filtered = filtered.filter(claim => 
-        ['qc_pending', 'need_more_info', 'qc_answered'].includes(claim.claim_status)
+        ['qc_pending', 'need_more_info', 'qc_answered', 'claim_contested'].includes(claim.claim_status)
       )
     } else if (activeTab === 'processed') {
       filtered = filtered.filter(claim => 
@@ -254,7 +252,7 @@ export default function ProcessorInboxPage() {
 
   const getUnprocessedCount = () => {
     return claims.filter(claim => 
-      ['qc_pending', 'need_more_info', 'qc_answered'].includes(claim.claim_status)
+      ['qc_pending', 'need_more_info', 'qc_answered', 'claim_contested'].includes(claim.claim_status)
     ).length
   }
 
@@ -277,6 +275,8 @@ export default function ProcessorInboxPage() {
         return <Badge variant="outline" className="text-orange-600"><AlertCircle className="w-3 h-3 mr-1" />QC Query</Badge>
       case 'need_more_info':
         return <Badge variant="outline" className="text-orange-600"><AlertCircle className="w-3 h-3 mr-1" />Need More Info</Badge>
+      case 'claim_contested':
+        return <Badge variant="outline" className="text-purple-600"><AlertCircle className="w-3 h-3 mr-1" />Contested</Badge>
       case 'qc_answered':
         return <Badge variant="outline" className="text-blue-600"><CheckCircle className="w-3 h-3 mr-1" />QC Answered</Badge>
       case 'qc_clear':
@@ -338,7 +338,7 @@ export default function ProcessorInboxPage() {
       // Show loading state
       setFetchingClaims(true)
 
-      const lockResponse = await fetch(`${API_BASE_URL}/api/processor-routes/lock-claim/${claimId}`, {
+      const lockResponse = await fetch(`${API_BASE_URL}/processor-routes/lock-claim/${claimId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -361,8 +361,8 @@ export default function ProcessorInboxPage() {
       console.log('🔍 DEBUG: User displayName:', user?.displayName)
 
       // Update the claim in the local state immediately to show Process button
-      setClaims(prevClaims => 
-        prevClaims.map(claim => 
+      setClaims(prevClaims => {
+        const updated = prevClaims.map(claim => 
           claim.claim_id === claimId 
             ? {
                 ...claim,
@@ -374,7 +374,9 @@ export default function ProcessorInboxPage() {
               }
             : claim
         )
-      )
+        claimsRef.current = updated // Update ref
+        return updated
+      })
 
       // Debug: Print updated claim
       console.log('🔍 DEBUG: Updated claim after lock:', {
@@ -428,7 +430,7 @@ export default function ProcessorInboxPage() {
       // Show loading state
       setFetchingClaims(true)
 
-      const unlockResponse = await fetch(`${API_BASE_URL}/api/processor-routes/unlock-claim/${claimId}`, {
+      const unlockResponse = await fetch(`${API_BASE_URL}/processor-routes/unlock-claim/${claimId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -445,8 +447,8 @@ export default function ProcessorInboxPage() {
       console.log('🔍 Claim unlocked successfully:', unlockData)
 
       // Update the claim in the local state immediately to hide Process button
-      setClaims(prevClaims => 
-        prevClaims.map(claim => 
+      setClaims(prevClaims => {
+        const updated = prevClaims.map(claim => 
           claim.claim_id === claimId 
             ? {
                 ...claim,
@@ -458,7 +460,9 @@ export default function ProcessorInboxPage() {
               }
             : claim
         )
-      )
+        claimsRef.current = updated // Update ref
+        return updated
+      })
 
       // Don't refresh from server immediately - keep the local state
       console.log('🔍 Skipping immediate server refresh to preserve unlock state')

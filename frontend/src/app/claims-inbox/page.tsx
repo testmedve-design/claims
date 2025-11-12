@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { StatsCardSkeleton } from '@/components/ui/card-skeleton'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
+import { API_BASE_URL } from '@/lib/apiConfig'
 
 interface Claim {
   claim_id: string
@@ -83,7 +84,7 @@ export default function ClaimsInboxPage() {
         params.append('end_date', endDate)
       }
       
-      const url = `https://claims-2.onrender.com/api/v1/claims/get-all-claims${params.toString() ? `?${params.toString()}` : ''}`
+      const url = `${API_BASE_URL}/v1/claims/get-all-claims${params.toString() ? `?${params.toString()}` : ''}`
       
       const response = await fetch(url, {
         method: 'GET',

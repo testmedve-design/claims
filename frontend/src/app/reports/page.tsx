@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 
 import { useAuth } from '@/contexts/AuthContext'
 import { claimsApi } from '@/services/claimsApi'
+import { toast } from '@/hooks/use-toast'
+import { API_BASE_URL } from '@/lib/apiConfig'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,6 +27,7 @@ import {
   Activity,
   BarChart3,
   RefreshCw,
+  Download,
   TrendingUp,
   Wallet,
   AlertTriangle,
@@ -81,6 +84,7 @@ export default function ReportsPage() {
   const [claims, setClaims] = useState<HospitalClaim[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     if (!user) {
@@ -226,6 +230,71 @@ export default function ReportsPage() {
     fetchClaims()
   }
 
+  const handleExportCsv = async () => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      if (!token) {
+        toast({
+          title: 'Authentication required',
+          description: 'Please log in again to download the report.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      setDownloading(true)
+
+      const params = new URLSearchParams()
+      params.set('limit', 'all')
+
+      const response = await fetch(`${API_BASE_URL}/v1/claims/export?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '')
+        throw new Error(errorText || `Export failed with status ${response.status}`)
+      }
+
+      const blob = await response.blob()
+
+      let filename = 'claims_report.csv'
+      const disposition = response.headers.get('Content-Disposition')
+      if (disposition) {
+        const match = disposition.match(/filename="?([^"]+)"?/)
+        if (match && match[1]) {
+          filename = match[1]
+        }
+      }
+
+      const blobUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(blobUrl)
+
+      toast({
+        title: 'Report downloaded',
+        description: `Saved ${filename} (${blob.size.toLocaleString()} bytes)`,
+      })
+    } catch (err) {
+      console.error('Failed to export claims report:', err)
+      const message = err instanceof Error ? err.message : 'Unable to download report'
+      toast({
+        title: 'Export failed',
+        description: message,
+        variant: 'destructive',
+      })
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -284,6 +353,24 @@ export default function ReportsPage() {
           <Button variant="outline" onClick={fetchClaims} className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Refresh data
+          </Button>
+          <Button
+            variant="default"
+            onClick={handleExportCsv}
+            className="gap-2"
+            disabled={downloading || loading || totalClaims === 0}
+          >
+            {downloading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Preparing CSV…
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                Download MIS
+              </>
+            )}
           </Button>
         </div>
       </div>

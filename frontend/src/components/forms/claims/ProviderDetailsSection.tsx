@@ -126,6 +126,29 @@ export function ProviderDetailsSection({
                 <SelectContent>
                   <SelectItem value="MEDICAL">Medical</SelectItem>
                   <SelectItem value="SURGICAL">Surgical</SelectItem>
+                  <SelectItem value="INTENSIVE_CARE">Intensive Care</SelectItem>
+                  <SelectItem value="NON_ALLOPATHY">Non Allopathy</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="policy_type"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Policy Type <span className="text-destructive">*</span></FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger><SelectValue placeholder="Select Policy Type" /></SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="FAMILY">Family</SelectItem>
+                  <SelectItem value="GROUP">Group</SelectItem>
+                  <SelectItem value="INDIVIDUAL">Individual</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -146,6 +169,8 @@ export function ProviderDetailsSection({
                 <SelectContent>
                   <SelectItem value="INPATIENT">Inpatient</SelectItem>
                   <SelectItem value="DIALYSIS">Dialysis</SelectItem>
+                  <SelectItem value="KIMO">Kimo</SelectItem>
+                  <SelectItem value="OTHERS">Others</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

@@ -1,18 +1,56 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { useRouter, useParams } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft, Save, RefreshCw, FileText, User, Building, DollarSign, Calendar, Upload, X } from 'lucide-react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from '@/components/ui/accordion'
+import {
+  ArrowLeft,
+  Building2,
+  CreditCard,
+  FileText,
+  History,
+  Loader2,
+  Receipt,
+  RefreshCw,
+  Save,
+  Upload,
+  UserCircle,
+  X
+} from 'lucide-react'
+
 import { rmApi, type RMClaimDetails } from '@/services/rmApi'
+import { toast } from '@/lib/toast'
+import { API_BASE_URL } from '@/lib/apiConfig'
+import { PatientDetailsDisplay } from '@/components/forms/claims/PatientDetailsDisplay'
+import { PayerDetailsDisplay } from '@/components/forms/claims/PayerDetailsDisplay'
+import { ProviderDetailsDisplay } from '@/components/forms/claims/ProviderDetailsDisplay'
+import { BillDetailsDisplay } from '@/components/forms/claims/BillDetailsDisplay'
+import { TransactionHistory } from '@/components/forms/claims/TransactionHistory'
 
 const RM_STATUSES = [
   'RECEIVED',
@@ -30,24 +68,74 @@ const RM_STATUSES = [
 
 const SETTLEMENT_STATUSES = ['SETTLED', 'PARTIALLY SETTLED', 'RECONCILIATION']
 
+const RM_STATUS_BADGES: Record<string, string> = {
+  RECEIVED: 'bg-blue-100 text-blue-800',
+  'QUERY RAISED': 'bg-orange-100 text-orange-800',
+  REPUDIATED: 'bg-red-100 text-red-800',
+  SETTLED: 'bg-emerald-100 text-emerald-800',
+  APPROVED: 'bg-green-100 text-green-800',
+  'PARTIALLY SETTLED': 'bg-teal-100 text-teal-800',
+  RECONCILIATION: 'bg-purple-100 text-purple-800',
+  INPROGRESS: 'bg-sky-100 text-sky-800',
+  CANCELLED: 'bg-gray-100 text-gray-700',
+  CLOSED: 'bg-slate-200 text-slate-700',
+  'NOT FOUND': 'bg-gray-200 text-gray-700'
+}
+
+const CLAIM_STATUS_BADGES: Record<string, string> = {
+  CREATED: 'bg-blue-100 text-blue-800',
+  DISPATCHED: 'bg-green-100 text-green-800',
+  CONTESTED: 'bg-amber-100 text-amber-800',
+  SETTLED: 'bg-emerald-100 text-emerald-800',
+  CLEARED: 'bg-teal-100 text-teal-800',
+  REJECTED: 'bg-red-100 text-red-800'
+}
+
+const settlementDocumentOptions = [
+  'Settlement Letter',
+  'Partial Settlement Letter',
+  'Reconciliation Letter',
+  'Physical Acknowledge Copy'
+]
+
+const formatCurrencyINR = (value?: number | null) => {
+  if (value === null || value === undefined) return '₹0.00'
+  const safeNumber = Number(value)
+  if (Number.isNaN(safeNumber)) return '₹0.00'
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2
+  }).format(safeNumber)
+}
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return '—'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return '—'
+  return parsed.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+}
+
+const getBadgeClass = (status: string | undefined, mapping: Record<string, string>) => {
+  if (!status) return 'bg-gray-100 text-gray-700'
+  return mapping[status.toUpperCase()] || 'bg-gray-100 text-gray-700'
+}
+
 export default function RMProcessClaimPage() {
-  const { user } = useAuth()
+  const params = useParams<{ claimId: string }>()
   const router = useRouter()
-  const params = useParams()
-  const claimId = params.claimId as string
+  const claimId = params.claimId
 
   const [claim, setClaim] = useState<RMClaimDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [banks, setBanks] = useState<{bank_id: string, name: string}[]>([])
+  const [banks, setBanks] = useState<Array<{ bank_id: string; name: string }>>([])
 
-  // Form state
   const [rmStatus, setRmStatus] = useState('RECEIVED')
   const [statusRaisedDate, setStatusRaisedDate] = useState('')
   const [statusRaisedRemarks, setStatusRaisedRemarks] = useState('')
-  
-  // Settlement fields
+
   const [settlementData, setSettlementData] = useState({
     claim_settlement_date: '',
     payment_mode: '',
@@ -70,182 +158,233 @@ export default function RMProcessClaimPage() {
     medverve_review_remarks: ''
   })
 
-  // Custom fields for other statuses
   const [customFields, setCustomFields] = useState<Record<string, string>>({})
 
-  // Document upload state
   const [uploadingDocument, setUploadingDocument] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [documentType, setDocumentType] = useState('')
 
-  useEffect(() => {
-    if (claimId) {
-      fetchClaimDetails()
-      fetchBanks()
-    }
-  }, [claimId])
+  const isSettlementStatus = useMemo(
+    () => SETTLEMENT_STATUSES.includes(rmStatus),
+    [rmStatus]
+  )
 
-  const fetchBanks = async () => {
+  const handleSettlementDataChange = (field: keyof typeof settlementData, value: string) => {
+    setSettlementData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const fetchBanks = useCallback(async () => {
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://claims-2.onrender.com/api'
       const response = await fetch(`${API_BASE_URL}/resources/banks`)
+      if (!response.ok) {
+        throw new Error('Unable to load banks')
+      }
       const data = await response.json()
-      if (data.success && data.banks) {
+      if (data.success && Array.isArray(data.banks)) {
         setBanks(data.banks)
-        console.log('✅ Banks loaded:', data.banks.length, 'banks')
       }
     } catch (err) {
       console.error('❌ Error fetching banks:', err)
+      toast.error('Failed to load banks list')
     }
-  }
+  }, [])
 
-  const fetchClaimDetails = async () => {
+  const fetchClaimDetails = useCallback(async () => {
+    if (!claimId) return
     try {
       setLoading(true)
-      
+      setError(null)
       const data = await rmApi.getClaimDetails(claimId)
-      
-      if (data.success) {
-        setClaim(data.claim)
-        setRmStatus(data.claim.rm_status || 'RECEIVED')
-        
-        // Load existing RM data if available
-        if (data.claim.rm_data) {
-          setSettlementData({ ...settlementData, ...data.claim.rm_data })
-          setCustomFields(data.claim.rm_data)
-        }
-      } else {
-        throw new Error(data.error || 'Failed to fetch claim details')
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load claim')
       }
+
+      const rmData = data.claim.rm_data || {}
+      setClaim(data.claim)
+      setRmStatus(data.claim.rm_status || 'RECEIVED')
+      setSettlementData(prev => ({
+        ...prev,
+        ...rmData
+      }))
+      setCustomFields(rmData)
     } catch (err: any) {
-      console.error('Error fetching claim details:', err)
-      setError(err.message || 'An error occurred while fetching claim details')
+      console.error('Error fetching RM claim:', err)
+      setError(err?.message || 'Unable to load claim details')
     } finally {
       setLoading(false)
     }
-  }
+  }, [claimId])
+
+  useEffect(() => {
+    if (!claimId) return
+    fetchClaimDetails()
+    fetchBanks()
+  }, [claimId, fetchClaimDetails, fetchBanks])
 
   const handleUpdateClaim = async () => {
+    if (!claimId) return
     try {
       setSaving(true)
-
-      // Prepare data based on status
-      let rmData = {}
-      if (SETTLEMENT_STATUSES.includes(rmStatus)) {
-        rmData = settlementData
-      } else {
-        rmData = customFields
-      }
-
-      const data = await rmApi.updateClaim(claimId, {
+      const rmData = isSettlementStatus ? settlementData : customFields
+      const response = await rmApi.updateClaim(claimId, {
         rm_status: rmStatus,
-        status_raised_date: statusRaisedDate,
-        status_raised_remarks: statusRaisedRemarks,
+        status_raised_date: statusRaisedDate || undefined,
+        status_raised_remarks: statusRaisedRemarks || undefined,
         rm_data: rmData
       })
-      
-      if (data.success) {
-        alert('Claim updated successfully!')
-        router.push('/rm-inbox')
-      } else {
-        throw new Error(data.error || 'Failed to update claim')
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to update claim')
       }
+
+      toast.success('Claim updated successfully')
+      router.push('/rm-inbox')
     } catch (err: any) {
-      console.error('Error updating claim:', err)
-      alert(`Error: ${err.message}`)
+      console.error('Error updating RM claim:', err)
+      toast.error(err?.message || 'Failed to update claim')
     } finally {
       setSaving(false)
     }
   }
 
   const handleReEvaluate = async () => {
+    if (!claimId) return
     try {
-      setSaving(true)
-
-      const remarks = prompt('Please enter remarks for re-evaluation:')
-      if (!remarks) {
-        setSaving(false)
+      const remarks = window.prompt('Enter remarks for re-evaluation')
+      if (!remarks || !remarks.trim()) {
+        toast.info('Re-evaluation cancelled')
         return
       }
 
-      const data = await rmApi.reevaluateClaim(claimId, remarks)
-      
-      if (data.success) {
-        alert('Claim marked for re-evaluation successfully!')
-        router.push('/rm-inbox')
-      } else {
-        throw new Error(data.error || 'Failed to re-evaluate claim')
+      setSaving(true)
+      const response = await rmApi.reevaluateClaim(claimId, remarks.trim())
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to mark for re-evaluation')
       }
+      toast.success('Claim sent for re-evaluation')
+      router.push('/rm-inbox')
     } catch (err: any) {
-      console.error('Error re-evaluating claim:', err)
-      alert(`Error: ${err.message}`)
+      console.error('Error re-evaluating RM claim:', err)
+      toast.error(err?.message || 'Failed to mark for re-evaluation')
     } finally {
       setSaving(false)
     }
   }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      setSelectedFile(file)
-    }
+    const file = event.target.files?.[0] || null
+    setSelectedFile(file)
   }
 
   const handleDocumentUpload = async () => {
+    if (!claimId) return
     if (!selectedFile || !documentType) {
-      alert('Please select a file and document type')
+      toast.error('Select both document type and file before uploading')
       return
     }
 
     try {
       setUploadingDocument(true)
       const token = localStorage.getItem('auth_token')
-      
+      if (!token) {
+        throw new Error('Authentication token missing')
+      }
+
       const formData = new FormData()
       formData.append('file', selectedFile)
       formData.append('claim_id', claimId)
       formData.append('document_type', documentType)
       formData.append('document_name', selectedFile.name)
 
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://claims-2.onrender.com/api'
       const response = await fetch(`${API_BASE_URL}/v1/documents/upload`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         },
         body: formData
       })
 
       if (!response.ok) {
-        throw new Error('Failed to upload document')
+        throw new Error('Upload failed. Please retry.')
       }
 
       const data = await response.json()
-      
-      if (data.success) {
-        alert('Document uploaded successfully!')
-        // Refresh claim details to show new document
-        fetchClaimDetails()
-        // Reset form
-        setSelectedFile(null)
-        setDocumentType('')
-      } else {
+      if (!data.success) {
         throw new Error(data.error || 'Upload failed')
       }
+
+      toast.success('Document uploaded successfully')
+      setSelectedFile(null)
+      setDocumentType('')
+      await fetchClaimDetails()
     } catch (err: any) {
-      console.error('Error uploading document:', err)
-      alert(`Error: ${err.message}`)
+      console.error('Error uploading RM document:', err)
+      toast.error(err?.message || 'Unable to upload document')
     } finally {
       setUploadingDocument(false)
     }
   }
 
+  const submissionDisplay = useMemo(() => {
+    if (!claim?.submission_date) return 'N/A'
+    const parsed = new Date(claim.submission_date)
+    if (Number.isNaN(parsed.getTime())) return 'N/A'
+    return parsed.toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }, [claim?.submission_date])
+
+  const patientDisplayData = useMemo(() => {
+    if (!claim) return {}
+    return {
+      ...(claim.form_data || {}),
+      ...(claim.patient_details || {})
+    }
+  }, [claim])
+
+  const payerDisplayData = useMemo(() => {
+    if (!claim) return {}
+    return {
+      ...(claim.form_data || {}),
+      ...(claim.payer_details || {})
+    }
+  }, [claim])
+
+  const providerDisplayData = useMemo(
+    () => claim?.form_data || {},
+    [claim?.form_data]
+  )
+
+  const transactionsTableData = useMemo(() => {
+    if (!claim?.transactions) return []
+    return claim.transactions.map((transaction: any) => ({
+      ...transaction,
+      performed_at: transaction.timestamp,
+      performed_by_name: transaction.performed_by || transaction.performed_by_name,
+      claim_id: claim.claim_id
+    }))
+  }, [claim?.transactions, claim?.claim_id])
+
+  const accordionDefaults = useMemo(
+    () => ['patient', 'payer', 'provider', 'bill', 'history'],
+    []
+  )
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-lg text-gray-600">Loading claim details...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-gray-600">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span>Loading RM claim…</span>
         </div>
       </div>
     )
@@ -253,15 +392,15 @@ export default function RMProcessClaimPage() {
 
   if (error || !claim) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
-        <Card className="w-full max-w-md">
+      <div className="container mx-auto px-4 py-24">
+        <Card className="mx-auto max-w-lg border-red-200 bg-red-50">
           <CardHeader>
-            <CardTitle className="text-red-600">Error</CardTitle>
+            <CardTitle className="text-red-700">Unable to load claim</CardTitle>
+            <CardDescription>{error || 'Claim not found.'}</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-red-500 mb-4">{error || 'Claim not found'}</p>
-            <Button onClick={() => router.push('/rm-inbox')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
+            <Button variant="outline" onClick={() => router.push('/rm-inbox')}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
               Back to RM Inbox
             </Button>
           </CardContent>
@@ -271,552 +410,670 @@ export default function RMProcessClaimPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            onClick={() => router.push('/rm-inbox')}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
+    <div className="container mx-auto px-4 py-8 space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => router.push('/rm-inbox')}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Process Claim</h1>
-            <p className="text-gray-600 mt-1">Claim ID: {claim.claim_id}</p>
+            <h1 className="text-3xl font-bold leading-tight">Process Claim</h1>
+            <p className="text-sm text-muted-foreground">Claim ID: {claim.claim_id}</p>
           </div>
+        </div>
+        <div className="text-right space-y-2">
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(claim.claim_status, CLAIM_STATUS_BADGES)}`}
+          >
+            {claim.claim_status?.replace(/_/g, ' ') || 'UNKNOWN'}
+          </span>
+          <div className="flex items-center gap-2 justify-end">
+            <span className="text-xs text-muted-foreground">RM Status:</span>
+            <span
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(rmStatus, RM_STATUS_BADGES)}`}
+            >
+              {rmStatus}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">Submitted: {submissionDisplay}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Claim Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Claim Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="patient" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="patient">Patient</TabsTrigger>
-                  <TabsTrigger value="payer">Payer</TabsTrigger>
-                  <TabsTrigger value="financial">Financial</TabsTrigger>
-                </TabsList>
-                <TabsContent value="patient" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm text-gray-600">Patient Name</Label>
-                      <p className="font-medium">{claim.patient_details?.patient_name || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">Age / Gender</Label>
-                      <p className="font-medium">{claim.patient_details?.age || 'N/A'} / {claim.patient_details?.gender || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">Contact Number</Label>
-                      <p className="font-medium">{claim.patient_details?.patient_contact_number || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">Email</Label>
-                      <p className="font-medium">{claim.patient_details?.patient_email_id || 'N/A'}</p>
-                    </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="payer" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm text-gray-600">Payer Name</Label>
-                      <p className="font-medium">{claim.payer_details?.payer_name || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">Payer Type</Label>
-                      <p className="font-medium">{claim.payer_details?.payer_type || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">Policy Number</Label>
-                      <p className="font-medium">{claim.payer_details?.policy_number || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">Authorization Number</Label>
-                      <p className="font-medium">{claim.payer_details?.authorization_number || 'N/A'}</p>
-                    </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="financial" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm text-gray-600">Total Bill Amount</Label>
-                      <p className="font-medium">₹{claim.financial_details?.total_bill_amount?.toLocaleString() || 0}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">Claimed Amount</Label>
-                      <p className="font-medium">₹{claim.financial_details?.claimed_amount?.toLocaleString() || 0}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-gray-600">Amount Charged to Payer</Label>
-                      <p className="font-medium">₹{claim.financial_details?.amount_charged_to_payer?.toLocaleString() || 0}</p>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
+      {(claim.rm_updated_at || claim.rm_updated_by_name) && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <AlertDescription className="flex flex-col gap-1 text-sm text-blue-900">
+            <span className="font-semibold">Last RM update</span>
+            <span>
+              {claim.rm_updated_by_name || claim.rm_updated_by_email || 'RM Team'}
+              {claim.rm_updated_at && (
+                <> on {formatDateTime(claim.rm_updated_at)}</>
+              )}
+            </span>
+          </AlertDescription>
+        </Alert>
+      )}
 
-          {/* RM Status Update */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Update RM Status</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+      <Card className="border border-blue-100 bg-blue-50/80 shadow-none">
+        <CardHeader>
+          <CardTitle className="text-blue-900">Update RM Status</CardTitle>
+          <CardDescription>Record settlement details or re-open the claim for revisions.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>RM Status *</Label>
+              <Select value={rmStatus} onValueChange={setRmStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select RM status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {RM_STATUSES.map(status => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Status Raised Date</Label>
+              <Input
+                type="date"
+                value={statusRaisedDate}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={event => setStatusRaisedDate(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Status Raised Remarks</Label>
+            <Textarea
+              rows={3}
+              placeholder="Add remarks related to this status update…"
+              value={statusRaisedRemarks}
+              onChange={event => setStatusRaisedRemarks(event.target.value)}
+            />
+          </div>
+
+          {isSettlementStatus && (
+            <div className="space-y-4 rounded-lg border border-blue-200 bg-white p-4 shadow-sm">
               <div>
-                <Label htmlFor="rm-status">RM Status *</Label>
-                <Select value={rmStatus} onValueChange={setRmStatus}>
+                <p className="text-base font-semibold text-blue-900">Settlement Information</p>
+                <p className="text-xs text-muted-foreground">
+                  Provide payout details that will be visible to processors and hospital teams.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Claim Settlement Date *</Label>
+                  <Input
+                    type="date"
+                    value={settlementData.claim_settlement_date}
+                    onChange={event =>
+                      handleSettlementDataChange('claim_settlement_date', event.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Mode *</Label>
+                  <Select
+                    value={settlementData.payment_mode}
+                    onValueChange={value => handleSettlementDataChange('payment_mode', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="EFT">EFT</SelectItem>
+                      <SelectItem value="NEFT">NEFT</SelectItem>
+                      <SelectItem value="RTGS">RTGS</SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                      <SelectItem value="Online Transfer">Online Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Payer Bank</Label>
+                  <Select
+                    value={settlementData.payer_bank}
+                    onValueChange={value => handleSettlementDataChange('payer_bank', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payer bank" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {banks.map(bank => (
+                        <SelectItem key={bank.bank_id} value={bank.name}>
+                          {bank.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Payer Account Number</Label>
+                  <Input
+                    placeholder="Enter payer account number"
+                    value={settlementData.payer_account}
+                    onChange={event =>
+                      handleSettlementDataChange('payer_account', event.target.value)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Provider Bank Name</Label>
+                  <Select
+                    value={settlementData.provider_bank_name}
+                    onValueChange={value =>
+                      handleSettlementDataChange('provider_bank_name', value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select provider bank" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {banks.map(bank => (
+                        <SelectItem key={bank.bank_id} value={bank.name}>
+                          {bank.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Provider Account Number</Label>
+                  <Input
+                    placeholder="Enter provider account number"
+                    value={settlementData.provider_account_no}
+                    onChange={event =>
+                      handleSettlementDataChange('provider_account_no', event.target.value)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Payment Reference Number</Label>
+                <Input
+                  placeholder="Payment reference"
+                  value={settlementData.payment_reference_no}
+                  onChange={event =>
+                    handleSettlementDataChange('payment_reference_no', event.target.value)
+                  }
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Settled + TDS Amount</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={settlementData.settled_tds_amount}
+                    onChange={event =>
+                      handleSettlementDataChange('settled_tds_amount', event.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Settled Amount (Without TDS)</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={settlementData.settled_amount_without_tds}
+                    onChange={event =>
+                      handleSettlementDataChange('settled_amount_without_tds', event.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>TDS Percentage</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={settlementData.tds_percentage}
+                    onChange={event =>
+                      handleSettlementDataChange('tds_percentage', event.target.value)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>TDS Amount</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={settlementData.tds_amount}
+                    onChange={event =>
+                      handleSettlementDataChange('tds_amount', event.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Disallowed Amount</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={settlementData.disallowed_amount}
+                    onChange={event =>
+                      handleSettlementDataChange('disallowed_amount', event.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Discount as per Payer</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={settlementData.discount_as_per_payer}
+                    onChange={event =>
+                      handleSettlementDataChange('discount_as_per_payer', event.target.value)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Disallowed Reasons</Label>
+                <Textarea
+                  rows={2}
+                  placeholder="Describe the reason for the disallowed amount…"
+                  value={settlementData.disallowed_reasons}
+                  onChange={event =>
+                    handleSettlementDataChange('disallowed_reasons', event.target.value)
+                  }
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>UITITSL Service Fees</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={settlementData.uititsl_service_fees}
+                    onChange={event =>
+                      handleSettlementDataChange('uititsl_service_fees', event.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Excess Paid</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={settlementData.excess_paid}
+                    onChange={event =>
+                      handleSettlementDataChange('excess_paid', event.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Contested Amount From Payer</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={settlementData.contested_amount_from_payer}
+                    onChange={event =>
+                      handleSettlementDataChange('contested_amount_from_payer', event.target.value)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Settled Remarks</Label>
+                <Textarea
+                  rows={2}
+                  placeholder="Add notes regarding the settlement…"
+                  value={settlementData.settled_remarks}
+                  onChange={event =>
+                    handleSettlementDataChange('settled_remarks', event.target.value)
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Medverve Review Remarks</Label>
+                <Textarea
+                  rows={2}
+                  placeholder="RM review remarks visible to internal teams"
+                  value={settlementData.medverve_review_remarks}
+                  onChange={event =>
+                    handleSettlementDataChange('medverve_review_remarks', event.target.value)
+                  }
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3 rounded-lg border border-blue-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-base font-semibold text-blue-900">Settlement Documents</p>
+                <p className="text-xs text-muted-foreground">
+                  Upload settlement letters or acknowledgements for reference.
+                </p>
+              </div>
+              <Badge variant="outline">{selectedFile ? 'Selected' : 'No file'}</Badge>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Document Type</Label>
+                <Select value={documentType} onValueChange={setDocumentType}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Choose document type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {RM_STATUSES.map(status => (
-                      <SelectItem key={status} value={status}>{status}</SelectItem>
+                    {settlementDocumentOptions.map(option => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
-              <div>
-                <Label htmlFor="status-date">Status Raised Date</Label>
+              <div className="space-y-2">
+                <Label>Upload File</Label>
                 <Input
-                  id="status-date"
-                  type="date"
-                  value={statusRaisedDate}
-                  onChange={(e) => setStatusRaisedDate(e.target.value)}
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={handleFileSelect}
                 />
               </div>
+            </div>
 
-              <div>
-                <Label htmlFor="status-remarks">Status Raised Remarks</Label>
-                <Textarea
-                  id="status-remarks"
-                  value={statusRaisedRemarks}
-                  onChange={(e) => setStatusRaisedRemarks(e.target.value)}
-                  rows={3}
-                  placeholder="Enter remarks for this status update..."
-                />
-              </div>
-
-              {/* Settlement Fields */}
-              {SETTLEMENT_STATUSES.includes(rmStatus) && (
-                <div className="space-y-4 mt-6 p-4 border border-blue-200 rounded-lg bg-blue-50">
-                  <h3 className="text-lg font-semibold text-blue-900">Settlement Information</h3>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="settlement-date">Claim Settlement Date *</Label>
-                      <Input
-                        id="settlement-date"
-                        type="date"
-                        value={settlementData.claim_settlement_date}
-                        onChange={(e) => setSettlementData({...settlementData, claim_settlement_date: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="payment-mode">Payment Mode *</Label>
-                      <Select 
-                        value={settlementData.payment_mode}
-                        onValueChange={(value) => setSettlementData({...settlementData, payment_mode: value})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select payment mode" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="EFT">EFT</SelectItem>
-                          <SelectItem value="NEFT">NEFT</SelectItem>
-                          <SelectItem value="RTGS">RTGS</SelectItem>
-                          <SelectItem value="Cheque">Cheque</SelectItem>
-                          <SelectItem value="Online Transfer">Online Transfer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="payer-bank">Payer Bank</Label>
-                      <Select 
-                        value={settlementData.payer_bank}
-                        onValueChange={(value) => setSettlementData({...settlementData, payer_bank: value})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select payer bank" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {banks.map((bank) => (
-                            <SelectItem key={bank.bank_id} value={bank.name}>
-                              {bank.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="payer-account">Payer Account</Label>
-                      <Input
-                        id="payer-account"
-                        value={settlementData.payer_account}
-                        onChange={(e) => setSettlementData({...settlementData, payer_account: e.target.value})}
-                        placeholder="Enter payer account number"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="provider-bank">Provider Bank Name</Label>
-                      <Select 
-                        value={settlementData.provider_bank_name}
-                        onValueChange={(value) => setSettlementData({...settlementData, provider_bank_name: value})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select provider bank" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {banks.map((bank) => (
-                            <SelectItem key={bank.bank_id} value={bank.name}>
-                              {bank.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="provider-account">Provider Account No</Label>
-                      <Input
-                        id="provider-account"
-                        value={settlementData.provider_account_no}
-                        onChange={(e) => setSettlementData({...settlementData, provider_account_no: e.target.value})}
-                        placeholder="Enter provider account number"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="payment-ref">Payment Reference No</Label>
-                    <Input
-                      id="payment-ref"
-                      value={settlementData.payment_reference_no}
-                      onChange={(e) => setSettlementData({...settlementData, payment_reference_no: e.target.value})}
-                      placeholder="Enter payment reference number"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="settled-tds">Settled + TDS Amount</Label>
-                      <Input
-                        id="settled-tds"
-                        type="number"
-                        value={settlementData.settled_tds_amount}
-                        onChange={(e) => setSettlementData({...settlementData, settled_tds_amount: e.target.value})}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="settled-amount">Settled Amount (Without TDS)</Label>
-                      <Input
-                        id="settled-amount"
-                        type="number"
-                        value={settlementData.settled_amount_without_tds}
-                        onChange={(e) => setSettlementData({...settlementData, settled_amount_without_tds: e.target.value})}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="tds-percentage">TDS Percentage</Label>
-                      <Input
-                        id="tds-percentage"
-                        type="number"
-                        value={settlementData.tds_percentage}
-                        onChange={(e) => setSettlementData({...settlementData, tds_percentage: e.target.value})}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="tds-amount">TDS Amount</Label>
-                      <Input
-                        id="tds-amount"
-                        type="number"
-                        value={settlementData.tds_amount}
-                        onChange={(e) => setSettlementData({...settlementData, tds_amount: e.target.value})}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="disallowed">Disallowed Amount</Label>
-                      <Input
-                        id="disallowed"
-                        type="number"
-                        value={settlementData.disallowed_amount}
-                        onChange={(e) => setSettlementData({...settlementData, disallowed_amount: e.target.value})}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="discount">Discount As Per Payer</Label>
-                      <Input
-                        id="discount"
-                        type="number"
-                        value={settlementData.discount_as_per_payer}
-                        onChange={(e) => setSettlementData({...settlementData, discount_as_per_payer: e.target.value})}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="disallowed-reasons">Disallowed Reasons</Label>
-                    <Textarea
-                      id="disallowed-reasons"
-                      value={settlementData.disallowed_reasons}
-                      onChange={(e) => setSettlementData({...settlementData, disallowed_reasons: e.target.value})}
-                      rows={2}
-                      placeholder="Enter reasons for disallowed amount..."
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="service-fees">UITITSL Service Fees</Label>
-                      <Input
-                        id="service-fees"
-                        type="number"
-                        value={settlementData.uititsl_service_fees}
-                        onChange={(e) => setSettlementData({...settlementData, uititsl_service_fees: e.target.value})}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="excess-paid">Excess Paid</Label>
-                      <Input
-                        id="excess-paid"
-                        type="number"
-                        value={settlementData.excess_paid}
-                        onChange={(e) => setSettlementData({...settlementData, excess_paid: e.target.value})}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="contested">Contested Amount From Payer</Label>
-                      <Input
-                        id="contested"
-                        type="number"
-                        value={settlementData.contested_amount_from_payer}
-                        onChange={(e) => setSettlementData({...settlementData, contested_amount_from_payer: e.target.value})}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="settled-remarks">Settled Remarks</Label>
-                    <Textarea
-                      id="settled-remarks"
-                      value={settlementData.settled_remarks}
-                      onChange={(e) => setSettlementData({...settlementData, settled_remarks: e.target.value})}
-                      rows={2}
-                      placeholder="Enter settlement remarks..."
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="medverve-remarks">Medverve Review Remarks</Label>
-                    <Textarea
-                      id="medverve-remarks"
-                      value={settlementData.medverve_review_remarks}
-                      onChange={(e) => setSettlementData({...settlementData, medverve_review_remarks: e.target.value})}
-                      rows={2}
-                      placeholder="Enter Medverve review remarks..."
-                    />
-                  </div>
+            {selectedFile && (
+              <div className="flex items-center justify-between rounded-md border border-dashed border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span className="font-medium">{selectedFile.name}</span>
                 </div>
-              )}
-
-              {/* Document Upload Section for Settlement Documents */}
-              <div className="mt-6 p-4 border border-blue-200 rounded-lg bg-blue-50">
-                <h3 className="text-lg font-semibold text-blue-900 mb-4">Upload Settlement Documents</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="document-type">Document Type</Label>
-                    <Select value={documentType} onValueChange={setDocumentType}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select document type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Settlement Letter">Settlement Letter</SelectItem>
-                        <SelectItem value="Partial Settlement Letter">Partial Settlement Letter</SelectItem>
-                        <SelectItem value="Reconciliation Letter">Reconciliation Letter</SelectItem>
-                        <SelectItem value="Physical Acknowledge Copy">Physical Acknowledge Copy</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="document-file">Select File</Label>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        id="document-file"
-                        type="file"
-                        onChange={handleFileSelect}
-                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                      />
-                      {selectedFile && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <FileText className="w-4 h-4" />
-                          <span>{selectedFile.name}</span>
-                          <button
-                            onClick={() => setSelectedFile(null)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={handleDocumentUpload}
-                    disabled={uploadingDocument || !selectedFile || !documentType}
-                    className="w-full"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploadingDocument ? 'Uploading...' : 'Upload Document'}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-4 pt-4">
-                <Button 
-                  onClick={handleUpdateClaim}
-                  disabled={saving}
-                  className="flex-1"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700"
+                  onClick={() => setSelectedFile(null)}
                 >
-                  <Save className="w-4 h-4 mr-2" />
-                  {saving ? 'Updating...' : 'UPDATE'}
-                </Button>
-                <Button 
-                  onClick={handleReEvaluate}
-                  disabled={saving}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Re-Evaluate
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            )}
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Status Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Status</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label className="text-sm text-gray-600">Claim Status</Label>
-                <Badge variant="outline" className="mt-1">{claim.claim_status}</Badge>
-              </div>
-              <div>
-                <Label className="text-sm text-gray-600">RM Status</Label>
-                <Badge variant="outline" className="mt-1">{claim.rm_status || 'RECEIVED'}</Badge>
-              </div>
-              <div>
-                <Label className="text-sm text-gray-600">Hospital</Label>
-                <p className="text-sm">{claim.hospital_name}</p>
-              </div>
-              <div>
-                <Label className="text-sm text-gray-600">Submission Date</Label>
-                <p className="text-sm">{new Date(claim.submission_date).toLocaleDateString('en-IN')}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Documents Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Documents ({claim.documents?.length || 0})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {claim.documents && claim.documents.length > 0 ? (
-                <div className="space-y-2">
-                  {claim.documents.map((doc: any) => (
-                    <div key={doc.document_id} className="flex items-center justify-between p-2 border rounded">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{doc.document_type}</p>
-                        <p className="text-xs text-gray-500">{doc.original_filename}</p>
-                      </div>
-                      {doc.download_url && (
-                        <Button size="sm" variant="ghost" asChild>
-                          <a href={doc.download_url} target="_blank" rel="noopener noreferrer">
-                            View
-                          </a>
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
+            <Button
+              type="button"
+              className="w-full md:w-fit"
+              disabled={uploadingDocument || !selectedFile || !documentType}
+              onClick={handleDocumentUpload}
+            >
+              {uploadingDocument ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading…
+                </>
               ) : (
-                <p className="text-sm text-gray-500">No documents available</p>
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Document
+                </>
               )}
-            </CardContent>
-          </Card>
+            </Button>
+          </div>
 
-          {/* Transaction History */}
-          {claim.transactions && claim.transactions.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Transaction History</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {claim.transactions.map((trans: any, index: number) => (
-                    <div key={trans.transaction_id || index} className="border-l-2 border-blue-500 pl-3 py-2">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="outline" className="text-xs">{trans.transaction_type}</Badge>
-                        <span className="text-xs text-gray-500">
-                          {new Date(trans.timestamp).toLocaleDateString('en-IN')}
-                        </span>
-                      </div>
-                      <p className="text-sm font-medium mt-1">{trans.performed_by}</p>
-                      {trans.remarks && (
-                        <p className="text-xs text-gray-600 mt-1">{trans.remarks}</p>
-                      )}
-                      {trans.previous_status && trans.new_status && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {trans.previous_status} → {trans.new_status}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+          <div className="flex flex-col gap-3 md:flex-row">
+            <Button
+              className="flex-1"
+              disabled={saving}
+              onClick={handleUpdateClaim}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating…
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Update Claim
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              disabled={saving}
+              onClick={handleReEvaluate}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Re-evaluate
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-0 shadow-sm">
+        <Accordion type="multiple" defaultValue={accordionDefaults}>
+          <AccordionItem value="patient" className="border-b">
+            <AccordionTrigger className="px-8 py-5 transition-colors hover:bg-muted/50 hover:no-underline">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <UserCircle className="h-5 w-5 text-blue-700" />
                 </div>
-              </CardContent>
-            </Card>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Patient Details</p>
+                  <p className="text-xs text-muted-foreground">
+                    Contact information and beneficiary details
+                  </p>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-8 py-6">
+              <PatientDetailsDisplay data={patientDisplayData} />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="payer" className="border-b">
+            <AccordionTrigger className="px-8 py-5 transition-colors hover:bg-muted/50 hover:no-underline">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <CreditCard className="h-5 w-5 text-blue-700" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Payer Details</p>
+                  <p className="text-xs text-muted-foreground">Authorization and coverage</p>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-8 py-6">
+              <PayerDetailsDisplay data={payerDisplayData} />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="provider" className="border-b">
+            <AccordionTrigger className="px-8 py-5 transition-colors hover:bg-muted/50 hover:no-underline">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <Building2 className="h-5 w-5 text-blue-700" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Provider Details</p>
+                  <p className="text-xs text-muted-foreground">
+                    Hospital, admission and treatment summary
+                  </p>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-8 py-6">
+              <ProviderDetailsDisplay
+                data={providerDisplayData}
+                hospitalName={claim.hospital_name}
+              />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="bill" className="border-b">
+            <AccordionTrigger className="px-8 py-5 transition-colors hover:bg-muted/50 hover:no-underline">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <Receipt className="h-5 w-5 text-blue-700" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Financial Summary</p>
+                  <p className="text-xs text-muted-foreground">
+                    Claimed amounts and discounts
+                  </p>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-8 py-6">
+              <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg border bg-muted/40 p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total Bill Amount
+                  </p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {formatCurrencyINR(claim.financial_details?.total_bill_amount)}
+                  </p>
+                </div>
+                <div className="rounded-lg border bg-muted/40 p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Claimed Amount
+                  </p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {formatCurrencyINR(claim.financial_details?.claimed_amount)}
+                  </p>
+                </div>
+                <div className="rounded-lg border bg-muted/40 p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Amount Charged to Payer
+                  </p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {formatCurrencyINR(claim.financial_details?.amount_charged_to_payer)}
+                  </p>
+                </div>
+                <div className="rounded-lg border bg-muted/40 p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    RM Status
+                  </p>
+                  <p className="text-lg font-semibold text-gray-900">{rmStatus}</p>
+                </div>
+              </div>
+              <BillDetailsDisplay data={claim.form_data || {}} />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="history">
+            <AccordionTrigger className="px-8 py-5 transition-colors hover:bg-muted/50 hover:no-underline">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <History className="h-5 w-5 text-blue-700" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Transaction History</p>
+                  <p className="text-xs text-muted-foreground">
+                    {transactionsTableData.length} events
+                  </p>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-8 py-6">
+              {transactionsTableData.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No transactions recorded yet.</p>
+              ) : (
+                <TransactionHistory transactions={transactionsTableData} />
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Settlement & Claim Documents
+          </CardTitle>
+          <CardDescription>
+            Documents shared for this claim, including uploaded settlement proofs.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {claim.documents && claim.documents.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {claim.documents.map((doc: any, index: number) => (
+                <div
+                  key={doc.document_id || index}
+                  className="flex h-full flex-col justify-between rounded-lg border bg-muted/40 p-4 transition-colors hover:bg-muted/60"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {doc.document_name || doc.document_type || 'Document'}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {doc.original_filename || 'Unnamed file'}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-green-100 px-2 py-1 text-[11px] font-medium text-green-700">
+                        {doc.status || 'uploaded'}
+                      </span>
+                    </div>
+                    {doc.document_type && (
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {doc.document_type}
+                      </p>
+                    )}
+                    {doc.uploaded_at && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Uploaded: {formatDateTime(doc.uploaded_at)}
+                      </p>
+                    )}
+                  </div>
+                  <div className="pt-3">
+                    {doc.download_url ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => window.open(doc.download_url, '_blank', 'noopener,noreferrer')}
+                      >
+                        View / Download
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="w-full text-muted-foreground"
+                        disabled
+                      >
+                        Download unavailable
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
+              No documents available for this claim yet.
+            </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
-

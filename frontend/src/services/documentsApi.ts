@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://claims-2.onrender.com'
+import { API_BASE_URL } from '@/lib/apiConfig'
 
 export interface DocumentUploadResponse {
   success: boolean
@@ -44,7 +44,7 @@ class DocumentsApi {
 
       const token = localStorage.getItem('auth_token')
       
-      const response = await fetch(`${this.baseUrl}/api/v1/documents/upload`, {
+      const response = await fetch(`${this.baseUrl}/v1/documents/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -66,7 +66,7 @@ class DocumentsApi {
 
   async getClaimDocuments(claimId: string): Promise<Document[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/documents/get-claim-documents/${claimId}`, {
+      const response = await fetch(`${this.baseUrl}/v1/documents/get-claim-documents/${claimId}`, {
         headers: this.getAuthHeaders()
       })
 
@@ -85,7 +85,7 @@ class DocumentsApi {
 
   async deleteDocument(documentId: string): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/documents/delete-document/${documentId}`, {
+      const response = await fetch(`${this.baseUrl}/v1/documents/delete-document/${documentId}`, {
         method: 'DELETE',
         headers: this.getAuthHeaders()
       })
@@ -104,7 +104,7 @@ class DocumentsApi {
 
   async downloadDocument(documentId: string): Promise<Blob> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/documents/download/${documentId}`, {
+      const response = await fetch(`${this.baseUrl}/v1/documents/download/${documentId}`, {
         headers: this.getAuthHeaders()
       })
 

@@ -35,7 +35,9 @@ Content-Type: application/json
 ```json
 {
   "patient_name": "John Doe",
+  "date_of_birth": "1979-04-15",
   "age": 45,
+  "age_unit": "YRS",
   "gender": "Male",
   "payer_name": "ABC Insurance",
   "claimed_amount": 50000,

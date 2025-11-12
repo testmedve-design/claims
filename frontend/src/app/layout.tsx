@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import GlobalLoadingProvider from "@/components/GlobalLoadingProvider";
 import AuthProvider from "@/providers/AuthProvider";
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -37,9 +38,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${manrope.variable} antialiased`}>
         <AuthProvider>
-          <GlobalLoadingProvider>
-            {children}
-          </GlobalLoadingProvider>
+          <NotificationsProvider>
+            <GlobalLoadingProvider>
+              {children}
+            </GlobalLoadingProvider>
+          </NotificationsProvider>
         </AuthProvider>
         <Toaster />
       </body>

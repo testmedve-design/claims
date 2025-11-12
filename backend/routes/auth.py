@@ -119,9 +119,20 @@ def login():
                 'allowed_roles': ALLOWED_CLAIMS_ROLES
             }), 403
         
-        # Generate custom token for the user
-        custom_token = auth.create_custom_token(user.uid)
-        token = custom_token.decode('utf-8')
+        id_token = None
+        refresh_token = None
+        if 'auth_data' in locals():
+            id_token = auth_data.get('idToken')
+            refresh_token = auth_data.get('refreshToken')
+
+        # Generate custom token for optional client usage
+        custom_token = auth.create_custom_token(user.uid).decode('utf-8')
+
+        if not id_token:
+            # As a fallback (should not happen with proper Firebase REST auth), return 503
+            return jsonify({
+                'error': 'Failed to obtain Firebase ID token. Please check FIREBASE_WEB_API_KEY configuration.'
+            }), 503
         
         # Extract hospital information from entity_assignments
         entity_assignments = user_data.get('entity_assignments', {})
@@ -147,7 +158,10 @@ def login():
                 'hospital_name': hospital_name,
                 'entity_assignments': entity_assignments
             },
-            'token': token,
+            'token': id_token,
+            'id_token': id_token,
+            'custom_token': custom_token,
+            'refresh_token': refresh_token,
             'expires_in': 3600
         })
         

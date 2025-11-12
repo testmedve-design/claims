@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -33,6 +33,124 @@ const DOCUMENT_TYPES = [
 ]
 
 export function DocumentUpload({ payerName, specialty, onDocumentsUploaded }: DocumentUploadProps) {
+  const MAX_FILE_SIZE_MB = 25
+  const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
+  const formatFileSize = useCallback((bytes: number) => {
+    if (bytes >= 1024 * 1024) {
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+    }
+    if (bytes >= 1024) {
+      return `${(bytes / 1024).toFixed(2)} KB`
+    }
+    return `${bytes} B`
+  }, [])
+
+  const loadImage = useCallback((file: File): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const imageUrl = URL.createObjectURL(file)
+      const img = new Image()
+      img.onload = () => {
+        URL.revokeObjectURL(imageUrl)
+        resolve(img)
+      }
+      img.onerror = (error) => {
+        URL.revokeObjectURL(imageUrl)
+        reject(error)
+      }
+      img.src = imageUrl
+    })
+  }, [])
+
+  const canvasToBlob = useCallback(
+    (canvas: HTMLCanvasElement, quality: number) =>
+      new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality)
+      }),
+    []
+  )
+
+  const compressImageFile = useCallback(
+    async (file: File): Promise<File | null> => {
+      try {
+        const image = await loadImage(file)
+        const canvas = document.createElement('canvas')
+        const MAX_DIMENSION = 2560
+        let { width, height } = image
+
+        const ratio = Math.min(1, MAX_DIMENSION / Math.max(width, height))
+        width = Math.floor(width * ratio)
+        height = Math.floor(height * ratio)
+
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return file
+        ctx.drawImage(image, 0, 0, width, height)
+
+        let quality = 0.8
+        let blob = await canvasToBlob(canvas, quality)
+
+        while (blob && blob.size > MAX_FILE_SIZE_BYTES && quality > 0.3) {
+          quality -= 0.1
+          blob = await canvasToBlob(canvas, quality)
+        }
+
+        if (!blob) {
+          return file
+        }
+
+        if (blob.size >= file.size) {
+          return file
+        }
+
+        const newFileName = file.name.replace(/\.(png|webp|gif|bmp)$/i, '.jpg')
+        return new File([blob], newFileName, {
+          type: 'image/jpeg',
+          lastModified: Date.now()
+        })
+      } catch (error) {
+        console.error('Image compression failed:', error)
+        return file
+      }
+    },
+    [MAX_FILE_SIZE_BYTES, canvasToBlob, loadImage]
+  )
+
+  const prepareFileForUpload = useCallback(
+    async (file: File): Promise<File | null> => {
+      if (file.size <= MAX_FILE_SIZE_BYTES) {
+        return file
+      }
+
+      if (file.type.startsWith('image/')) {
+        const compressed = await compressImageFile(file)
+        if (compressed.size <= MAX_FILE_SIZE_BYTES) {
+          toast({
+            title: 'Image compressed',
+            description: `${file.name} was reduced to ${formatFileSize(compressed.size)} to meet the 25 MB limit.`
+          })
+          return compressed
+        }
+
+        toast({
+          title: 'Image too large',
+          description: `${file.name} is still larger than ${MAX_FILE_SIZE_MB} MB even after compression. Please compress manually and retry.`,
+          variant: 'destructive'
+        })
+        return null
+      }
+
+      toast({
+        title: 'File too large',
+        description: `${file.name} exceeds the ${MAX_FILE_SIZE_MB} MB limit. Please compress it before uploading.`,
+        variant: 'destructive'
+      })
+      return null
+    },
+    [MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB, compressImageFile, formatFileSize]
+  )
+
   const [uploadedDocuments, setUploadedDocuments] = useState<any[]>([
     {
       id: '1',
@@ -92,7 +210,7 @@ export function DocumentUpload({ payerName, specialty, onDocumentsUploaded }: Do
 
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
-      handleFiles(files)
+      void handleFiles(files)
     }
   }
 
@@ -109,11 +227,11 @@ export function DocumentUpload({ payerName, specialty, onDocumentsUploaded }: Do
 
     const files = e.currentTarget.files
     if (files) {
-      handleFiles(files)
+      void handleFiles(files)
     }
   }
 
-  const handleFiles = (files: FileList) => {
+  const handleFiles = async (files: FileList) => {
     const fileArray = Array.from(files)
     const docTypeInfo = DOCUMENT_TYPES.find((t) => t.id === selectedDocType)
 
@@ -131,40 +249,51 @@ export function DocumentUpload({ payerName, specialty, onDocumentsUploaded }: Do
       return
     }
 
-    fileArray.forEach((file) => {
+    for (const file of fileArray) {
+      const preparedFile = await prepareFileForUpload(file)
+      if (!preparedFile) {
+        continue
+      }
+
       const newDoc = {
         id: Date.now().toString() + Math.random(),
         document_type: selectedDocType,
-        document_name: file.name,
+        document_name: preparedFile.name,
         status: 'uploading',
-        file_size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+        file_size: formatFileSize(preparedFile.size),
         uploaded_at: new Date().toLocaleDateString(),
-        file: file
+        file: preparedFile
       }
 
       setUploadedDocuments((prev) => [...prev, newDoc])
 
       // Simulate upload delay
       setTimeout(() => {
-        setUploadedDocuments((prev) =>
-          prev.map((doc) =>
-            doc.id === newDoc.id ? { ...doc, status: 'uploaded' } : doc
+        setUploadedDocuments((prev) => {
+          const updated = prev.map((doc) =>
+            doc.id === newDoc.id ? { ...doc, status: 'uploaded', file: preparedFile } : doc
           )
-        )
+          onDocumentsUploaded?.(updated.filter((doc) => doc.status === 'uploaded'))
+          return updated
+        })
 
         toast({
           title: 'Success',
-          description: `${file.name} uploaded as ${docTypeInfo?.name}`
+          description: `${preparedFile.name} uploaded as ${docTypeInfo?.name}`
         })
-      }, 2000)
-    })
+      }, 1000)
+    }
 
     // Reset form
     setSelectedDocType('')
   }
 
   const removeDocument = (id: string) => {
-    setUploadedDocuments((prev) => prev.filter((doc) => doc.id !== id))
+    setUploadedDocuments((prev) => {
+      const updated = prev.filter((doc) => doc.id !== id)
+      onDocumentsUploaded?.(updated.filter((doc) => doc.status === 'uploaded'))
+      return updated
+    })
     toast({
       title: 'Document Removed',
       description: 'The document has been removed from the upload list'
@@ -264,7 +393,9 @@ export function DocumentUpload({ payerName, specialty, onDocumentsUploaded }: Do
                       <p className="font-semibold text-gray-700">
                         {selectedDocType ? 'Drag file here or click to upload' : 'Select document type first'}
                       </p>
-                      <p className="text-sm text-gray-500">PDF, DOC, DOCX, JPG, PNG (Max 10 MB)</p>
+                      <p className="text-sm text-gray-500">
+                        PDF, DOC, DOCX, JPG, PNG (Max 25 MB – images auto-compress)
+                      </p>
                     </div>
                   </div>
                 </label>
