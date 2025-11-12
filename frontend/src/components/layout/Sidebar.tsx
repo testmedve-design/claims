@@ -90,12 +90,6 @@ const getNavigationItems = (userRole: string, unreadCount: number): NavItem[] =>
   } else if (userRole === 'rm' || userRole === 'reconciler') {
     return [
       {
-        title: 'Notifications',
-        href: '/notifications',
-        icon: Bell,
-        badge: notificationsBadge,
-      },
-      {
         title: 'RM Inbox',
         href: '/rm-inbox',
         icon: Activity,
