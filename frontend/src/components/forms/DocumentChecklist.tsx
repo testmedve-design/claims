@@ -17,17 +17,26 @@ interface DocumentItem {
   description: string
 }
 
+interface DocumentChecklistMeta {
+  requiredCount: number
+  checkedRequiredCount: number
+  totalCount: number
+  hasChecklist: boolean
+}
+
 interface DocumentChecklistProps {
   payerName: string
   specialty: string
-  onChecklistComplete: (isComplete: boolean) => void
-  onDocumentsUploaded: (documents: any[]) => void
+  onChecklistComplete?: (isComplete: boolean) => void
+  onChecklistMetaChange?: (meta: DocumentChecklistMeta) => void
+  onDocumentsUploaded?: (documents: any[]) => void
 }
 
 export default function DocumentChecklist({
   payerName,
   specialty,
   onChecklistComplete,
+  onChecklistMetaChange,
   onDocumentsUploaded
 }: DocumentChecklistProps) {
   const [checklist, setChecklist] = useState<DocumentItem[]>([])
@@ -43,18 +52,31 @@ export default function DocumentChecklist({
       setChecklist([])
       setCheckedItems(new Set())
       setUploadedDocuments([])
+      onChecklistMetaChange?.({
+        requiredCount: 0,
+        checkedRequiredCount: 0,
+        totalCount: 0,
+        hasChecklist: false
+      })
+      onChecklistComplete?.(true)
       fetchChecklist()
     }
-  }, [payerName, specialty])
+  }, [payerName, specialty, onChecklistComplete, onChecklistMetaChange])
 
   useEffect(() => {
     // Check if all required documents are checked
     const requiredItems = checklist.filter(item => item.required)
     const checkedRequiredItems = requiredItems.filter(item => checkedItems.has(item.id))
-    const isComplete = requiredItems.length > 0 && checkedRequiredItems.length === requiredItems.length
-    
-    onChecklistComplete(isComplete)
-  }, [checklist, checkedItems, onChecklistComplete])
+    const isComplete = requiredItems.length === 0 || checkedRequiredItems.length === requiredItems.length
+
+    onChecklistComplete?.(isComplete)
+    onChecklistMetaChange?.({
+      requiredCount: requiredItems.length,
+      checkedRequiredCount: checkedRequiredItems.length,
+      totalCount: checklist.length,
+      hasChecklist: checklist.length > 0
+    })
+  }, [checklist, checkedItems, onChecklistComplete, onChecklistMetaChange])
 
   const fetchChecklist = async () => {
     try {
@@ -99,6 +121,13 @@ export default function DocumentChecklist({
         // No checklist found for this payer
         console.log('DocumentChecklist: No checklist found for', payerName, '- clearing checklist')
         setChecklist([])
+        onChecklistMetaChange?.({
+          requiredCount: 0,
+          checkedRequiredCount: 0,
+          totalCount: 0,
+          hasChecklist: false
+        })
+        onChecklistComplete?.(true)
         if (data.message) {
           console.log('Checklist info:', data.message)
         }
@@ -107,6 +136,13 @@ export default function DocumentChecklist({
       console.error('Error fetching checklist:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch document checklist'
       toast.error(errorMessage)
+      onChecklistMetaChange?.({
+        requiredCount: 0,
+        checkedRequiredCount: 0,
+        totalCount: 0,
+        hasChecklist: false
+      })
+      onChecklistComplete?.(true)
     } finally {
       setChecklistLoading(false)
     }
@@ -156,8 +192,11 @@ export default function DocumentChecklist({
             download_url: result.download_url
           }
           
-          setUploadedDocuments(prev => [...prev, newDocument])
-          onDocumentsUploaded([...uploadedDocuments, newDocument])
+          setUploadedDocuments(prev => {
+            const nextDocuments = [...prev, newDocument]
+            onDocumentsUploaded?.(nextDocuments)
+            return nextDocuments
+          })
           
           // Auto-check the item when document is uploaded
           handleCheckboxChange(itemId, true)
@@ -177,8 +216,11 @@ export default function DocumentChecklist({
           status: 'pending_upload'
         }
         
-        setUploadedDocuments(prev => [...prev, newDocument])
-        onDocumentsUploaded([...uploadedDocuments, newDocument])
+        setUploadedDocuments(prev => {
+          const nextDocuments = [...prev, newDocument]
+          onDocumentsUploaded?.(nextDocuments)
+          return nextDocuments
+        })
         
         // Auto-check the item when document is selected
         handleCheckboxChange(itemId, true)
@@ -196,7 +238,7 @@ export default function DocumentChecklist({
   const removeDocument = (itemId: string) => {
     const newUploadedDocuments = uploadedDocuments.filter(doc => doc.document_type !== itemId)
     setUploadedDocuments(newUploadedDocuments)
-    onDocumentsUploaded(newUploadedDocuments)
+    onDocumentsUploaded?.(newUploadedDocuments)
     
     // Uncheck the item
     const newCheckedItems = new Set(checkedItems)

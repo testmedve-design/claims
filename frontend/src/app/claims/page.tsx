@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Form } from '@/components/ui/form'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
 import { claimsApi } from '@/services/claimsApi'
 import type { Specialty, Doctor, Payer, Insurer, Ward } from '@/types/claims'
@@ -56,8 +57,37 @@ export default function ClaimsPage() {
   
   // Document checklist states
   const [showDocumentChecklist, setShowDocumentChecklist] = useState(false)
-  const [checklistComplete, setChecklistComplete] = useState(false)
-  const [uploadedDocuments, setUploadedDocuments] = useState<any[]>([])
+  const [checklistComplete, setChecklistComplete] = useState(true)
+  const [checklistMeta, setChecklistMeta] = useState({
+    requiredCount: 0,
+    checkedRequiredCount: 0,
+    totalCount: 0,
+    hasChecklist: false
+  })
+  const [checklistDocuments, setChecklistDocuments] = useState<any[]>([])
+  const [manualDocuments, setManualDocuments] = useState<any[]>([])
+
+  const combinedDocuments = useMemo(() => {
+    const mergeMap = new Map<string, any>()
+    const makeKey = (doc: any) =>
+      doc.document_id || doc.id || `${doc.document_type}-${doc.document_name || ''}`
+
+    checklistDocuments.forEach(doc => {
+      mergeMap.set(makeKey(doc), doc)
+    })
+    manualDocuments.forEach(doc => {
+      mergeMap.set(makeKey(doc), doc)
+    })
+
+    return Array.from(mergeMap.values())
+  }, [checklistDocuments, manualDocuments])
+
+  const handleChecklistMetaChange = useCallback((meta: typeof checklistMeta) => {
+    setChecklistMeta(meta)
+    if (meta.requiredCount === 0) {
+      setChecklistComplete(true)
+    }
+  }, [])
   
   // Get hospital ID from logged-in user
   const hospitalId = (user as any)?.entity_assignments?.hospitals?.[0]?.id || null
@@ -548,6 +578,16 @@ export default function ClaimsPage() {
 
   const onSubmit = async (formValues: ClaimFormValues) => {
     try {
+      if (checklistMeta.hasChecklist && checklistMeta.requiredCount > 0 && !checklistComplete) {
+        toast({
+          title: 'Document checklist incomplete',
+          description: 'Please upload and mark all required checklist documents before submitting the claim.',
+          variant: 'destructive'
+        })
+        setOpenAccordion((prev) => (prev.includes('documents') ? prev : [...prev, 'documents']))
+        return
+      }
+
       const ageDetails = resolveAgeDetails(formValues)
 
       const submissionData = {
@@ -563,33 +603,33 @@ export default function ClaimsPage() {
         amount_charged_to_payer: Number(formValues.amount_charged_to_payer) || 0,
         mou_discount_amount: Number(formValues.mou_discount_amount) || 0,
         claimed_amount: Number(formValues.claimed_amount) || 0,
-        documents: uploadedDocuments
+        documents: combinedDocuments
       }
 
       const result = await claimsApi.submitClaim(submissionData as any)
       
-      if (result.claim_id && uploadedDocuments.length > 0) {
+      const documentsToUpload = combinedDocuments.filter(doc => doc.file)
+
+      if (result.claim_id && documentsToUpload.length > 0) {
         try {
-          const uploadPromises = uploadedDocuments
-            .filter(doc => doc.file)
-            .map(async (doc) => {
-              const formData = new FormData()
-              formData.append('file', doc.file!)
-              formData.append('claim_id', result.claim_id!)
-              formData.append('document_type', doc.document_type)
-              formData.append('document_name', doc.document_name)
+          const uploadPromises = documentsToUpload.map(async (doc) => {
+            const formData = new FormData()
+            formData.append('file', doc.file!)
+            formData.append('claim_id', result.claim_id!)
+            formData.append('document_type', doc.document_type)
+            formData.append('document_name', doc.document_name)
 
-              const response = await fetch(`${API_BASE_URL}/v1/documents/upload`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-                },
-                body: formData
-              })
-
-              if (!response.ok) throw new Error(`Failed to upload ${doc.document_name}`)
-              return await response.json()
+            const response = await fetch(`${API_BASE_URL}/v1/documents/upload`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+              },
+              body: formData
             })
+
+            if (!response.ok) throw new Error(`Failed to upload ${doc.document_name}`)
+            return await response.json()
+          })
 
           await Promise.all(uploadPromises)
         } catch (error) {
@@ -607,9 +647,16 @@ export default function ClaimsPage() {
       })
 
       form.reset(defaultClaimFormValues)
-      setUploadedDocuments([])
+      setChecklistDocuments([])
+      setManualDocuments([])
+      setChecklistMeta({
+        requiredCount: 0,
+        checkedRequiredCount: 0,
+        totalCount: 0,
+        hasChecklist: false
+      })
+      setChecklistComplete(true)
       setShowDocumentChecklist(false)
-      setChecklistComplete(false)
       setOpenAccordion(['patient'])
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error) {
@@ -753,10 +800,25 @@ export default function ClaimsPage() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-8 py-6 space-y-6">
+                    {watchedPayerName ? (
+                      <DocumentChecklist
+                        payerName={watchedPayerName}
+                        specialty={watchedSpecialty || ''}
+                        onChecklistComplete={setChecklistComplete}
+                        onChecklistMetaChange={handleChecklistMetaChange}
+                        onDocumentsUploaded={setChecklistDocuments}
+                      />
+                    ) : (
+                      <Alert>
+                        <AlertDescription>
+                          Select a payer to load the required document checklist.
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     <DocumentUpload
                       payerName={watchedPayerName}
                       specialty={watchedSpecialty}
-                      onDocumentsUploaded={setUploadedDocuments}
+                      onDocumentsUploaded={setManualDocuments}
                     />
                   </AccordionContent>
                 </AccordionItem>
