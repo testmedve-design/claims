@@ -1066,18 +1066,6 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Disallowance Notes (optional)</Label>
-              <Textarea
-                rows={2}
-                placeholder="Add any additional remarks about the disallowance…"
-                value={settlementData.disallowed_reasons}
-                onChange={event =>
-                  handleSettlementDataChange('disallowed_reasons', event.target.value)
-                }
-              />
-            </div>
-
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label>UITITSL Service Fees</Label>
