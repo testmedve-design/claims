@@ -2,13 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -35,6 +29,7 @@ import {
   FileText,
   History,
   Loader2,
+  Plus,
   Receipt,
   RefreshCw,
   Save,
@@ -44,6 +39,7 @@ import {
 } from 'lucide-react'
 
 import { rmApi, type RMClaimDetails } from '@/services/rmApi'
+import { claimsApi } from '@/services/claimsApi'
 import { toast } from '@/lib/toast'
 import { API_BASE_URL } from '@/lib/apiConfig'
 import { PatientDetailsDisplay } from '@/components/forms/claims/PatientDetailsDisplay'
@@ -51,36 +47,11 @@ import { PayerDetailsDisplay } from '@/components/forms/claims/PayerDetailsDispl
 import { ProviderDetailsDisplay } from '@/components/forms/claims/ProviderDetailsDisplay'
 import { BillDetailsDisplay } from '@/components/forms/claims/BillDetailsDisplay'
 import { TransactionHistory } from '@/components/forms/claims/TransactionHistory'
-
-const RM_STATUSES = [
-  'RECEIVED',
-  'QUERY RAISED',
-  'REPUDIATED',
-  'SETTLED',
-  'APPROVED',
-  'PARTIALLY SETTLED',
-  'RECONCILIATION',
-  'INPROGRESS',
-  'CANCELLED',
-  'CLOSED',
-  'NOT FOUND'
-]
-
-const SETTLEMENT_STATUSES = ['SETTLED', 'PARTIALLY SETTLED', 'RECONCILIATION']
-
-const RM_STATUS_BADGES: Record<string, string> = {
-  RECEIVED: 'bg-blue-100 text-blue-800',
-  'QUERY RAISED': 'bg-orange-100 text-orange-800',
-  REPUDIATED: 'bg-red-100 text-red-800',
-  SETTLED: 'bg-emerald-100 text-emerald-800',
-  APPROVED: 'bg-green-100 text-green-800',
-  'PARTIALLY SETTLED': 'bg-teal-100 text-teal-800',
-  RECONCILIATION: 'bg-purple-100 text-purple-800',
-  INPROGRESS: 'bg-sky-100 text-sky-800',
-  CANCELLED: 'bg-gray-100 text-gray-700',
-  CLOSED: 'bg-slate-200 text-slate-700',
-  'NOT FOUND': 'bg-gray-200 text-gray-700'
-}
+import {
+  RM_CLAIM_STATUS_OPTIONS,
+  RM_SETTLEMENT_STATUS_VALUES,
+  getRmClaimStatusLabel
+} from '@/constants/rmClaimStatus'
 
 const CLAIM_STATUS_BADGES: Record<string, string> = {
   CREATED: 'bg-blue-100 text-blue-800',
@@ -88,7 +59,17 @@ const CLAIM_STATUS_BADGES: Record<string, string> = {
   CONTESTED: 'bg-amber-100 text-amber-800',
   SETTLED: 'bg-emerald-100 text-emerald-800',
   CLEARED: 'bg-teal-100 text-teal-800',
-  REJECTED: 'bg-red-100 text-red-800'
+  REJECTED: 'bg-red-100 text-red-800',
+  RECEIVED: 'bg-blue-100 text-blue-800',
+  QUERY_RAISED: 'bg-orange-100 text-orange-800',
+  REPUDIATED: 'bg-red-100 text-red-800',
+  APPROVED: 'bg-green-100 text-green-800',
+  PARTIALLY_SETTLED: 'bg-teal-100 text-teal-800',
+  RECONCILIATION: 'bg-purple-100 text-purple-800',
+  IN_PROGRESS: 'bg-sky-100 text-sky-800',
+  CANCELLED: 'bg-gray-100 text-gray-700',
+  CLOSED: 'bg-slate-200 text-slate-700',
+  NOT_FOUND: 'bg-gray-200 text-gray-700'
 }
 
 const settlementDocumentOptions = [
@@ -97,6 +78,27 @@ const settlementDocumentOptions = [
   'Reconciliation Letter',
   'Physical Acknowledge Copy'
 ]
+
+const DISALLOWANCE_TYPES = [
+  'Recoverable from Payer',
+  'Process Improvement',
+  'Recoverable from Patient',
+  'Known Disallowance'
+]
+
+type DisallowanceReasonOption = {
+  id: string
+  label: string
+  type: string
+  description?: string
+}
+
+type DisallowanceEntry = {
+  reasonId: string
+  reasonLabel: string
+  reasonType: string
+  amount: string
+}
 
 const formatCurrencyINR = (value?: number | null) => {
   if (value === null || value === undefined) return '₹0.00'
@@ -131,8 +133,10 @@ export default function RMProcessClaimPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [banks, setBanks] = useState<Array<{ bank_id: string; name: string }>>([])
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [transactionsLoading, setTransactionsLoading] = useState(false)
 
-  const [rmStatus, setRmStatus] = useState('RECEIVED')
+  const [claimStatus, setClaimStatus] = useState('dispatched')
   const [statusRaisedDate, setStatusRaisedDate] = useState('')
   const [statusRaisedRemarks, setStatusRaisedRemarks] = useState('')
 
@@ -158,6 +162,9 @@ export default function RMProcessClaimPage() {
     medverve_review_remarks: ''
   })
 
+const [disallowanceReasons, setDisallowanceReasons] = useState<DisallowanceReasonOption[]>([])
+const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry[]>([])
+
   const [customFields, setCustomFields] = useState<Record<string, string>>({})
 
   const [uploadingDocument, setUploadingDocument] = useState(false)
@@ -165,9 +172,31 @@ export default function RMProcessClaimPage() {
   const [documentType, setDocumentType] = useState('')
 
   const isSettlementStatus = useMemo(
-    () => SETTLEMENT_STATUSES.includes(rmStatus),
-    [rmStatus]
+    () => RM_SETTLEMENT_STATUS_VALUES.includes(claimStatus),
+    [claimStatus]
   )
+
+  const disallowanceTotal = useMemo(() => {
+    return disallowanceEntries.reduce((sum, entry) => {
+      const value = parseFloat(entry.amount)
+      if (Number.isNaN(value)) {
+        return sum
+      }
+      return sum + Math.max(value, 0)
+    }, 0)
+  }, [disallowanceEntries])
+
+  const disallowanceTypeOptions = useMemo(() => {
+    const options = new Set(DISALLOWANCE_TYPES)
+    disallowanceReasons.forEach(reason => {
+      if (reason.type) {
+        options.add(reason.type)
+      }
+    })
+    return Array.from(options)
+  }, [disallowanceReasons])
+
+  const hasDisallowanceReasons = disallowanceReasons.length > 0
 
   const handleSettlementDataChange = (field: keyof typeof settlementData, value: string) => {
     setSettlementData(prev => ({
@@ -175,6 +204,85 @@ export default function RMProcessClaimPage() {
       [field]: value
     }))
   }
+
+  const handleAddDisallowanceEntry = () => {
+    if (!hasDisallowanceReasons) {
+      toast.error('No disallowance reasons available. Please contact the administrator.')
+      return
+    }
+    setDisallowanceEntries(prev => [
+      ...prev,
+      { reasonId: '', reasonLabel: '', reasonType: '', amount: '' }
+    ])
+  }
+
+  const handleDisallowanceReasonChange = (index: number, reasonId: string) => {
+    const selectedReason = disallowanceReasons.find(reason => reason.id === reasonId)
+    setDisallowanceEntries(prev => {
+      const next = [...prev]
+      next[index] = {
+        ...next[index],
+        reasonId,
+        reasonLabel: selectedReason?.label || reasonId,
+        reasonType: selectedReason?.type || next[index].reasonType || ''
+      }
+      return next
+    })
+  }
+
+  const handleDisallowanceTypeChange = (index: number, reasonType: string) => {
+    setDisallowanceEntries(prev => {
+      const next = [...prev]
+      next[index] = {
+        ...next[index],
+        reasonType
+      }
+      return next
+    })
+  }
+
+  const handleDisallowanceAmountChange = (index: number, value: string) => {
+    if (value !== '' && Number(value) < 0) {
+      return
+    }
+    setDisallowanceEntries(prev => {
+      const next = [...prev]
+      next[index] = {
+        ...next[index],
+        amount: value
+      }
+      return next
+    })
+  }
+
+  const handleRemoveDisallowanceEntry = (index: number) => {
+    setDisallowanceEntries(prev => {
+      const next = prev.filter((_, entryIndex) => entryIndex !== index)
+      if (next.length === 0) {
+        setSettlementData(prevData => ({
+          ...prevData,
+          disallowed_amount: ''
+        }))
+      }
+      return next
+    })
+  }
+
+  useEffect(() => {
+    if (disallowanceEntries.length === 0) {
+      return
+    }
+    const formattedTotal = disallowanceTotal > 0 ? disallowanceTotal.toFixed(2) : ''
+    setSettlementData(prev => {
+      if (prev.disallowed_amount === formattedTotal) {
+        return prev
+      }
+      return {
+        ...prev,
+        disallowed_amount: formattedTotal
+      }
+    })
+  }, [disallowanceEntries, disallowanceTotal])
 
   const fetchBanks = useCallback(async () => {
     try {
@@ -192,6 +300,27 @@ export default function RMProcessClaimPage() {
     }
   }, [])
 
+  const fetchDisallowanceReasons = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/resources/disallowance-reasons`)
+      if (!response.ok) {
+        console.error('❌ Failed to fetch disallowance reasons:', response.status, response.statusText)
+        setDisallowanceReasons([])
+        return
+      }
+      const data = await response.json()
+      if (data.success && Array.isArray(data.reasons)) {
+        setDisallowanceReasons(data.reasons)
+      } else {
+        setDisallowanceReasons([])
+      }
+    } catch (err) {
+      console.error('❌ Error fetching disallowance reasons:', err)
+      setDisallowanceReasons([])
+      toast.error('Failed to load disallowance reasons')
+    }
+  }, [])
+
   const fetchClaimDetails = useCallback(async () => {
     if (!claimId) return
     try {
@@ -204,13 +333,54 @@ export default function RMProcessClaimPage() {
       }
 
       const rmData = data.claim.rm_data || {}
-      setClaim(data.claim)
-      setRmStatus(data.claim.rm_status || 'RECEIVED')
+      const normalizedStatus = (data.claim.claim_status || 'dispatched').toLowerCase()
+      setClaim({
+        ...data.claim,
+        claim_status: normalizedStatus,
+        claim_status_label: getRmClaimStatusLabel(normalizedStatus)
+      })
+      setClaimStatus(normalizedStatus)
+      const rawDisallowanceEntries = Array.isArray(rmData.disallowance_entries)
+        ? rmData.disallowance_entries
+        : Array.isArray(rmData.disallowance_summary?.entries)
+          ? rmData.disallowance_summary.entries
+          : []
+      const normalizedDisallowanceEntries: DisallowanceEntry[] = rawDisallowanceEntries.map(
+        (entry: any) => ({
+          reasonId: entry.reason_id || entry.reasonId || entry.id || '',
+          reasonLabel: entry.reason_label || entry.reasonLabel || entry.label || '',
+          reasonType: entry.reason_type || entry.reasonType || entry.type || '',
+          amount:
+            entry.amount !== undefined && entry.amount !== null
+              ? String(entry.amount)
+              : ''
+        })
+      )
+      const disallowedAmountFromData =
+        rmData.disallowed_amount ??
+        rmData.disallowance_total ??
+        (normalizedDisallowanceEntries.length > 0
+          ? normalizedDisallowanceEntries.reduce((sum, entry) => {
+              const value = parseFloat(entry.amount)
+              if (Number.isNaN(value)) {
+                return sum
+              }
+              return sum + Math.max(value, 0)
+            }, 0).toFixed(2)
+          : undefined)
       setSettlementData(prev => ({
         ...prev,
-        ...rmData
+        ...rmData,
+        disallowed_amount:
+          disallowedAmountFromData !== undefined &&
+          disallowedAmountFromData !== null &&
+          disallowedAmountFromData !== ''
+            ? String(disallowedAmountFromData)
+            : ''
       }))
+      setDisallowanceEntries(normalizedDisallowanceEntries)
       setCustomFields(rmData)
+      setTransactions(Array.isArray(data.claim.transactions) ? data.claim.transactions : [])
     } catch (err: any) {
       console.error('Error fetching RM claim:', err)
       setError(err?.message || 'Unable to load claim details')
@@ -219,19 +389,114 @@ export default function RMProcessClaimPage() {
     }
   }, [claimId])
 
+  const fetchTransactions = useCallback(async () => {
+    if (!claimId) return
+    try {
+      setTransactionsLoading(true)
+      const transactionData = await claimsApi.getClaimTransactions(claimId)
+      if (Array.isArray(transactionData) && transactionData.length > 0) {
+        setTransactions(transactionData)
+      }
+    } catch (err) {
+      console.error('Error fetching RM claim transactions:', err)
+    } finally {
+      setTransactionsLoading(false)
+    }
+  }, [claimId])
+
   useEffect(() => {
     if (!claimId) return
     fetchClaimDetails()
     fetchBanks()
-  }, [claimId, fetchClaimDetails, fetchBanks])
+    fetchDisallowanceReasons()
+  }, [claimId, fetchClaimDetails, fetchBanks, fetchDisallowanceReasons])
+
+  useEffect(() => {
+    if (disallowanceReasons.length === 0) {
+      return
+    }
+    setDisallowanceEntries(prev =>
+      prev.map(entry => {
+        if (!entry.reasonId || entry.reasonType) {
+          return entry
+        }
+        const matchingReason = disallowanceReasons.find(reason => reason.id === entry.reasonId)
+        if (matchingReason && matchingReason.type) {
+          return {
+            ...entry,
+            reasonType: matchingReason.type
+          }
+        }
+        return entry
+      })
+    )
+  }, [disallowanceReasons])
+
+  useEffect(() => {
+    if (!claimId) return
+    fetchTransactions()
+  }, [claimId, fetchTransactions])
 
   const handleUpdateClaim = async () => {
     if (!claimId) return
     try {
       setSaving(true)
-      const rmData = isSettlementStatus ? settlementData : customFields
+      let rmData: Record<string, any>
+
+      if (isSettlementStatus) {
+        const validationErrors: string[] = []
+        disallowanceEntries.forEach((entry, index) => {
+          if (entry.reasonId || entry.amount) {
+            if (!entry.reasonId) {
+              validationErrors.push(`Row ${index + 1}: select a reason.`)
+            }
+            if (!entry.reasonType) {
+              validationErrors.push(`Row ${index + 1}: select a type.`)
+            }
+            const amountValue = parseFloat(entry.amount)
+            if (Number.isNaN(amountValue) || amountValue <= 0) {
+              validationErrors.push(`Row ${index + 1}: enter a positive amount.`)
+            }
+          }
+        })
+
+        if (validationErrors.length > 0) {
+          toast.error(validationErrors.join(' '))
+          setSaving(false)
+          return
+        }
+
+        const normalizedDisallowanceEntries = disallowanceEntries
+          .filter(entry => entry.reasonId || entry.amount)
+          .map(entry => ({
+            reason_id: entry.reasonId,
+            reason_label: entry.reasonLabel || entry.reasonId,
+          reason_type: entry.reasonType,
+            amount: entry.amount ? Number(parseFloat(entry.amount).toFixed(2)) : 0
+          }))
+          .filter(entry => entry.reason_id && entry.reason_type && entry.amount > 0)
+
+        const disallowanceTotalValue = normalizedDisallowanceEntries.reduce(
+          (sum, entry) => sum + (entry.amount || 0),
+          0
+        )
+
+        rmData = {
+          ...settlementData,
+          disallowance_entries: normalizedDisallowanceEntries
+        }
+
+        if (normalizedDisallowanceEntries.length > 0) {
+          const totalFormatted = Number(disallowanceTotalValue.toFixed(2))
+          rmData.disallowance_total = totalFormatted
+          rmData.disallowed_amount = totalFormatted.toFixed(2)
+        }
+      } else {
+        rmData = customFields
+      }
+
       const response = await rmApi.updateClaim(claimId, {
-        rm_status: rmStatus,
+        claim_status: claimStatus,
         status_raised_date: statusRaisedDate || undefined,
         status_raised_remarks: statusRaisedRemarks || undefined,
         rm_data: rmData
@@ -365,14 +630,19 @@ export default function RMProcessClaimPage() {
   )
 
   const transactionsTableData = useMemo(() => {
-    if (!claim?.transactions) return []
-    return claim.transactions.map((transaction: any) => ({
+    const source = Array.isArray(transactions) ? transactions : []
+    return source.map((transaction: any) => ({
       ...transaction,
-      performed_at: transaction.timestamp,
-      performed_by_name: transaction.performed_by || transaction.performed_by_name,
-      claim_id: claim.claim_id
+      performed_at:
+        transaction.performed_at ||
+        transaction.timestamp ||
+        transaction.created_at ||
+        transaction.updated_at ||
+        '',
+      performed_by_name: transaction.performed_by_name || transaction.performed_by,
+      claim_id: transaction.claim_id || claim?.claim_id
     }))
-  }, [claim?.transactions, claim?.claim_id])
+  }, [transactions, claim?.claim_id])
 
   const accordionDefaults = useMemo(
     () => ['patient', 'payer', 'provider', 'bill', 'history'],
@@ -425,16 +695,8 @@ export default function RMProcessClaimPage() {
           <span
             className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(claim.claim_status, CLAIM_STATUS_BADGES)}`}
           >
-            {claim.claim_status?.replace(/_/g, ' ') || 'UNKNOWN'}
+            {getRmClaimStatusLabel(claim.claim_status)?.toUpperCase() || 'UNKNOWN'}
           </span>
-          <div className="flex items-center gap-2 justify-end">
-            <span className="text-xs text-muted-foreground">RM Status:</span>
-            <span
-              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getBadgeClass(rmStatus, RM_STATUS_BADGES)}`}
-            >
-              {rmStatus}
-            </span>
-          </div>
           <p className="text-xs text-muted-foreground">Submitted: {submissionDisplay}</p>
         </div>
       </div>
@@ -455,46 +717,50 @@ export default function RMProcessClaimPage() {
 
       <Card className="border border-blue-100 bg-blue-50/80 shadow-none">
         <CardHeader>
-          <CardTitle className="text-blue-900">Update RM Status</CardTitle>
+          <CardTitle className="text-blue-900">Update Claim Status</CardTitle>
           <CardDescription>Record settlement details or re-open the claim for revisions.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>RM Status *</Label>
-              <Select value={rmStatus} onValueChange={setRmStatus}>
+              <Label>Claim Status *</Label>
+              <Select value={claimStatus} onValueChange={setClaimStatus}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select RM status" />
+                  <SelectValue placeholder="Select claim status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {RM_STATUSES.map(status => (
-                    <SelectItem key={status} value={status}>
-                      {status}
+                  {RM_CLAIM_STATUS_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Status Raised Date</Label>
-              <Input
-                type="date"
-                value={statusRaisedDate}
-                max={new Date().toISOString().split('T')[0]}
-                onChange={event => setStatusRaisedDate(event.target.value)}
-              />
-            </div>
+            {!isSettlementStatus && (
+              <div className="space-y-2">
+                <Label>Status Raised Date</Label>
+                <Input
+                  type="date"
+                  value={statusRaisedDate}
+                  max={new Date().toISOString().split('T')[0]}
+                  onChange={event => setStatusRaisedDate(event.target.value)}
+                />
+              </div>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label>Status Raised Remarks</Label>
-            <Textarea
-              rows={3}
-              placeholder="Add remarks related to this status update…"
-              value={statusRaisedRemarks}
-              onChange={event => setStatusRaisedRemarks(event.target.value)}
-            />
-          </div>
+          {!isSettlementStatus && (
+            <div className="space-y-2">
+              <Label>Status Raised Remarks</Label>
+              <Textarea
+                rows={3}
+                placeholder="Add remarks related to this status update…"
+                value={statusRaisedRemarks}
+                onChange={event => setStatusRaisedRemarks(event.target.value)}
+              />
+            </div>
+          )}
 
           {isSettlementStatus && (
             <div className="space-y-4 rounded-lg border border-blue-200 bg-white p-4 shadow-sm">
@@ -664,11 +930,13 @@ export default function RMProcessClaimPage() {
                   <Input
                     type="number"
                     placeholder="0.00"
-                    value={settlementData.disallowed_amount}
-                    onChange={event =>
-                      handleSettlementDataChange('disallowed_amount', event.target.value)
-                    }
+                  value={settlementData.disallowed_amount}
+                  readOnly
+                  className="bg-muted"
                   />
+                <p className="text-xs text-muted-foreground">
+                  Auto-calculated from the disallowance breakdown.
+                </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Discount as per Payer</Label>
@@ -683,17 +951,138 @@ export default function RMProcessClaimPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Disallowed Reasons</Label>
-                <Textarea
-                  rows={2}
-                  placeholder="Describe the reason for the disallowed amount…"
-                  value={settlementData.disallowed_reasons}
-                  onChange={event =>
-                    handleSettlementDataChange('disallowed_reasons', event.target.value)
-                  }
-                />
+            <div className="space-y-3 rounded-lg border border-dashed border-blue-200 bg-blue-50/40 p-4">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <Label className="text-sm font-medium text-blue-900">Disallowance Breakdown</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Bucketize the disallowed amount by selecting a reason and its type.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddDisallowanceEntry}
+                  disabled={!hasDisallowanceReasons}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add Reason
+                </Button>
               </div>
+
+              {!hasDisallowanceReasons && (
+                <p className="text-sm text-muted-foreground">
+                  No disallowance reasons are configured. Please contact the administrator to add
+                  entries in the <code>disallowance_reason</code> catalogue.
+                </p>
+              )}
+
+              {disallowanceEntries.length === 0 && hasDisallowanceReasons ? (
+                <p className="text-sm text-muted-foreground">
+                  No disallowance reasons mapped yet. Click &ldquo;Add Reason&rdquo; to get started.
+                </p>
+              ) : null}
+
+              {disallowanceEntries.length > 0 && (
+                <div className="space-y-3">
+                  {disallowanceEntries.map((entry, index) => (
+                    <div
+                      key={`disallowance-entry-${index}`}
+                      className="grid gap-3 md:grid-cols-[minmax(0,6fr)_minmax(0,3fr)_minmax(0,2fr)_minmax(0,1fr)]"
+                    >
+                      <div className="space-y-2">
+                        <Label>Reason</Label>
+                        <Select
+                          value={entry.reasonId}
+                          onValueChange={value => handleDisallowanceReasonChange(index, value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select reason" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {disallowanceReasons.map(reason => (
+                              <SelectItem key={reason.id} value={reason.id}>
+                                {reason.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Type</Label>
+                        <Select
+                          value={entry.reasonType}
+                          onValueChange={value => handleDisallowanceTypeChange(index, value)}
+                          disabled={!entry.reasonId}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                          {disallowanceTypeOptions.map(type => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {!entry.reasonId && (
+                          <p className="text-xs text-muted-foreground">
+                            Select a reason to enable type selection.
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Amount</Label>
+                        <Input
+                          type="number"
+                          placeholder="0.00"
+                          value={entry.amount}
+                          onChange={event =>
+                            handleDisallowanceAmountChange(index, event.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="flex items-end justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveDisallowanceEntry(index)}
+                          aria-label="Remove disallowance reason"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {disallowanceEntries.length > 0 && (
+                <div className="flex items-center justify-between rounded-md border border-blue-100 bg-white/60 px-4 py-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Total mapped amount
+                  </span>
+                  <span className="text-base font-semibold text-gray-900">
+                    {formatCurrencyINR(disallowanceTotal)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Disallowance Notes (optional)</Label>
+              <Textarea
+                rows={2}
+                placeholder="Add any additional remarks about the disallowance…"
+                value={settlementData.disallowed_reasons}
+                onChange={event =>
+                  handleSettlementDataChange('disallowed_reasons', event.target.value)
+                }
+              />
+            </div>
 
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
@@ -962,12 +1351,6 @@ export default function RMProcessClaimPage() {
                     {formatCurrencyINR(claim.financial_details?.amount_charged_to_payer)}
                   </p>
                 </div>
-                <div className="rounded-lg border bg-muted/40 p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    RM Status
-                  </p>
-                  <p className="text-lg font-semibold text-gray-900">{rmStatus}</p>
-                </div>
               </div>
               <BillDetailsDisplay data={claim.form_data || {}} />
             </AccordionContent>
@@ -988,7 +1371,11 @@ export default function RMProcessClaimPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-8 py-6">
-              {transactionsTableData.length === 0 ? (
+              {transactionsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : transactionsTableData.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No transactions recorded yet.</p>
               ) : (
                 <TransactionHistory transactions={transactionsTableData} />

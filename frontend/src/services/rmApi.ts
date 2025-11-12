@@ -6,7 +6,7 @@ export interface RMClaim {
   payer_name: string
   claimed_amount: number
   claim_status: string
-  rm_status: string
+  claim_status_label?: string
   submission_date: string
   created_at: string
   hospital_name: string
@@ -18,7 +18,7 @@ export interface RMClaim {
 export interface RMClaimDetails {
   claim_id: string
   claim_status: string
-  rm_status: string
+  claim_status_label?: string
   hospital_name: string
   hospital_id: string
   created_at: string
@@ -119,17 +119,22 @@ class RMApi {
   }
 
   async updateClaim(claimId: string, updateData: {
-    rm_status: string
+    claim_status: string
     status_raised_date?: string
     status_raised_remarks?: string
     rm_data?: any
   }): Promise<{ success: boolean; error?: string }> {
     try {
       const url = `${this.baseUrl}/rm/update-claim/${claimId}`
+      const payload = {
+        ...updateData,
+        claim_status: updateData.claim_status.toLowerCase()
+      }
+
       const response = await fetch(url, {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify(updateData)
+        body: JSON.stringify(payload)
       })
 
       if (!response.ok) {
