@@ -204,9 +204,12 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
   }, [claim?.financial_details?.claimed_amount, claim?.form_data?.claimed_amount])
 
   const settledAmount = useMemo(() => {
-    const rawSettled = settlementData.settled_amount_without_tds || settlementData.settled_tds_amount
-    const parsed = Number(rawSettled || 0)
-    return Number.isFinite(parsed) ? parsed : 0
+    const settledWithoutTds = Number(settlementData.settled_amount_without_tds || 0)
+    if (Number.isFinite(settledWithoutTds) && settledWithoutTds > 0) {
+      return settledWithoutTds
+    }
+    const settledWithTds = Number(settlementData.settled_tds_amount || 0)
+    return Number.isFinite(settledWithTds) ? settledWithTds : 0
   }, [settlementData.settled_amount_without_tds, settlementData.settled_tds_amount])
 
   const suggestedDisallowanceAmount = useMemo(() => {
@@ -287,27 +290,29 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
     })
   }
 
-  const handleApplySuggestedDisallowance = () => {
-    if (suggestedDisallowanceAmount <= 0) {
-      return
-    }
-    const formatted = suggestedDisallowanceAmount.toFixed(2)
+  const handleApplySuggestedDisallowance = useCallback(() => {
+    const formatted = suggestedDisallowanceAmount > 0 ? suggestedDisallowanceAmount.toFixed(2) : ''
     setSettlementData(prev => ({
       ...prev,
       disallowed_amount: formatted
     }))
-  }
+  }, [suggestedDisallowanceAmount])
 
-  const handleApplyExcessSuggestion = () => {
-    if (excessAmount <= 0) {
-      return
-    }
-    const formatted = excessAmount.toFixed(2)
+  const handleApplyExcessSuggestion = useCallback(() => {
+    const formatted = excessAmount > 0 ? excessAmount.toFixed(2) : ''
     setSettlementData(prev => ({
       ...prev,
       excess_paid: formatted
     }))
-  }
+  }, [excessAmount])
+
+  useEffect(() => {
+    handleApplySuggestedDisallowance()
+  }, [handleApplySuggestedDisallowance])
+
+  useEffect(() => {
+    handleApplyExcessSuggestion()
+  }, [handleApplyExcessSuggestion])
 
   const handleRemoveDisallowanceEntry = (index: number) => {
     setDisallowanceEntries(prev => {
