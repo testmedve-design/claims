@@ -42,6 +42,7 @@ import { rmApi, type RMClaimDetails } from '@/services/rmApi'
 import { claimsApi } from '@/services/claimsApi'
 import { toast } from '@/lib/toast'
 import { API_BASE_URL } from '@/lib/apiConfig'
+import { cn } from '@/lib/utils'
 import { PatientDetailsDisplay } from '@/components/forms/claims/PatientDetailsDisplay'
 import { PayerDetailsDisplay } from '@/components/forms/claims/PayerDetailsDisplay'
 import { ProviderDetailsDisplay } from '@/components/forms/claims/ProviderDetailsDisplay'
@@ -77,13 +78,6 @@ const settlementDocumentOptions = [
   'Partial Settlement Letter',
   'Reconciliation Letter',
   'Physical Acknowledge Copy'
-]
-
-const DISALLOWANCE_TYPES = [
-  'Recoverable from Payer',
-  'Process Improvement',
-  'Recoverable from Patient',
-  'Known Disallowance'
 ]
 
 type DisallowanceReasonOption = {
@@ -187,7 +181,12 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
   }, [disallowanceEntries])
 
   const disallowanceTypeOptions = useMemo(() => {
-    const options = new Set(DISALLOWANCE_TYPES)
+    const options = new Set<string>([
+      'Recoverable from Payer',
+      'Process Improvement',
+      'Recoverable from Patient',
+      'Known Disallowance'
+    ])
     disallowanceReasons.forEach(reason => {
       if (reason.type) {
         options.add(reason.type)
@@ -195,6 +194,39 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
     })
     return Array.from(options)
   }, [disallowanceReasons])
+
+  const claimedAmount = useMemo(() => {
+    const rawClaimed =
+      claim?.financial_details?.claimed_amount ??
+      claim?.form_data?.claimed_amount
+    const parsed = Number(rawClaimed || 0)
+    return Number.isFinite(parsed) ? parsed : 0
+  }, [claim?.financial_details?.claimed_amount, claim?.form_data?.claimed_amount])
+
+  const settledAmount = useMemo(() => {
+    const rawSettled = settlementData.settled_amount_without_tds || settlementData.settled_tds_amount
+    const parsed = Number(rawSettled || 0)
+    return Number.isFinite(parsed) ? parsed : 0
+  }, [settlementData.settled_amount_without_tds, settlementData.settled_tds_amount])
+
+  const suggestedDisallowanceAmount = useMemo(() => {
+    const difference = claimedAmount - settledAmount
+    return difference > 0 ? difference : 0
+  }, [claimedAmount, settledAmount])
+
+  const excessAmount = useMemo(() => {
+    const difference = settledAmount - claimedAmount
+    return difference > 0 ? difference : 0
+  }, [claimedAmount, settledAmount])
+
+  const manualDisallowanceAmount = useMemo(() => {
+    const parsed = Number(settlementData.disallowed_amount || 0)
+    return Number.isFinite(parsed) ? parsed : 0
+  }, [settlementData.disallowed_amount])
+
+  const disallowanceRemaining = useMemo(() => {
+    return manualDisallowanceAmount - disallowanceTotal
+  }, [manualDisallowanceAmount, disallowanceTotal])
 
   const hasDisallowanceReasons = disallowanceReasons.length > 0
 
@@ -255,6 +287,28 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
     })
   }
 
+  const handleApplySuggestedDisallowance = () => {
+    if (suggestedDisallowanceAmount <= 0) {
+      return
+    }
+    const formatted = suggestedDisallowanceAmount.toFixed(2)
+    setSettlementData(prev => ({
+      ...prev,
+      disallowed_amount: formatted
+    }))
+  }
+
+  const handleApplyExcessSuggestion = () => {
+    if (excessAmount <= 0) {
+      return
+    }
+    const formatted = excessAmount.toFixed(2)
+    setSettlementData(prev => ({
+      ...prev,
+      excess_paid: formatted
+    }))
+  }
+
   const handleRemoveDisallowanceEntry = (index: number) => {
     setDisallowanceEntries(prev => {
       const next = prev.filter((_, entryIndex) => entryIndex !== index)
@@ -267,22 +321,6 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
       return next
     })
   }
-
-  useEffect(() => {
-    if (disallowanceEntries.length === 0) {
-      return
-    }
-    const formattedTotal = disallowanceTotal > 0 ? disallowanceTotal.toFixed(2) : ''
-    setSettlementData(prev => {
-      if (prev.disallowed_amount === formattedTotal) {
-        return prev
-      }
-      return {
-        ...prev,
-        disallowed_amount: formattedTotal
-      }
-    })
-  }, [disallowanceEntries, disallowanceTotal])
 
   const fetchBanks = useCallback(async () => {
     try {
@@ -460,8 +498,23 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
           }
         })
 
+        const hasDisallowanceAmount = !Number.isNaN(manualDisallowanceAmount) && manualDisallowanceAmount > 0
+        const hasEntries = disallowanceEntries.some(entry => Boolean(entry.reasonId))
+
         if (validationErrors.length > 0) {
           toast.error(validationErrors.join(' '))
+          setSaving(false)
+          return
+        }
+
+        if (hasDisallowanceAmount && !hasEntries) {
+          toast.error('Add at least one disallowance reason for the entered disallowed amount.')
+          setSaving(false)
+          return
+        }
+
+        if (!hasDisallowanceAmount && hasEntries) {
+          toast.error('Enter a disallowed amount that matches the bucketised reasons.')
           setSaving(false)
           return
         }
@@ -481,15 +534,30 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
           0
         )
 
+        if (hasDisallowanceAmount) {
+          const delta = Math.abs(disallowanceTotalValue - manualDisallowanceAmount)
+          if (delta > 0.01) {
+            toast.error(
+              `Disallowance bucketisation total (${formatCurrencyINR(disallowanceTotalValue)}) must match the entered disallowed amount (${formatCurrencyINR(manualDisallowanceAmount)}).`
+            )
+            setSaving(false)
+            return
+          }
+        }
+
         rmData = {
           ...settlementData,
           disallowance_entries: normalizedDisallowanceEntries
         }
 
-        if (normalizedDisallowanceEntries.length > 0) {
+        if (normalizedDisallowanceEntries.length > 0 && hasDisallowanceAmount) {
           const totalFormatted = Number(disallowanceTotalValue.toFixed(2))
           rmData.disallowance_total = totalFormatted
           rmData.disallowed_amount = totalFormatted.toFixed(2)
+        } else {
+          rmData.disallowance_total = manualDisallowanceAmount || 0
+          rmData.disallowed_amount =
+            manualDisallowanceAmount > 0 ? manualDisallowanceAmount.toFixed(2) : settlementData.disallowed_amount
         }
       } else {
         rmData = customFields
@@ -929,14 +997,56 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
                   <Label>Disallowed Amount</Label>
                   <Input
                     type="number"
+                    min="0"
                     placeholder="0.00"
                   value={settlementData.disallowed_amount}
-                  readOnly
-                  className="bg-muted"
+                    onChange={event =>
+                      handleSettlementDataChange('disallowed_amount', event.target.value)
+                    }
                   />
-                <p className="text-xs text-muted-foreground">
-                  Auto-calculated from the disallowance breakdown.
-                </p>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xs text-muted-foreground">
+                      Enter the difference between the claimed amount and the settled amount.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">Suggested:</span>
+                      <span className="font-medium text-blue-900">
+                        {formatCurrencyINR(suggestedDisallowanceAmount)}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        disabled={suggestedDisallowanceAmount <= 0}
+                        onClick={handleApplySuggestedDisallowance}
+                      >
+                        Use suggestion
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">Bucketised total:</span>
+                      <span className="font-medium">
+                        {formatCurrencyINR(disallowanceTotal)}
+                      </span>
+                      <span
+                        className={cn(
+                          'font-medium',
+                          Math.abs(disallowanceRemaining) <= 0.01
+                            ? 'text-emerald-700'
+                            : disallowanceRemaining > 0
+                              ? 'text-orange-600'
+                              : 'text-red-600'
+                        )}
+                      >
+                        {Math.abs(disallowanceRemaining) <= 0.01
+                          ? 'All allocated'
+                          : disallowanceRemaining > 0
+                            ? `${formatCurrencyINR(disallowanceRemaining)} remaining`
+                            : `${formatCurrencyINR(Math.abs(disallowanceRemaining))} over allocated`}
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Discount as per Payer</Label>
@@ -1088,6 +1198,22 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
                       handleSettlementDataChange('excess_paid', event.target.value)
                     }
                   />
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span>Suggested:</span>
+                    <span className="font-medium text-blue-900">
+                      {formatCurrencyINR(excessAmount)}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      disabled={excessAmount <= 0}
+                      onClick={handleApplyExcessSuggestion}
+                    >
+                      Use suggestion
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Contested Amount From Payer</Label>
