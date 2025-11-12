@@ -978,12 +978,6 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
                 </p>
               )}
 
-              {disallowanceEntries.length === 0 && hasDisallowanceReasons ? (
-                <p className="text-sm text-muted-foreground">
-                  No disallowance reasons mapped yet. Click &ldquo;Add Reason&rdquo; to get started.
-                </p>
-              ) : null}
-
               {disallowanceEntries.length > 0 && (
                 <div className="space-y-3">
                   {disallowanceEntries.map((entry, index) => (
