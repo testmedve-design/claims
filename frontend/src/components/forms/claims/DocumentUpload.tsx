@@ -151,35 +151,7 @@ export function DocumentUpload({ payerName, specialty, onDocumentsUploaded }: Do
     [MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB, compressImageFile, formatFileSize]
   )
 
-  const [uploadedDocuments, setUploadedDocuments] = useState<any[]>([
-    {
-      id: '1',
-      document_type: 'insurance_card',
-      document_name: 'Insurance_Card_Sample.pdf',
-      status: 'uploaded',
-      file_size: '2.4 MB',
-      uploaded_at: new Date(Date.now() - 3600000).toLocaleDateString(),
-      download_url: '#'
-    },
-    {
-      id: '2',
-      document_type: 'patient_id',
-      document_name: 'Patient_ID_Proof.pdf',
-      status: 'uploaded',
-      file_size: '1.8 MB',
-      uploaded_at: new Date(Date.now() - 7200000).toLocaleDateString(),
-      download_url: '#'
-    },
-    {
-      id: '3',
-      document_type: 'medical_reports',
-      document_name: 'Medical_Report_Oct_2024.pdf',
-      status: 'uploaded',
-      file_size: '3.2 MB',
-      uploaded_at: new Date(Date.now() - 86400000).toLocaleDateString(),
-      download_url: '#'
-    }
-  ])
+  const [uploadedDocuments, setUploadedDocuments] = useState<any[]>([])
 
   const [selectedDocType, setSelectedDocType] = useState<string>('')
   const [dragActive, setDragActive] = useState(false)
