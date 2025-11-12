@@ -2,33 +2,62 @@
 RM Routes - For Relationship Managers only
 These routes handle post-dispatch claim processing, settlement, and reconciliation
 """
+from datetime import datetime, timedelta
+from typing import Optional
+
 from flask import Blueprint, request, jsonify
 from firebase_config import get_firestore
-from middleware import require_rm_access
 from firebase_admin import firestore
-from datetime import datetime, timedelta
+from middleware import require_rm_access
 from utils.transaction_helper import create_transaction, TransactionType
 import pytz
 
 rm_bp = Blueprint('rm_routes', __name__)
 
-# RM Status Options
-RM_STATUSES = [
-    'RECEIVED',
-    'QUERY RAISED',
-    'REPUDIATED',
-    'SETTLED',
-    'APPROVED',
-    'PARTIALLY SETTLED',
-    'RECONCILIATION',
-    'INPROGRESS',
-    'CANCELLED',
-    'CLOSED',
-    'NOT FOUND'
+# Canonical claim status options available to RM users
+RM_STATUS_OPTIONS = [
+    ('dispatched', 'Dispatched'),
+    ('received', 'Received'),
+    ('query_raised', 'Query Raised'),
+    ('repudiated', 'Repudiated'),
+    ('settled', 'Settled'),
+    ('approved', 'Approved'),
+    ('partially_settled', 'Partially Settled'),
+    ('reconciliation', 'Reconciliation'),
+    ('in_progress', 'In Progress'),
+    ('cancelled', 'Cancelled'),
+    ('closed', 'Closed'),
+    ('not_found', 'Not Found')
 ]
 
+ALLOWED_CLAIM_STATUSES = [option[0] for option in RM_STATUS_OPTIONS]
+ALLOWED_CLAIM_STATUS_LABELS = [option[1] for option in RM_STATUS_OPTIONS]
+
 # Settlement statuses that require financial fields
-SETTLEMENT_STATUSES = ['SETTLED', 'PARTIALLY SETTLED', 'RECONCILIATION']
+SETTLEMENT_STATUSES = ['settled', 'partially_settled', 'reconciliation', 'approved']
+
+
+def _canonicalize_status(value: Optional[str]) -> str:
+    """Convert any stored status string to its canonical lowercase underscore form."""
+    if not value:
+        return 'received'
+    normalized = value.strip().lower().replace(' ', '_')
+    if normalized == 'inprogress':
+        normalized = 'in_progress'
+    return normalized
+
+
+def _status_label(value: Optional[str]) -> str:
+    """Return a human readable label for the given canonical status."""
+    canonical = _canonicalize_status(value)
+    for status_value, label in RM_STATUS_OPTIONS:
+        if status_value == canonical:
+            return label
+    return canonical.replace('_', ' ').title()
+
+
+def _status_is_settlement(value: Optional[str]) -> bool:
+    return _canonicalize_status(value) in SETTLEMENT_STATUSES
 
 @rm_bp.route('/get-claims', methods=['GET'])
 @require_rm_access
@@ -53,7 +82,7 @@ def get_rm_claims():
             query = query.where('claim_status', '==', 'dispatched')
         elif tab == 'settled':
             # Settled claims: completed by RM
-            query = query.where('rm_status', 'in', SETTLEMENT_STATUSES)
+            query = query.where('claim_status', 'in', SETTLEMENT_STATUSES)
         # For 'all', don't add status filter
         
         # Apply date filtering if provided
@@ -133,8 +162,8 @@ def get_rm_claims():
             form_data = claim_data.get('form_data', {})
             claims_list.append({
                 'claim_id': claim_data.get('claim_id', doc.id),
-                'claim_status': claim_data.get('claim_status', ''),
-                'rm_status': claim_data.get('rm_status', 'RECEIVED'),
+                'claim_status': _canonicalize_status(claim_data.get('claim_status')),
+                'claim_status_label': _status_label(claim_data.get('claim_status')),
                 'created_at': str(claim_data.get('created_at', '')),
                 'submission_date': str(claim_data.get('submission_date', '')),
                 'patient_name': form_data.get('patient_name', ''),
@@ -190,6 +219,7 @@ def get_rm_claim_details(claim_id):
         
         # Get RM-specific data
         rm_data = claim_data.get('rm_data', {})
+        canonical_claim_status = _canonicalize_status(claim_data.get('claim_status'))
         
         # Get documents for this claim
         documents = claim_data.get('documents', [])
@@ -263,8 +293,8 @@ def get_rm_claim_details(claim_id):
             'success': True,
             'claim': {
                 'claim_id': claim_data.get('claim_id', claim_id),
-                'claim_status': claim_data.get('claim_status', ''),
-                'rm_status': claim_data.get('rm_status', 'RECEIVED'),
+                'claim_status': canonical_claim_status,
+                'claim_status_label': _status_label(canonical_claim_status),
                 'created_at': str(claim_data.get('created_at', '')),
                 'submission_date': str(claim_data.get('submission_date', '')),
                 'hospital_name': claim_data.get('hospital_name', ''),
@@ -319,16 +349,17 @@ def update_rm_claim(claim_id):
     """Update claim status and data - RM ONLY"""
     try:
         data = request.get_json()
-        rm_status = data.get('rm_status')
+        claim_status = data.get('claim_status') or data.get('rm_status')
         status_raised_date = data.get('status_raised_date')
         status_raised_remarks = data.get('status_raised_remarks', '')
         rm_data = data.get('rm_data', {})
         
         # Validate status
-        if rm_status not in RM_STATUSES:
+        canonical_status = _canonicalize_status(claim_status)
+        if canonical_status not in ALLOWED_CLAIM_STATUSES:
             return jsonify({
                 'success': False,
-                'error': f'Invalid RM status. Must be one of: {", ".join(RM_STATUSES)}'
+                'error': f'Invalid claim status. Must be one of: {", ".join(ALLOWED_CLAIM_STATUS_LABELS)}'
             }), 400
         
         db = get_firestore()
@@ -349,11 +380,12 @@ def update_rm_claim(claim_id):
             claim_doc = claims_docs[0]
         
         claim_data = claim_doc.to_dict()
-        previous_rm_status = claim_data.get('rm_status', 'RECEIVED')
+        previous_claim_status = _canonicalize_status(claim_data.get('claim_status'))
         
         # Prepare update data
         update_data = {
-            'rm_status': rm_status,
+            'claim_status': canonical_status,
+            'rm_status': firestore.DELETE_FIELD,
             'rm_updated_at': firestore.SERVER_TIMESTAMP,
             'rm_updated_by': request.user_id,
             'rm_updated_by_email': request.user_email,
@@ -368,7 +400,7 @@ def update_rm_claim(claim_id):
             update_data['rm_status_raised_remarks'] = status_raised_remarks
         
         # Handle settlement-specific data
-        if rm_status in SETTLEMENT_STATUSES:
+        if _status_is_settlement(canonical_status):
             # Merge settlement data into rm_data
             existing_rm_data = claim_data.get('rm_data', {})
             existing_rm_data.update(rm_data)
@@ -390,17 +422,18 @@ def update_rm_claim(claim_id):
             performed_by_email=request.user_email,
             performed_by_name=request.user_name,
             performed_by_role='rm',
-            previous_status=previous_rm_status,
-            new_status=rm_status,
+            previous_status=previous_claim_status,
+            new_status=canonical_status,
             remarks=status_raised_remarks,
             metadata={'rm_action': 'update', 'rm_data': rm_data}
         )
         
         return jsonify({
             'success': True,
-            'message': f'Claim updated to {rm_status} successfully',
+            'message': f'Claim updated to {_status_label(canonical_status)} successfully',
             'claim_id': claim_id,
-            'rm_status': rm_status
+            'claim_status': canonical_status,
+            'claim_status_label': _status_label(canonical_status)
         }), 200
         
     except Exception as e:
@@ -437,11 +470,12 @@ def reevaluate_rm_claim(claim_id):
             claim_doc = claims_docs[0]
         
         claim_data = claim_doc.to_dict()
-        previous_rm_status = claim_data.get('rm_status', 'RECEIVED')
+        previous_claim_status = _canonicalize_status(claim_data.get('claim_status'))
         
         # Set status to INPROGRESS for re-evaluation
         update_data = {
-            'rm_status': 'INPROGRESS',
+            'claim_status': 'in_progress',
+            'rm_status': firestore.DELETE_FIELD,
             'rm_reevaluation_requested': True,
             'rm_reevaluation_remarks': remarks,
             'rm_reevaluation_requested_at': firestore.SERVER_TIMESTAMP,
@@ -463,8 +497,8 @@ def reevaluate_rm_claim(claim_id):
             performed_by_email=request.user_email,
             performed_by_name=request.user_name,
             performed_by_role='rm',
-            previous_status=previous_rm_status,
-            new_status='INPROGRESS',
+            previous_status=previous_claim_status,
+            new_status='in_progress',
             remarks=f'Re-evaluation requested: {remarks}',
             metadata={'rm_action': 'reevaluate'}
         )
@@ -533,24 +567,26 @@ def get_rm_stats():
                 filtered_claims.append(claim_data)
         
         # Count by status
-        status_counts = {}
-        for status in RM_STATUSES:
-            status_counts[status] = 0
-        
+        status_counts = {option[0]: 0 for option in RM_STATUS_OPTIONS}
+
         for claim in filtered_claims:
-            rm_status = claim.get('rm_status', 'RECEIVED')
-            if rm_status in status_counts:
-                status_counts[rm_status] += 1
+            claim_status = _canonicalize_status(claim.get('claim_status'))
+            if claim_status in status_counts:
+                status_counts[claim_status] += 1
         
         return jsonify({
             'success': True,
             'stats': {
                 'total_claims': len(filtered_claims),
                 'status_counts': status_counts,
-                'settled_count': status_counts.get('SETTLED', 0),
-                'partially_settled_count': status_counts.get('PARTIALLY SETTLED', 0),
-                'reconciliation_count': status_counts.get('RECONCILIATION', 0),
-                'active_count': sum(status_counts.get(s, 0) for s in RM_STATUSES if s not in SETTLEMENT_STATUSES)
+                'settled_count': status_counts.get('settled', 0),
+                'partially_settled_count': status_counts.get('partially_settled', 0),
+                'reconciliation_count': status_counts.get('reconciliation', 0),
+                'active_count': sum(
+                    status_counts.get(status_value, 0)
+                    for status_value in status_counts
+                    if status_value not in SETTLEMENT_STATUSES
+                )
             }
         }), 200
         

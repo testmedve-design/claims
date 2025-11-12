@@ -9,8 +9,13 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { FileText, Search, Filter, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { FileText, Search, Filter, Clock } from 'lucide-react'
 import { rmApi, type RMClaim } from '@/services/rmApi'
+import {
+  RM_CLAIM_STATUS_OPTIONS,
+  getRmClaimStatusBadgeClass,
+  getRmClaimStatusLabel
+} from '@/constants/rmClaimStatus'
 
 export default function RMInboxPage() {
   const { user } = useAuth()
@@ -53,7 +58,15 @@ export default function RMInboxPage() {
       console.log('🔍 RM: API Response:', data)
       
       if (data.success) {
-        setClaims(data.claims)
+        const normalizedClaims = data.claims.map(claim => {
+          const normalizedStatus = (claim.claim_status || 'dispatched').toLowerCase()
+          return {
+            ...claim,
+            claim_status: normalizedStatus,
+            claim_status_label: getRmClaimStatusLabel(normalizedStatus)
+          }
+        })
+        setClaims(normalizedClaims)
       } else {
         throw new Error(data.error || 'Failed to fetch claims')
       }
@@ -68,9 +81,11 @@ export default function RMInboxPage() {
   const filterClaims = () => {
     let filtered = claims
 
-    // Filter by RM status
+    // Filter by claim status
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(claim => claim.rm_status === statusFilter)
+      filtered = filtered.filter(
+        claim => (claim.claim_status || '').toLowerCase() === statusFilter
+      )
     }
 
     // Filter by search term
@@ -86,33 +101,14 @@ export default function RMInboxPage() {
     setFilteredClaims(filtered)
   }
 
-  const getStatusBadge = (rmStatus: string) => {
-    switch (rmStatus) {
-      case 'RECEIVED':
-        return <Badge variant="outline" className="text-blue-600"><Clock className="w-3 h-3 mr-1" />Received</Badge>
-      case 'QUERY RAISED':
-        return <Badge variant="outline" className="text-orange-600"><AlertCircle className="w-3 h-3 mr-1" />Query Raised</Badge>
-      case 'REPUDIATED':
-        return <Badge variant="outline" className="text-red-600">Repudiated</Badge>
-      case 'SETTLED':
-        return <Badge variant="outline" className="text-green-600"><CheckCircle className="w-3 h-3 mr-1" />Settled</Badge>
-      case 'APPROVED':
-        return <Badge variant="outline" className="text-emerald-600"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>
-      case 'PARTIALLY SETTLED':
-        return <Badge variant="outline" className="text-yellow-600">Partially Settled</Badge>
-      case 'RECONCILIATION':
-        return <Badge variant="outline" className="text-purple-600">Reconciliation</Badge>
-      case 'INPROGRESS':
-        return <Badge variant="outline" className="text-blue-500">In Progress</Badge>
-      case 'CANCELLED':
-        return <Badge variant="outline" className="text-gray-600">Cancelled</Badge>
-      case 'CLOSED':
-        return <Badge variant="outline" className="text-gray-700">Closed</Badge>
-      case 'NOT FOUND':
-        return <Badge variant="outline" className="text-red-500">Not Found</Badge>
-      default:
-        return <Badge variant="outline" className="text-gray-600">{rmStatus || 'RECEIVED'}</Badge>
-    }
+  const getStatusBadge = (status?: string) => {
+    const label = getRmClaimStatusLabel(status)
+    const badgeClass = getRmClaimStatusBadgeClass(status)
+    return (
+      <Badge variant="outline" className={badgeClass}>
+        {label}
+      </Badge>
+    )
   }
 
   const handleProcessClaim = (claimId: string) => {
@@ -241,21 +237,15 @@ export default function RMInboxPage() {
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Filter by RM status" />
+                <SelectValue placeholder="Filter by claim status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="RECEIVED">Received</SelectItem>
-                <SelectItem value="QUERY RAISED">Query Raised</SelectItem>
-                <SelectItem value="REPUDIATED">Repudiated</SelectItem>
-                <SelectItem value="SETTLED">Settled</SelectItem>
-                <SelectItem value="APPROVED">Approved</SelectItem>
-                <SelectItem value="PARTIALLY SETTLED">Partially Settled</SelectItem>
-                <SelectItem value="RECONCILIATION">Reconciliation</SelectItem>
-                <SelectItem value="INPROGRESS">In Progress</SelectItem>
-                <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                <SelectItem value="CLOSED">Closed</SelectItem>
-                <SelectItem value="NOT FOUND">Not Found</SelectItem>
+                {RM_CLAIM_STATUS_OPTIONS.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <div className="flex gap-2">
@@ -334,7 +324,7 @@ export default function RMInboxPage() {
                   <TableHead>Payer</TableHead>
                   <TableHead>Hospital</TableHead>
                   <TableHead>Amount</TableHead>
-                  <TableHead>RM Status</TableHead>
+                  <TableHead>Claim Status</TableHead>
                   <TableHead>Submitted At</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -347,7 +337,7 @@ export default function RMInboxPage() {
                     <TableCell>{claim.payer_name}</TableCell>
                     <TableCell>{claim.hospital_name}</TableCell>
                     <TableCell>₹{claim.claimed_amount?.toLocaleString() || 0}</TableCell>
-                    <TableCell>{getStatusBadge(claim.rm_status)}</TableCell>
+                    <TableCell>{getStatusBadge(claim.claim_status)}</TableCell>
                     <TableCell>
                       <div className="text-sm">
                         <div className="font-medium">{new Date(claim.submission_date).toLocaleDateString('en-IN')}</div>

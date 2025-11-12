@@ -660,6 +660,51 @@ def get_banks():
             "details": str(e)
         }), 500
 
+
+@resources_bp.route('/disallowance-reasons', methods=['GET'])
+def get_disallowance_reasons():
+    """Get disallowance reason catalogue used for settlement bucketisation."""
+    try:
+        db = get_firestore()
+        reasons_ref = db.collection('disallowance_reason')
+        reason_docs = reasons_ref.get()
+
+        reasons = []
+        for doc in reason_docs:
+            reason_data = doc.to_dict() or {}
+            is_active = reason_data.get('is_active', True)
+            if not is_active:
+                continue
+
+            label = (
+                reason_data.get('label')
+                or reason_data.get('name')
+                or reason_data.get('reason')
+                or doc.id
+            )
+
+            reasons.append({
+                'id': doc.id,
+                'label': label,
+                'type': reason_data.get('type') or reason_data.get('reason_type') or '',
+                'description': reason_data.get('description') or ''
+            })
+
+        reasons.sort(key=lambda reason: reason['label'].lower())
+
+        return jsonify({
+            'success': True,
+            'reasons': reasons,
+            'total': len(reasons)
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch disallowance reasons',
+            'details': str(e)
+        }), 500
+
 @resources_bp.route('/admission-types', methods=['GET'])
 def get_admission_types():
     """Get available admission types from Firestore (GLOBAL - not hospital-specific)"""
