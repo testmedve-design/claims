@@ -1,3 +1,22 @@
+def _to_bool(value, default=False):
+    """
+    Normalize boolean-like values coming from Firestore.
+    Handles actual booleans, strings such as 'true'/'false', numeric 0/1,
+    and falls back to the provided default.
+    """
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ('true', 'yes', '1'):
+            return True
+        if normalized in ('false', 'no', '0'):
+            return False
+    return default
 """
 Resources API routes for reference data
 """
@@ -658,6 +677,55 @@ def get_banks():
             "success": False,
             "error": "Failed to fetch banks",
             "details": str(e)
+        }), 500
+
+
+@resources_bp.route('/hospital-config', methods=['GET'])
+@require_claims_access
+def get_hospital_config():
+    """Return submission configuration flags for the current hospital."""
+    try:
+        db = get_firestore()
+
+        default_config = {
+            'submit_option': True,
+            'proceed_for_qc_option': False
+        }
+
+        hospital_id = request.args.get('hospital_id') or getattr(request, 'hospital_id', '')
+        if not hospital_id:
+            return jsonify({
+                'success': True,
+                'config': default_config,
+                'message': 'Hospital ID not provided; using default submission options.'
+            }), 200
+
+        hospital_doc = db.collection('hospitals').document(hospital_id).get()
+        if not hospital_doc.exists:
+            return jsonify({
+                'success': True,
+                'config': default_config,
+                'message': 'Hospital configuration not found; using defaults.'
+            }), 200
+
+        hospital_data = hospital_doc.to_dict() or {}
+        submit_raw = hospital_data.get('submit_option')
+        proceed_raw = hospital_data.get('proceed_for_qc_option')
+        config = {
+            'submit_option': _to_bool(submit_raw, False) if submit_raw is not None else None,
+            'proceed_for_qc_option': _to_bool(proceed_raw, False) if proceed_raw is not None else None
+        }
+
+        return jsonify({
+            'success': True,
+            'config': config
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch hospital submission configuration',
+            'details': str(e)
         }), 500
 
 

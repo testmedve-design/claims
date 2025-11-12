@@ -377,27 +377,6 @@ export function DocumentUpload({ payerName, specialty, onDocumentsUploaded }: Do
         </CardContent>
       </Card>
 
-      {/* Missing Required Documents Alert */}
-      {missingDocs.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="pt-6">
-            <div className="flex gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-semibold text-amber-900 mb-2">Missing Required Documents ({missingDocs.length})</h4>
-                <div className="flex flex-wrap gap-2">
-                  {missingDocs.map((doc) => (
-                    <Badge key={doc.id} variant="secondary" className="bg-amber-100 text-amber-800">
-                      {doc.name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Uploaded Documents List */}
       {uploadedDocuments.length > 0 && (
         <Card>

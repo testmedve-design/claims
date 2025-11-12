@@ -9,6 +9,54 @@ from firebase_admin import firestore
 from datetime import datetime, date, timedelta
 
 
+def _normalize_dialysis_bills(raw_bills):
+    """
+    Validate and normalize dialysis bill entries coming from the claim form.
+    Returns (normalized_bills, total_amount).
+    """
+    if not isinstance(raw_bills, list) or len(raw_bills) == 0:
+        raise ValueError('Dialysis claims must include at least one bill entry.')
+
+    normalized = []
+    total_amount = 0.0
+
+    for index, bill in enumerate(raw_bills, start=1):
+        if not isinstance(bill, dict):
+            raise ValueError(f'Dialysis bill #{index} is invalid.')
+
+        bill_number = str(bill.get('bill_number', '')).strip()
+        if not bill_number:
+            raise ValueError(f'Dialysis bill #{index} is missing bill number.')
+
+        bill_date = bill.get('bill_date')
+        if not bill_date:
+            raise ValueError(f'Dialysis bill #{index} is missing bill date.')
+        try:
+            datetime.strptime(bill_date, "%Y-%m-%d")
+        except Exception:
+            raise ValueError(f'Dialysis bill #{index} has an invalid bill date. Expected YYYY-MM-DD.')
+
+        try:
+            bill_amount = float(bill.get('bill_amount', 0))
+        except (TypeError, ValueError):
+            raise ValueError(f'Dialysis bill #{index} has an invalid bill amount.')
+
+        if bill_amount <= 0:
+            raise ValueError(f'Dialysis bill #{index} must have an amount greater than zero.')
+
+        total_amount += bill_amount
+        normalized.append({
+            'bill_number': bill_number,
+            'bill_date': bill_date,
+            'bill_amount': round(bill_amount, 2)
+        })
+
+    if total_amount <= 0:
+        raise ValueError('Dialysis bills must have a combined amount greater than zero.')
+
+    return normalized, round(total_amount, 2)
+
+
 def _calculate_age_details(dob_str):
     if not dob_str:
         return None, None
@@ -112,20 +160,12 @@ def submit_claim():
                 'error': 'Either date_of_birth or age must be provided'
             }), 400
 
+        submission_mode = data.pop('submission_mode', 'submit')
+
         if has_age and data.get('age_unit') not in ('DAYS', 'MONTHS', 'YRS'):
             return jsonify({
                 'success': False,
                 'error': 'Age unit must be one of DAYS, MONTHS, or YRS when age is provided'
-            }), 400
-        
-        # Business rule validations
-        total_authorized_amount = float(data.get('total_authorized_amount') or 0)
-        claimed_amount = float(data.get('claimed_amount') or 0)
-        
-        if claimed_amount > total_authorized_amount:
-            return jsonify({
-                'success': False,
-                'error': f'Claimed Amount (₹{claimed_amount}) cannot exceed Total Authorized Amount (₹{total_authorized_amount})'
             }), 400
         
         # Generate claim ID
@@ -166,6 +206,48 @@ def submit_claim():
                 if derived_dob:
                     data['date_of_birth'] = derived_dob
 
+        claim_type = (data.get('claim_type') or '').strip().upper()
+        if claim_type == 'DIALYSIS':
+            try:
+                normalized_bills, total_bill_amount = _normalize_dialysis_bills(data.get('dialysis_bills'))
+            except ValueError as exc:
+                return jsonify({
+                    'success': False,
+                    'error': str(exc)
+                }), 400
+
+            patient_discount = float(data.get('patient_discount_amount') or 0)
+            amount_paid_by_patient = float(data.get('amount_paid_by_patient') or 0)
+            mou_discount = float(data.get('mou_discount_amount') or 0)
+
+            total_bill_amount = float(total_bill_amount)
+            total_patient_paid = round(patient_discount + amount_paid_by_patient, 2)
+            amount_charged_to_payer = round(total_bill_amount - total_patient_paid, 2)
+            if amount_charged_to_payer < 0:
+                amount_charged_to_payer = 0.0
+
+            claimed_amount = round(amount_charged_to_payer - mou_discount, 2)
+            if claimed_amount < 0:
+                claimed_amount = 0.0
+
+            data['dialysis_bills'] = normalized_bills
+            data['total_bill_amount'] = total_bill_amount
+            data['total_patient_paid_amount'] = total_patient_paid
+            data['amount_charged_to_payer'] = amount_charged_to_payer
+            data['claimed_amount'] = claimed_amount
+        else:
+            data.pop('dialysis_bills', None)
+
+        # Business rule validations (after any dialysis adjustments)
+        total_authorized_amount = float(data.get('total_authorized_amount') or 0)
+        claimed_amount = float(data.get('claimed_amount') or 0)
+        
+        if claimed_amount > total_authorized_amount:
+            return jsonify({
+                'success': False,
+                'error': f'Claimed Amount (₹{claimed_amount}) cannot exceed Total Authorized Amount (₹{total_authorized_amount})'
+            }), 400
+
         # Prepare claim document
         claim_document = {
             'claim_id': claim_id,
@@ -184,6 +266,7 @@ def submit_claim():
             'show_in_preauth': False,
             'show_in_reimb': False,
             'created_in_module': 'claims',
+            'submission_mode': submission_mode,
             'form_data': data
         }
         
@@ -204,7 +287,8 @@ def submit_claim():
             metadata={
                 'patient_name': data.get('patient_name'),
                 'claimed_amount': data.get('claimed_amount'),
-                'payer_name': data.get('payer_name')
+                'payer_name': data.get('payer_name'),
+                'submission_mode': submission_mode
             }
         )
         

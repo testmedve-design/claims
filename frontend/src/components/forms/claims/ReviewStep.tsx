@@ -381,6 +381,40 @@ export function ReviewStep({ formData, onEditStep }: ReviewStepProps) {
               </div>
             </div>
 
+            {formData.claim_type === 'DIALYSIS' && Array.isArray(formData.dialysis_bills) && formData.dialysis_bills.length > 0 && (
+              <>
+                <Separator className="opacity-30" />
+                <div className="space-y-3 rounded-md border border-blue-200 bg-blue-50/60 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-blue-900">Dialysis Session Bills</p>
+                    <Badge variant="secondary" className="bg-blue-600 text-white">
+                      {formData.dialysis_bills.length} bills
+                    </Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {formData.dialysis_bills.map((bill, index) => (
+                      <div
+                        key={`${bill.bill_number || 'bill'}-${bill.bill_date || index}`}
+                        className="flex flex-col justify-between gap-2 rounded-lg bg-white p-3 shadow-sm sm:flex-row sm:items-center"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            #{bill.bill_number || `Bill ${index + 1}`}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {bill.bill_date ? formatDate(bill.bill_date) : 'No date provided'}
+                          </p>
+                        </div>
+                        <p className="text-sm font-semibold text-blue-700">
+                          {formatCurrency(Number(bill.bill_amount) || 0)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Validation Check */}
             {formData.claimed_amount > formData.total_authorized_amount && (
               <div className="bg-destructive/10 text-destructive p-3 rounded-lg flex items-start gap-2">

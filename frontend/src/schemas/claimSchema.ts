@@ -1,5 +1,11 @@
 import * as z from 'zod'
 
+const dialysisBillSchema = z.object({
+  bill_number: z.string().min(1, 'Bill number is required'),
+  bill_date: z.string().min(1, 'Bill date is required'),
+  bill_amount: z.coerce.number().min(0, 'Bill amount must be 0 or greater'),
+})
+
 // Zod schema for claim form validation
 export const claimFormSchema = z.object({
   // Patient Details
@@ -74,6 +80,7 @@ export const claimFormSchema = z.object({
   treatment: z.string().optional(),
   total_amount: z.coerce.number().optional(),
   documents: z.array(z.any()).optional(),
+  dialysis_bills: z.array(dialysisBillSchema).default([]),
 }).refine((data) => {
   // Validation: Claimed Amount should not exceed Total Authorized Amount
   return data.claimed_amount <= data.total_authorized_amount
@@ -104,6 +111,14 @@ export const claimFormSchema = z.object({
 }, {
   message: 'Age unit is required when age is provided',
   path: ['age_unit'],
+}).refine((data) => {
+  if (data.claim_type === 'DIALYSIS') {
+    return Array.isArray(data.dialysis_bills) && data.dialysis_bills.length > 0
+  }
+  return true
+}, {
+  message: 'Add at least one dialysis bill entry',
+  path: ['dialysis_bills'],
 })
 
 export type ClaimFormValues = z.infer<typeof claimFormSchema>
@@ -173,5 +188,6 @@ export const defaultClaimFormValues: ClaimFormValues = {
   diagnosis: '',
   treatment: '',
   total_amount: 0,
-  documents: []
+  documents: [],
+  dialysis_bills: []
 }
