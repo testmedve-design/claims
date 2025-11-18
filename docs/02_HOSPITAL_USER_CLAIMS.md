@@ -204,13 +204,77 @@ const fetchClaimDetails = async (claimId: string) => {
 
 **Endpoint**: `POST /api/new-claim/submit-claim`
 
-**Description**: Submit a new claim with all required information.
+**Description**: Submit a new claim with all required information. Supports two submission modes: regular "Submit" and "Proceed for QC".
 
 **Headers**:
 ```http
 Authorization: Bearer <token>
 Content-Type: application/json
 ```
+
+### Submission Modes
+
+The system supports two submission modes controlled by hospital configuration:
+
+1. **Submit** (`submission_mode: 'submit'`) - Standard claim submission
+2. **Proceed for QC** (`submission_mode: 'proceed_for_qc'`) - Submit and proceed directly to QC
+
+### Hospital Configuration
+
+Submission options are controlled by the hospital's configuration in Firestore (`hospitals/{hospital_id}`):
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `submit_option` | boolean \| null | `true` | Show "Submit Claim" button |
+| `proceed_for_qc_option` | boolean \| null | `false` | Show "Proceed for QC" button |
+
+**Configuration Endpoint**: `GET /api/resources/hospital-config?hospital_id={hospital_id}`
+
+**Response**:
+```json
+{
+  "success": true,
+  "config": {
+    "submit_option": true,
+    "proceed_for_qc_option": false
+  }
+}
+```
+
+### Button Display Logic
+
+The frontend determines which buttons to show based on hospital configuration:
+
+```typescript
+// Button visibility logic
+const submitEnabled = submissionOptions.submitOption === true
+const proceedEnabled = submissionOptions.proceedForQcOption === true
+
+const showSubmitButton = submitEnabled
+const showProceedButton = proceedEnabled || (!submitEnabled && submissionOptions.proceedForQcOption === null)
+```
+
+**Display Rules**:
+- **Show "Submit Claim" button** when `submit_option === true`
+- **Show "Proceed for QC" button** when:
+  - `proceed_for_qc_option === true` (explicitly enabled), OR
+  - `submit_option === false/null` AND `proceed_for_qc_option === null` (fallback default)
+- **Both buttons can be shown** if both options are enabled
+- **At least one button is always shown** (fallback to "Proceed for QC" if no config)
+
+### When to Use Each Mode
+
+**Use "Submit Claim" (`submit`) when:**
+- Standard claim submission workflow
+- Hospital wants standard processing flow
+- Default submission mode
+
+**Use "Proceed for QC" (`proceed_for_qc`) when:**
+- Hospital wants to bypass intermediate steps
+- Direct submission to QC processing
+- Streamlined workflow for high-volume hospitals
+
+**Note**: Both modes result in the same claim status (`qc_pending`) and are processed identically by processors. The `submission_mode` field is stored for tracking/analytics purposes.
 
 **Request Body**:
 ```json
@@ -260,8 +324,18 @@ Content-Type: application/json
   "amount_charged_to_payer": 50000,
   "mou_discount_amount": 0,
   "patient_discount_amount": 0,
-  "security_deposit": 0
+  "security_deposit": 0,
+  "submission_mode": "submit"
 }
+```
+
+**Request Body Fields**:
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `submission_mode` | string | No | Submission mode: `'submit'` or `'proceed_for_qc'` (default: `'submit'`) |
+| ... (all other claim fields) | ... | ... | ... |
+
+**Note**: The `submission_mode` field is optional. If not provided, defaults to `'submit'`. The frontend automatically includes this based on which button the user clicks.
 ```
 
 > **Patient Age / DOB Requirement**  
@@ -275,9 +349,9 @@ Content-Type: application/json
 - hospitalization_type, ward_type, final_diagnosis, treatment_done
 - bill_number, bill_date, total_bill_amount, claimed_amount
 
-**Example Request**:
+**Example Request - Standard Submit**:
 ```typescript
-const submitClaim = async (claimData: any) => {
+const submitClaim = async (claimData: any, mode: 'submit' | 'proceed_for_qc' = 'submit') => {
   const token = localStorage.getItem('auth_token');
   
   const response = await fetch(
@@ -288,12 +362,65 @@ const submitClaim = async (claimData: any) => {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(claimData)
+      body: JSON.stringify({
+        ...claimData,
+        submission_mode: mode
+      })
     }
   );
 
   const data = await response.json();
   return data;
+};
+
+// Usage - Standard submit
+await submitClaim(claimFormData, 'submit');
+
+// Usage - Proceed for QC
+await submitClaim(claimFormData, 'proceed_for_qc');
+```
+
+**Example Request - Frontend Implementation**:
+```typescript
+// Fetch hospital configuration
+const fetchHospitalConfig = async (hospitalId: string) => {
+  const token = localStorage.getItem('auth_token');
+  const response = await fetch(
+    `${API_BASE_URL}/resources/hospital-config?hospital_id=${hospitalId}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  const data = await response.json();
+  return data.config; // { submit_option: true, proceed_for_qc_option: false }
+};
+
+// Determine which buttons to show
+const submissionOptions = await fetchHospitalConfig(hospitalId);
+const showSubmitButton = submissionOptions.submit_option === true;
+const showProceedButton = 
+  submissionOptions.proceed_for_qc_option === true || 
+  (!submissionOptions.submit_option && submissionOptions.proceed_for_qc_option === null);
+
+// Handle submission
+const handleSubmit = async (mode: 'submit' | 'proceed_for_qc') => {
+  const claimData = {
+    ...formValues,
+    submission_mode: mode
+  };
+  
+  const result = await submitClaim(claimData, mode);
+  
+  if (mode === 'proceed_for_qc') {
+    toast.success('Claim forwarded for QC successfully');
+  } else {
+    toast.success('Claim submitted successfully');
+  }
+  
+  return result;
 };
 ```
 
@@ -302,7 +429,21 @@ const submitClaim = async (claimData: any) => {
 {
   "success": true,
   "message": "Claim submitted successfully",
-  "claim_id": "CSHLSIP-20251023-5"
+  "claim_id": "CSHLSIP-20251023-5",
+  "claim_status": "qc_pending"
+}
+```
+
+**Note**: Both submission modes result in the same response. The claim is always created with status `qc_pending` and stored with the `submission_mode` field for tracking:
+
+```json
+{
+  "claim_id": "CSHLSIP-20251023-5",
+  "claim_status": "qc_pending",
+  "submission_mode": "submit",  // or "proceed_for_qc"
+  "form_data": { ... },
+  "created_at": "2025-10-23T13:06:06.961000+00:00",
+  ...
 }
 ```
 
@@ -470,8 +611,15 @@ const uploadDocument = async (
 
 ## Complete Example: Submit Claim Flow
 
+### Example 1: Standard Submit Flow
+
 ```typescript
-// 1. Collect form data
+// 1. Fetch hospital configuration
+const hospitalConfig = await fetchHospitalConfig(hospitalId);
+console.log('Submission options:', hospitalConfig);
+// Output: { submit_option: true, proceed_for_qc_option: false }
+
+// 2. Collect form data
 const claimFormData = {
   patient_name: "John Doe",
   age: 45,
@@ -479,11 +627,12 @@ const claimFormData = {
   // ... all other required fields
 };
 
-// 2. Submit the claim
-const submitResult = await submitClaim(claimFormData);
+// 3. Submit the claim (standard mode)
+const submitResult = await submitClaim(claimFormData, 'submit');
 console.log('Claim ID:', submitResult.claim_id);
+console.log('Status:', submitResult.claim_status); // "qc_pending"
 
-// 3. Upload documents
+// 4. Upload documents
 const file1 = document.querySelector('#file-input').files[0];
 const uploadResult = await uploadDocument(
   file1,
@@ -494,10 +643,138 @@ const uploadResult = await uploadDocument(
 
 console.log('Document uploaded:', uploadResult.document_id);
 
-// 4. Fetch the claim to verify
+// 5. Fetch the claim to verify
 const claim = await fetchClaimDetails(submitResult.claim_id);
-console.log('Claim details:', claim);
+console.log('Claim submission_mode:', claim.claim.submission_mode); // "submit"
 ```
+
+### Example 2: Proceed for QC Flow
+
+```typescript
+// 1. Fetch hospital configuration
+const hospitalConfig = await fetchHospitalConfig(hospitalId);
+// If proceed_for_qc_option is enabled
+
+// 2. Collect form data
+const claimFormData = {
+  patient_name: "John Doe",
+  age: 45,
+  gender: "Male",
+  // ... all other required fields
+};
+
+// 3. Submit with "Proceed for QC" mode
+const submitResult = await submitClaim(claimFormData, 'proceed_for_qc');
+console.log('Claim ID:', submitResult.claim_id);
+console.log('Message: Claim forwarded for QC');
+
+// 4. Verify submission mode
+const claim = await fetchClaimDetails(submitResult.claim_id);
+console.log('Submission mode:', claim.claim.submission_mode); // "proceed_for_qc"
+console.log('Status:', claim.claim.claim_status); // "qc_pending" (same as regular submit)
+```
+
+### Example 3: Frontend Button Implementation
+
+```typescript
+// React component example
+import { useState, useEffect } from 'react';
+
+function ClaimSubmissionButtons() {
+  const [submissionOptions, setSubmissionOptions] = useState({
+    submitOption: null,
+    proceedForQcOption: null
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    // Fetch hospital configuration on mount
+    const loadConfig = async () => {
+      const config = await fetchHospitalConfig(hospitalId);
+      setSubmissionOptions({
+        submitOption: config.submit_option,
+        proceedForQcOption: config.proceed_for_qc_option
+      });
+    };
+    loadConfig();
+  }, []);
+
+  const handleSubmit = async (mode: 'submit' | 'proceed_for_qc') => {
+    setIsSubmitting(true);
+    try {
+      const result = await submitClaim(formData, mode);
+      toast.success(
+        mode === 'proceed_for_qc' 
+          ? 'Claim forwarded for QC successfully'
+          : 'Claim submitted successfully'
+      );
+      return result;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Determine button visibility
+  const showSubmitButton = submissionOptions.submitOption === true;
+  const showProceedButton = 
+    submissionOptions.proceedForQcOption === true || 
+    (!submissionOptions.submitOption && submissionOptions.proceedForQcOption === null);
+
+  return (
+    <div className="flex gap-2">
+      {showSubmitButton && (
+        <Button
+          onClick={() => handleSubmit('submit')}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Submitting...' : 'Submit Claim'}
+        </Button>
+      )}
+      {showProceedButton && (
+        <Button
+          onClick={() => handleSubmit('proceed_for_qc')}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Proceeding...' : 'Proceed for QC'}
+        </Button>
+      )}
+    </div>
+  );
+}
+```
+
+### Example 4: Configuring Hospital Submission Options
+
+To configure submission options for a hospital, update the Firestore document:
+
+```javascript
+// Firestore: hospitals/{hospital_id}
+{
+  "name": "City Hospital",
+  "hospital_id": "HOSP_001",
+  // ... other hospital fields
+  
+  // Submission configuration
+  "submit_option": true,           // Show "Submit Claim" button
+  "proceed_for_qc_option": false   // Hide "Proceed for QC" button
+}
+```
+
+**Configuration Scenarios**:
+
+| submit_option | proceed_for_qc_option | Buttons Shown |
+|---------------|------------------------|---------------|
+| `true` | `false` | "Submit Claim" only |
+| `true` | `true` | Both buttons |
+| `false` | `true` | "Proceed for QC" only |
+| `false` | `null` | "Proceed for QC" (fallback) |
+| `null` | `null` | "Proceed for QC" (fallback) |
+| `true` | `null` | "Submit Claim" only |
+
+**Default Behavior** (if config not found):
+- `submit_option`: `true` (default)
+- `proceed_for_qc_option`: `false` (default)
+- Shows "Submit Claim" button only
 
 ---
 
@@ -529,13 +806,58 @@ const safeApiCall = async (apiFunction: () => Promise<any>) => {
 
 ## Hospital Configuration
 
-Hospitals can configure the following for processors:
+Hospitals can configure the following settings in Firestore (`hospitals/{hospital_id}`):
 
-- Assign claims to a processor
-- Set processor approval limits (per role)
-- Control optional processor statuses by toggling these booleans on the `hospitals/<hospital_id>` document:
-  - `need_more_info_option`
-  - `claim_approved_option`
-  - `claim_denial_option`
-- When `true`, the processor sees that status in the dropdown; otherwise it is hidden and blocked on the backend.
+### Submission Options
+
+Control which submission buttons are shown to hospital users:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `submit_option` | boolean \| null | `true` | Show "Submit Claim" button |
+| `proceed_for_qc_option` | boolean \| null | `false` | Show "Proceed for QC" button |
+
+**Configuration Endpoint**: `GET /api/resources/hospital-config?hospital_id={hospital_id}`
+
+**Example Configuration**:
+```javascript
+// Firestore: hospitals/{hospital_id}
+{
+  "name": "City Hospital",
+  "hospital_id": "HOSP_001",
+  
+  // Submission configuration
+  "submit_option": true,           // Show "Submit Claim" button
+  "proceed_for_qc_option": false   // Hide "Proceed for QC" button
+}
+```
+
+**Button Display Logic**:
+- If `submit_option === true`: Show "Submit Claim" button
+- If `proceed_for_qc_option === true`: Show "Proceed for QC" button
+- If both are `true`: Show both buttons
+- If `submit_option === false/null` and `proceed_for_qc_option === null`: Show "Proceed for QC" as fallback
+
+### Processor Status Options
+
+Control optional processor statuses by toggling these booleans:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `need_more_info_option` | boolean | `false` | Enable "Need More Info" status for processors |
+| `claim_approved_option` | boolean | `false` | Enable "Claim Approved" status for processors |
+| `claim_denial_option` | boolean | `false` | Enable "Claim Denial" status for processors |
+
+**Behavior**:
+- When `true`, processors see that status option in the dropdown
+- When `false` or not set, the status is hidden and blocked on the backend
+- Processors can always use: `qc_clear`, `qc_query` (regardless of configuration)
+
+### Other Hospital Settings
+
+- **Assign claims to processors**: Configure processor-hospital affiliations
+- **Set processor approval limits**: Configure per-role approval limits (L1-L4)
+- **Hospital metadata**: Name, address, contact information, etc.
+
+**Note**: All configuration changes take effect immediately. No server restart required.
 
