@@ -92,6 +92,7 @@ def _fetch_claims_for_user(status, limit, start_date, end_date, user_hospital_id
             claim_data.get('email', '') or
             claim_data.get('created_by_name', '')
         )
+        payer_name = form_data.get('payer_name', '') or claim_data.get('payer_name', '')
         claimed_amount = form_data.get('claimed_amount', '') or claim_data.get('total_bill_amount', '')
         specialty = form_data.get('specialty', '') or claim_data.get('stage', '')
 
@@ -109,6 +110,7 @@ def _fetch_claims_for_user(status, limit, start_date, end_date, user_hospital_id
             'created_at': str(created_at),
             'submission_date': str(submission_date),
             'patient_name': patient_name,
+            'payer_name': payer_name,
             'claimed_amount': claimed_amount,
             'specialty': specialty,
             'hospital_name': claim_data.get('hospital_name', ''),
