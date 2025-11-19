@@ -900,13 +900,27 @@ def get_claim_details(claim_id):
         # Extract form_data for easier access
         form_data = claim_data.get('form_data', {})
         
-        # Get documents for this claim
-        documents = claim_data.get('documents', [])
+        # Get documents for this claim (support legacy storage)
+        documents = claim_data.get('documents', []) or []
+        if not documents:
+            documents = claim_data.get('document_uploads', []) or []
+        if not documents:
+            # Some legacy records keep uploads within form_data
+            form_documents = (claim_data.get('form_data') or {}).get('documents') or []
+            if isinstance(form_documents, list):
+                documents = form_documents
+        if not isinstance(documents, list):
+            documents = []
         
-        # Get detailed document information
+        # Get detailed document information from documents array
         detailed_documents = []
         for doc in documents:
-            doc_id = doc.get('document_id')
+            doc_id = None
+            if isinstance(doc, dict):
+                doc_id = doc.get('document_id') or doc.get('id') or doc.get('documentId')
+            elif isinstance(doc, str):
+                doc_id = doc
+
             if doc_id:
                 doc_detailed = db.collection('documents').document(doc_id).get()
                 if doc_detailed.exists:
@@ -922,6 +936,48 @@ def get_claim_details(claim_id):
                         'uploaded_at': str(doc_data.get('uploaded_at', '')),
                         'status': doc_data.get('status')
                     })
+        
+        # ALSO query documents collection directly by claim_id (in case documents weren't linked to claim document)
+        # This ensures we get all documents even if they weren't properly linked
+        # We always query this to catch any documents that might have been uploaded but not linked
+        print(f"🔍 Querying documents collection by claim_id: {claim_id}")
+        documents_query = db.collection('documents').where('claim_id', '==', claim_id).get()
+        existing_doc_ids = {d.get('document_id') for d in detailed_documents if d.get('document_id')}
+        
+        for doc_doc in documents_query:
+            doc_data = doc_doc.to_dict()
+            # Check if we already have this document
+            doc_id = doc_data.get('document_id')
+            if doc_id and doc_id not in existing_doc_ids:
+                # Regenerate download URL if expired (signed URLs expire after 7 days)
+                download_url = doc_data.get('download_url', '')
+                if not download_url:
+                    try:
+                        from datetime import timedelta
+                        from firebase_config import get_storage
+                        storage_path = doc_data.get('storage_path', '')
+                        if storage_path:
+                            bucket = get_storage()
+                            blob = bucket.blob(storage_path)
+                            if blob.exists():
+                                download_url = blob.generate_signed_url(expiration=timedelta(days=7))
+                    except Exception as e:
+                        print(f"⚠️ Could not regenerate download URL: {e}")
+                
+                detailed_documents.append({
+                    'document_id': doc_data.get('document_id'),
+                    'document_type': doc_data.get('document_type'),
+                    'document_name': doc_data.get('document_name'),
+                    'original_filename': doc_data.get('original_filename'),
+                    'download_url': download_url or doc_data.get('download_url', ''),
+                    'file_size': doc_data.get('file_size'),
+                    'file_type': doc_data.get('file_type'),
+                    'uploaded_at': str(doc_data.get('uploaded_at', '')),
+                    'status': doc_data.get('status', 'uploaded')
+                })
+                existing_doc_ids.add(doc_id)
+        
+        print(f"🔍 Found {len(detailed_documents)} total documents for claim {claim_id} (from claim doc: {len(documents)}, from documents collection: {len(documents_query)})")
         
         # Return detailed claim information with proper structure
         return jsonify({
