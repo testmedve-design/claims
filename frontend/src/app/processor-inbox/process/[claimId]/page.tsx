@@ -111,6 +111,8 @@ const buildCoverLetterHtml = (
     authorizationNo: string
     amountFormatted: string
     amountInWords: string
+    approvedAmountFormatted?: string
+    approvedAmountInWords?: string
     enclosures: string[]
     hospitalName: string
   },
@@ -168,6 +170,10 @@ const buildCoverLetterHtml = (
       </tfoot>
     </table>
     <p class="spacing">In Words: Rupees ${data.amountInWords} Only</p>
+    ${data.approvedAmountFormatted ? `
+    <p class="spacing"><strong>Approved Amount:</strong> ${data.approvedAmountFormatted}</p>
+    <p class="spacing">Approved Amount In Words: Rupees ${data.approvedAmountInWords} Only</p>
+    ` : ''}
     <div class="spacing">
       <p><strong>Enclosures:</strong></p>
       <ul>
@@ -778,6 +784,11 @@ export default function ProcessClaimPage() {
         }
       }
 
+      // Add approved_amount for claim_approved status
+      if (formData.status === 'claim_approved' && formData.approved_amount) {
+        requestData.approved_amount = formData.approved_amount
+      }
+
       console.log('🔍 Sending claim update request:', {
         url: `${API_BASE_URL}/processor-routes/process-claim/${claimId}`,
         data: requestData,
@@ -921,6 +932,11 @@ export default function ProcessClaimPage() {
       parseAmountField(financial.total_bill_amount) ||
       0
 
+    // Get approved amount if claim is approved
+    const approvedAmount = claim.claim_status === 'claim_approved' 
+      ? (parseAmountField(claim.approved_amount) || parseAmountField(financial.approved_amount) || amount)
+      : null
+
     const billNumber = (financial as any).bill_number || formData.bill_number || 'N/A'
     const billDate = (financial as any).bill_date || formData.bill_date || ''
     const authorizationNo =
@@ -959,6 +975,8 @@ export default function ProcessClaimPage() {
       authorizationNo,
       amountFormatted: formatCurrencyINR(amount),
       amountInWords: convertNumberToWords(amount),
+      approvedAmountFormatted: approvedAmount ? formatCurrencyINR(approvedAmount) : undefined,
+      approvedAmountInWords: approvedAmount ? convertNumberToWords(approvedAmount) : undefined,
       formattedDateTime: new Intl.DateTimeFormat('en-IN', {
         dateStyle: 'short',
         timeStyle: 'short'
@@ -1248,6 +1266,32 @@ export default function ProcessClaimPage() {
                     onChange={(event) => handleFieldChange('remarks', event.target.value)}
                     rows={3}
                   />
+                </div>
+              </div>
+            )}
+
+            {formData.status === 'claim_approved' && (
+              <div className="space-y-4 rounded-lg border bg-white p-4">
+                <div className="space-y-2">
+                  <Label htmlFor="approved_amount">Approved Amount (₹) <span className="text-red-500">*</span></Label>
+                  <p className="text-xs text-muted-foreground">Enter the approved amount for this claim. If not specified, claimed amount will be used.</p>
+                  <Input
+                    id="approved_amount"
+                    type="number"
+                    placeholder="Enter approved amount"
+                    value={formData.approved_amount || ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? parseFloat(e.target.value) : 0
+                      handleFieldChange('approved_amount', value)
+                    }}
+                    min="0"
+                    step="0.01"
+                  />
+                  {claim?.form_data?.claimed_amount && (
+                    <p className="text-xs text-muted-foreground">
+                      Claimed Amount: ₹{new Intl.NumberFormat('en-IN').format(parseFloat(claim.form_data.claimed_amount) || 0)}
+                    </p>
+                  )}
                 </div>
               </div>
             )}

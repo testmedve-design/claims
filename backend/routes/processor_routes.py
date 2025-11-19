@@ -470,6 +470,7 @@ def process_claim(claim_id):
         status = data.get('status')  # 'qc_clear', 'qc_query', 'claim_approved', 'claim_denial', 'need_more_info'
         remarks = data.get('remarks', '')
         query_details = data.get('query_details')
+        approved_amount = data.get('approved_amount')  # For claim_approved status
 
         valid_statuses = ['qc_clear', 'qc_query', 'claim_approved', 'claim_denial', 'need_more_info']
         if status not in valid_statuses:
@@ -703,6 +704,40 @@ def process_claim(claim_id):
             'lock_expires_at': None,
             'qc_query_details': cleaned_query_details if new_status == 'qc_query' else firestore.DELETE_FIELD
         }
+        
+        # Capture QC Clear Date when status is qc_clear
+        if new_status == 'qc_clear':
+            import pytz
+            ist = pytz.timezone('Asia/Kolkata')
+            qc_clear_date = datetime.now(ist)
+            update_data['qc_clear_date'] = qc_clear_date
+        
+        # Capture Approved Amount when status is claim_approved
+        if new_status == 'claim_approved':
+            if approved_amount is not None:
+                try:
+                    approved_amount_float = float(approved_amount)
+                    update_data['approved_amount'] = approved_amount_float
+                except (ValueError, TypeError):
+                    # If invalid amount, use claimed_amount as fallback
+                    form_data = claim_data.get('form_data', {})
+                    claimed_amount = form_data.get('claimed_amount', 0)
+                    try:
+                        if isinstance(claimed_amount, str):
+                            claimed_amount = float(claimed_amount.replace(',', ''))
+                        update_data['approved_amount'] = float(claimed_amount)
+                    except (ValueError, TypeError):
+                        update_data['approved_amount'] = 0
+            else:
+                # If no approved_amount provided, use claimed_amount as fallback
+                form_data = claim_data.get('form_data', {})
+                claimed_amount = form_data.get('claimed_amount', 0)
+                try:
+                    if isinstance(claimed_amount, str):
+                        claimed_amount = float(claimed_amount.replace(',', ''))
+                    update_data['approved_amount'] = float(claimed_amount)
+                except (ValueError, TypeError):
+                    update_data['approved_amount'] = 0
         
         # Update the claim
         db.collection('direct_claims').document(claim_id).update(update_data)
