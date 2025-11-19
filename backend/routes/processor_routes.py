@@ -1034,6 +1034,7 @@ def get_claim_details(claim_id):
                 'processed_by_email': claim_data.get('processed_by_email', ''),
                 'processed_by_name': claim_data.get('processed_by_name', ''),
                 'processed_at': str(claim_data.get('processed_at', '')),
+                'qc_clear_date': str(claim_data.get('qc_clear_date', '')) if claim_data.get('qc_clear_date') else '',
                 # Lock information
                 'locked_by_processor': claim_data.get('locked_by_processor', ''),
                 'locked_by_processor_email': claim_data.get('locked_by_processor_email', ''),
