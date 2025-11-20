@@ -23,6 +23,7 @@ from routes.rm_routes import rm_bp
 from routes.public_routes import public_bp
 from routes.notifications import notifications_bp
 from routes.review_request_routes import review_request_bp
+from routes.analytics_routes import analytics_bp
 
 def create_app():
     """Application factory pattern - SIMPLIFIED"""
@@ -67,6 +68,7 @@ def create_app():
     app.register_blueprint(processor_routes_bp, url_prefix='/api/processor-routes')
     app.register_blueprint(rm_bp, url_prefix='/api/rm')
     app.register_blueprint(review_request_bp, url_prefix='/api/review-request')
+    app.register_blueprint(analytics_bp, url_prefix='/api/v1/analytics')
     app.register_blueprint(public_bp)  # Public routes (no prefix, uses full paths in routes)
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     
