@@ -117,15 +117,10 @@ def save_draft():
             'created_by_email': user_email,
             'hospital_id': hospital_id,
             'hospital_name': hospital_name,
-            'is_draft': True,
             
             # Form data (all fields from request)
             'form_data': data,
             
-            # Module visibility flags (default to claims module for drafts)
-            'show_in_claims': True,
-            'show_in_preauth': False,
-            'show_in_reimb': False,
             'created_in_module': 'claims'
         }
         
@@ -299,8 +294,7 @@ def get_draft(draft_id):
             'hospital_id': draft_data.get('hospital_id', ''),
             'hospital_name': draft_data.get('hospital_name', ''),
             'form_data': draft_data.get('form_data', {}),
-            'documents': documents,  # Include documents with fresh URLs
-            'is_draft': draft_data.get('is_draft', True)
+            'documents': documents  # Include documents with fresh URLs
         }
         
         return jsonify({
@@ -483,10 +477,6 @@ def submit_draft(draft_id):
             'created_at': draft_data.get('created_at'),
             'updated_at': firestore.SERVER_TIMESTAMP,
             
-            # Module visibility flags
-            'show_in_claims': draft_data.get('show_in_claims', True),
-            'show_in_preauth': draft_data.get('show_in_preauth', False),
-            'show_in_reimb': draft_data.get('show_in_reimb', False),
             'created_in_module': draft_data.get('created_in_module', 'claims'),
             'submission_mode': submission_mode,
             

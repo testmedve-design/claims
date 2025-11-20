@@ -35,7 +35,6 @@ def generate_claim_payload(index: int, now: datetime):
         "created_at": firestore.SERVER_TIMESTAMP,
         "updated_at": firestore.SERVER_TIMESTAMP,
         "submission_date": firestore.SERVER_TIMESTAMP,
-        "is_draft": False,
         "form_data": {
             "patient_name": f"Test Patient {index}",
             "payer_name": "Test Insurance",
@@ -45,8 +44,6 @@ def generate_claim_payload(index: int, now: datetime):
         "created_by": "dummy_user_id",
         "created_by_email": f"tester{index}@example.com",
         "created_by_name": f"Tester {index}",
-        "show_in_preauth": False,
-        "show_in_reimb": False,
         "created_in_module": "claims",
     }
 

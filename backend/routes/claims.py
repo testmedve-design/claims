@@ -75,11 +75,11 @@ def _fetch_claims_for_user(status, limit, start_date, end_date, user_hospital_id
         included_count += 1
         print(f"  ✅ INCLUDED: {match_reason}")
 
-        is_draft = claim_data.get('is_draft', False)
         status_value = claim_data.get('claim_status', '') or claim_data.get('status', '')
         claim_id_value = claim_data.get('claim_id', doc.id)
 
-        if (is_draft is True or status_value == 'draft' or 'draft' in claim_id_value.lower()):
+        # Skip drafts (drafts have claim_status == 'draft')
+        if (status_value == 'draft' or 'draft' in claim_id_value.lower()):
             continue
 
         if not (claim_id_value.startswith('CSHLSIP') or claim_id_value.startswith('CLS')):
@@ -602,12 +602,13 @@ def get_claims_stats():
         user_hospital_name = getattr(request, 'hospital_name', '')
         
         # Get all claims and filter by hospital in Python
-        qc_pending_all = db.collection('direct_claims').where('claim_status', '==', 'qc_pending').where('is_draft', '==', False).get()
-        pending_all = db.collection('direct_claims').where('claim_status', '==', 'pending').where('is_draft', '==', False).get()
-        approved_all = db.collection('direct_claims').where('claim_status', '==', 'approved').where('is_draft', '==', False).get()
-        rejected_all = db.collection('direct_claims').where('claim_status', '==', 'rejected').where('is_draft', '==', False).get()
-        queried_all = db.collection('direct_claims').where('claim_status', '==', 'queried').where('is_draft', '==', False).get()
-        dispatched_all = db.collection('direct_claims').where('claim_status', '==', 'dispatched').where('is_draft', '==', False).get()
+        # Note: These queries automatically exclude drafts since drafts have claim_status == 'draft'
+        qc_pending_all = db.collection('direct_claims').where('claim_status', '==', 'qc_pending').get()
+        pending_all = db.collection('direct_claims').where('claim_status', '==', 'pending').get()
+        approved_all = db.collection('direct_claims').where('claim_status', '==', 'approved').get()
+        rejected_all = db.collection('direct_claims').where('claim_status', '==', 'rejected').get()
+        queried_all = db.collection('direct_claims').where('claim_status', '==', 'queried').get()
+        dispatched_all = db.collection('direct_claims').where('claim_status', '==', 'dispatched').get()
         
         # Filter by hospital
         def filter_by_hospital(claims_list):
@@ -685,7 +686,6 @@ def debug_claims():
                 'hospital_name': claim_hospital_name,
                 'hospital_id': claim_hospital_id,
                 'claim_status': claim_data.get('claim_status', 'NOT_SET'),
-                'is_draft': claim_data.get('is_draft', 'NOT_SET'),
                 'matches_user_hospital_id': id_match,
                 'matches_user_hospital_name': name_match,
                 'should_be_visible': id_match or name_match

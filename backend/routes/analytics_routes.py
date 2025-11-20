@@ -93,13 +93,16 @@ def get_hospital_analytics():
         payer_type_filter = request.args.get('payer_type', '').strip().lower()
         
         # Base query
-        query = db.collection('direct_claims').where('is_draft', '==', False)
+        query = db.collection('direct_claims')
         
         if hospital_id:
             query = query.where('hospital_id', '==', hospital_id)
             
         docs = query.get()
         claims = [doc.to_dict() for doc in docs]
+        
+        # Filter out drafts (drafts have claim_status == 'draft')
+        claims = [c for c in claims if c.get('claim_status') != 'draft']
         
         # Apply date filter
         claims = filter_claims_by_date(claims, start_date, end_date)
@@ -237,7 +240,7 @@ def get_processor_analytics():
         affiliated_ids = [h['id'] for h in assigned_hospitals] if assigned_hospitals else []
         
         # Base Query
-        query = db.collection('direct_claims').where('is_draft', '==', False)
+        query = db.collection('direct_claims')
         
         # If processor selects a specific hospital, filter by it (must be in their assignments)
         if selected_hospital_id:
@@ -252,6 +255,9 @@ def get_processor_analytics():
             
         docs = query.get()
         claims = [doc.to_dict() for doc in docs]
+        
+        # Filter out drafts (drafts have claim_status == 'draft')
+        claims = [c for c in claims if c.get('claim_status') != 'draft']
         
         # Apply Date Filter
         claims = filter_claims_by_date(claims, start_date, end_date)
@@ -381,8 +387,11 @@ def get_review_analytics():
         # A better approach: query where review_status is set or claim_status is 'dispatched'
         
         # Fetching all claims for now (optimize later with indexes)
-        docs = db.collection('direct_claims').where('is_draft', '==', False).get()
+        docs = db.collection('direct_claims').get()
         claims = [doc.to_dict() for doc in docs]
+        
+        # Filter out drafts (drafts have claim_status == 'draft')
+        claims = [c for c in claims if c.get('claim_status') != 'draft']
         
         # Filter relevant claims (those that reached review stage)
         # Relevant statuses: dispatched, reviewed, review_approved, review_rejected, review_escalated, etc.
@@ -510,8 +519,11 @@ def get_rm_analytics():
         
         # Simplification: Fetch all relevant claims and filter in memory
         # Relevant claims for RM are typically 'dispatched', 'settled', 'partially_settled', 'reconciliation'
-        docs = db.collection('direct_claims').where('is_draft', '==', False).get()
+        docs = db.collection('direct_claims').get()
         claims = [doc.to_dict() for doc in docs]
+        
+        # Filter out drafts (drafts have claim_status == 'draft')
+        claims = [c for c in claims if c.get('claim_status') != 'draft']
         
         print(f"🔍 RM Analytics DEBUG: Total claims before filters: {len(claims)}")
         

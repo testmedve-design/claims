@@ -34,7 +34,9 @@ def check_claims():
         for i, claim_doc in enumerate(all_claims[:10]):  # Check first 10
             claim_data = claim_doc.to_dict()
             claim_id = claim_data.get('claim_id', '')
-            is_draft = claim_data.get('is_draft', False)
+            # Check if it's a draft (drafts have claim_status == 'draft')
+            claim_status = claim_data.get('claim_status', '')
+            is_draft = (claim_status == 'draft')
 
             if claim_id.startswith('CSHLSIP'):
                 ip_claims += 1

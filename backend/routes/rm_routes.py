@@ -107,9 +107,8 @@ def get_rm_claims():
         for doc in all_claims:
             claim_data = doc.to_dict()
             
-            # Skip drafts
-            is_draft = claim_data.get('is_draft', False)
-            if is_draft:
+            # Skip drafts (drafts have claim_status == 'draft')
+            if claim_data.get('claim_status') == 'draft':
                 continue
             
             # Canonicalize status for comparison
@@ -600,8 +599,8 @@ def get_rm_stats():
         for doc in all_claims:
             claim_data = doc.to_dict()
             
-            # Skip drafts
-            if claim_data.get('is_draft', False):
+            # Skip drafts (drafts have claim_status == 'draft')
+            if claim_data.get('claim_status') == 'draft':
                 continue
             
             # Canonicalize status for comparison

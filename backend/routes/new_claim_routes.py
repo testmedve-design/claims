@@ -261,10 +261,6 @@ def submit_claim():
             'created_by_name': getattr(request, 'user_name', '') or getattr(request, 'user_display_name', '') or request.user_email.split('@')[0].replace('.', ' ').replace('_', ' ').title(),
             'hospital_id': request.hospital_id,
             'hospital_name': request.hospital_name,
-            'is_draft': False,
-            'show_in_claims': True,
-            'show_in_preauth': False,
-            'show_in_reimb': False,
             'created_in_module': 'claims',
             'submission_mode': submission_mode,
             'form_data': data
@@ -337,7 +333,7 @@ def get_my_claims():
         limit = int(request.args.get('limit', 50))
         
         # Build query
-        query = db.collection('direct_claims').where('hospital_id', '==', request.hospital_id).where('is_draft', '==', False)
+        query = db.collection('direct_claims').where('hospital_id', '==', request.hospital_id).where('claim_status', '!=', 'draft')
         
         if status != 'all':
             query = query.where('claim_status', '==', status)

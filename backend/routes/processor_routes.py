@@ -252,13 +252,11 @@ def get_claims_to_process():
             claim_hospital_name = claim_data.get('hospital_name', '')
             
             # SKIP DRAFT CLAIMS - drafts should only appear in the Drafts section
-            is_draft = claim_data.get('is_draft', False)
             status = claim_data.get('claim_status', '')
             claim_id = claim_data.get('claim_id', doc.id)
             
-            if (is_draft == True or 
-                status == 'draft' or
-                'draft' in claim_id.lower()):
+            # Skip drafts (drafts have claim_status == 'draft')
+            if (status == 'draft' or 'draft' in claim_id.lower()):
                 # Skip drafts - they should only appear in Drafts section
                 continue  # Skip drafts - they should only appear in Drafts section
             

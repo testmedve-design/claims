@@ -381,8 +381,8 @@ def get_review_claims():
         for doc in claim_docs:
             claim_data = doc.to_dict() or {}
 
-            # Skip drafts (universal rule)
-            if claim_data.get('is_draft'):
+            # Skip drafts (universal rule - drafts have claim_status == 'draft')
+            if claim_data.get('claim_status') == 'draft':
                 continue
 
             # Date filters (client-side to avoid Firestore index requirements)
@@ -1078,7 +1078,8 @@ def get_review_stats():
 
         for doc in claim_docs:
             claim_data = doc.to_dict() or {}
-            if claim_data.get('is_draft'):
+            # Skip drafts (drafts have claim_status == 'draft')
+            if claim_data.get('claim_status') == 'draft':
                 continue
             claim_status = (claim_data.get('claim_status') or '').strip().lower()
             if REVIEW_ELIGIBLE_CLAIM_STATUSES and claim_status not in REVIEW_ELIGIBLE_CLAIM_STATUSES:
