@@ -122,12 +122,12 @@ def validate_business_rules(data):
     if data.get('payer_type') == 'TPA' and not data.get('insurer_name'):
         errors.append('Insurer Name is required when Payer Type is TPA')
     
-    # Rule 3: Service dates validation
-    service_start = data.get('service_start_date')
-    service_end = data.get('service_end_date')
+    # Rule 3: Admission and discharge dates validation
+    admission_date = data.get('admission_date')
+    discharge_date = data.get('discharge_date')
     
-    if service_start and service_end and service_start > service_end:
-        errors.append('Service start date cannot be after service end date')
+    if admission_date and discharge_date and admission_date > discharge_date:
+        errors.append('Admission date cannot be after discharge date')
     
     return {
         'valid': len(errors) == 0,

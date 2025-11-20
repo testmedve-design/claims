@@ -43,6 +43,18 @@ REVIEW_ELIGIBLE_CLAIM_STATUSES = {
     'dispatched',
 }
 
+# Claim statuses that indicate review is complete (should not appear in review inbox)
+REVIEW_COMPLETED_STATUSES = {
+    'reviewed',
+    'review_completed',
+    'review_approved',
+    'review_rejected',
+    'review_not_found',
+    'review_info_needed',
+    'review_under_review',
+    'review_escalated',
+}
+
 # Groupings to simplify filtering/analytics
 STATUS_GROUPS: Dict[str, Tuple[str, ...]] = {
     'pending': (REVIEW_STATUS_PENDING,),
@@ -59,15 +71,16 @@ STATUS_GROUPS: Dict[str, Tuple[str, ...]] = {
     'all': tuple(ALL_REVIEW_STATUSES),
 }
 
-# Allowed review decisions -> (status update, transaction_type)
+# Allowed review decisions -> (claim_status update, transaction_type)
+# Maps review actions to universal claim_status values
 REVIEW_DECISION_STATUS_MAP: Dict[str, Tuple[str, str]] = {
-    'approve': (REVIEW_STATUS_APPROVED, TransactionType.REVIEWED),
-    'reject': (REVIEW_STATUS_REJECTED, TransactionType.REVIEWED),
-    'request_more_info': (REVIEW_STATUS_INFO_NEEDED, TransactionType.REVIEWED),
-    'mark_under_review': (REVIEW_STATUS_UNDER, TransactionType.REVIEW_STATUS_UPDATED),
-    'complete': (REVIEW_STATUS_COMPLETED, TransactionType.REVIEWED),
-    'reviewed': (REVIEW_STATUS_COMPLETED, TransactionType.REVIEWED),
-    'not_found': (REVIEW_STATUS_REJECTED, TransactionType.REVIEWED),
+    'approve': ('review_approved', TransactionType.REVIEWED),
+    'reject': ('review_rejected', TransactionType.REVIEWED),
+    'request_more_info': ('review_info_needed', TransactionType.REVIEWED),
+    'mark_under_review': ('review_under_review', TransactionType.REVIEW_STATUS_UPDATED),
+    'complete': ('review_completed', TransactionType.REVIEWED),
+    'reviewed': ('reviewed', TransactionType.REVIEWED),  # Status should be 'reviewed' when action is 'reviewed'
+    'not_found': ('review_not_found', TransactionType.REVIEWED),
 }
 
 
@@ -323,9 +336,8 @@ def get_review_claims():
         db = get_firestore()
         ist = pytz.timezone('Asia/Kolkata')
 
+        # UNIVERSAL LOGIC: Simple status-based query (same pattern as processor)
         status_key = (request.args.get('status') or 'pending').lower()
-        statuses = STATUS_GROUPS.get(status_key, STATUS_GROUPS['pending'])
-
         limit = int(request.args.get('limit', 50))
         start_date_str = request.args.get('start_date')
         end_date_str = request.args.get('end_date')
@@ -340,28 +352,38 @@ def get_review_claims():
         if end_date_str:
             end_dt = ist.localize(datetime.strptime(end_date_str, '%Y-%m-%d') + timedelta(days=1))
 
-        query = db.collection('direct_claims').where('claim_status', '==', 'dispatched')
-
-        claim_docs = query.get()
+        # UNIVERSAL: Simple Firestore query by claim_status (same as processor pattern)
+        query = db.collection('direct_claims')
+        
+        if status_key == 'completed':
+            # Query for reviewed/completed claims using 'in' operator
+            completed_statuses = list(REVIEW_COMPLETED_STATUSES)
+            # Firestore 'in' supports up to 10 values, query in batches
+            claim_docs = []
+            seen_doc_ids = set()
+            for i in range(0, len(completed_statuses), 10):
+                batch = completed_statuses[i:i+10]
+                batch_query = query.where('claim_status', 'in', batch)
+                for doc in batch_query.get():
+                    if doc.id not in seen_doc_ids:
+                        claim_docs.append(doc)
+                        seen_doc_ids.add(doc.id)
+        elif status_key == 'all':
+            # Get all claims (no status filter)
+            claim_docs = query.get()
+        else:
+            # Default: pending/dispatched claims only
+            claim_docs = query.where('claim_status', '==', 'dispatched').get()
 
         claims: List[Dict[str, Any]] = []
 
+        # UNIVERSAL: Simple loop, no duplicate filtering (same as processor)
         for doc in claim_docs:
             claim_data = doc.to_dict() or {}
 
+            # Skip drafts (universal rule)
             if claim_data.get('is_draft'):
                 continue
-
-            claim_status = (claim_data.get('claim_status') or '').strip().lower()
-            if REVIEW_ELIGIBLE_CLAIM_STATUSES and claim_status not in REVIEW_ELIGIBLE_CLAIM_STATUSES:
-                continue
-
-            review_status = claim_data.get('review_status')
-            normalized_review_status = (review_status or REVIEW_STATUS_PENDING).upper()
-            if status_key != 'all':
-                allowed_statuses = {status.upper() for status in statuses}
-                if normalized_review_status not in allowed_statuses:
-                    continue
 
             # Date filters (client-side to avoid Firestore index requirements)
             created_at = _to_datetime(claim_data.get('created_at') or claim_data.get('submission_date'))
@@ -420,7 +442,6 @@ def get_review_claims():
             admission_date = (
                 _first_non_empty(
                     form_data.get('admission_date'),
-                    form_data.get('service_start_date'),
                     form_data.get('date_of_admission'),
                     claim_metadata.get('admission_date'),
                 )
@@ -429,7 +450,6 @@ def get_review_claims():
             discharge_date = (
                 _first_non_empty(
                     form_data.get('discharge_date'),
-                    form_data.get('service_end_date'),
                     form_data.get('date_of_discharge'),
                     claim_metadata.get('discharge_date'),
                 )
@@ -538,7 +558,6 @@ def get_review_claims():
             claims.append({
                 'claim_id': claim_data.get('claim_id') or doc.id,
                 'document_id': doc.id,
-                'review_status': claim_data.get('review_status', REVIEW_STATUS_PENDING),
                 'claim_status': claim_data.get('claim_status', ''),
                 'created_at': _to_iso(claim_data.get('created_at')),
                 'submission_date': _to_iso(claim_data.get('submission_date')),
@@ -573,6 +592,8 @@ def get_review_claims():
             if len(claims) >= limit:
                 break
 
+        print(f"🔍 Review Request DEBUG: Returning {len(claims)} claims after filtering (status_key='{status_key}')")
+        
         return jsonify({
             'success': True,
             'total_claims': len(claims),
@@ -679,8 +700,7 @@ def get_review_claim_details(claim_id: str):
             'claim': {
                 'claim_id': claim_data.get('claim_id') or claim_doc.id,
                 'document_id': claim_doc.id,
-                'claim_status': claim_data.get('claim_status', ''),
-                'review_status': claim_data.get('review_status', REVIEW_STATUS_PENDING),
+                'claim_status': claim_data.get('claim_status', ''),  # Universal claim_status field
                 'hospital_name': claim_data.get('hospital_name', ''),
                 'hospital_id': claim_data.get('hospital_id', ''),
                 'created_at': _to_iso(claim_data.get('created_at')),
@@ -717,12 +737,36 @@ def review_claim(claim_id: str):
         new_status, transaction_type = REVIEW_DECISION_STATUS_MAP[action]
 
         db = get_firestore()
-        claim_doc = _get_claim_document(db, claim_id)
-        if not claim_doc:
-            return jsonify({'success': False, 'error': 'Claim not found'}), 404
+        
+        # CRITICAL FIX: Use same pattern as processor (which works!)
+        # First try to get the claim by document ID (most common case)
+        claim_doc = db.collection('direct_claims').document(claim_id).get()
+        
+        if not claim_doc.exists:
+            # If not found by document ID, search by claim_id field
+            claims_query = db.collection('direct_claims').where('claim_id', '==', claim_id)
+            claims_docs = claims_query.get()
+            
+            if not claims_docs:
+                return jsonify({'success': False, 'error': 'Claim not found'}), 404
+            
+            # Get the first matching claim
+            claim_doc = claims_docs[0]
 
         claim_data = claim_doc.to_dict() or {}
-        previous_status = claim_data.get('review_status', REVIEW_STATUS_PENDING)
+        previous_claim_status = claim_data.get('claim_status', 'dispatched')
+        
+        # Debug logging
+        print(f"\n{'='*80}")
+        print(f"🔍 Review Request DEBUG: Reviewing claim")
+        print(f"  - claim_id parameter: {claim_id}")
+        print(f"  - document.id: {claim_doc.id}")
+        print(f"  - document path: direct_claims/{claim_id} (will update using claim_id)")
+        print(f"  - current claim_status: {previous_claim_status}")
+        print(f"  - old review_status (if exists): {claim_data.get('review_status', 'NOT SET')}")
+        print(f"  - review action: {action}")
+        print(f"  - new_status will be: {new_status}")
+        print(f"{'='*80}\n")
 
         review_history = claim_data.get('review_history', []) or []
         review_data = dict(review_history[-1]) if review_history else {}
@@ -785,24 +829,105 @@ def review_claim(claim_id: str):
         current_entry['review_action'] = action.upper()
         review_history.append(current_entry)
 
+        # Update the universal claim_status field (same design pattern as processor)
+        # Processor pattern: Simple update_data with claim_status directly
         update_data = {
-            'review_status': new_status,
+            'claim_status': new_status,  # Direct update to claim_status (same as processor)
             'review_data': review_data,
             'review_history': review_history,
+            'reviewed_by': request.user_id,
+            'reviewed_by_email': request.user_email,
+            'reviewed_by_name': request.user_name,
+            'reviewed_at': firestore.SERVER_TIMESTAMP,
             'updated_at': firestore.SERVER_TIMESTAMP,
         }
+        
+        # Remove old review_status field in a separate update if it exists
+        # (Don't mix DELETE_FIELD with regular updates - Firestore can have issues)
+        if claim_data.get('review_status'):
+            try:
+                db.collection('direct_claims').document(claim_id).update({
+                    'review_status': firestore.DELETE_FIELD
+                })
+                print(f"✅ Removed old review_status field")
+            except Exception as del_error:
+                print(f"⚠️  Warning: Could not delete review_status field: {del_error}")
 
-        db.collection('direct_claims').document(claim_doc.id).update(update_data)
+        print(f"\n{'='*80}")
+        print(f"🔍 Review Request DEBUG: Preparing update (SAME DESIGN AS PROCESSOR)")
+        print(f"  - document path: direct_claims/{claim_id}")
+        print(f"  - update_data claim_status: {new_status}")
+        print(f"  - update_data keys: {list(update_data.keys())}")
+        print(f"  - Design: Direct claim_status update (no review_status)")
+        print(f"{'='*80}\n")
+        
+        # CRITICAL FIX: Update using claim_id parameter (same as processor pattern)
+        # This matches how processor updates and WORKS!
+        try:
+            print(f"🔍 Updating document: direct_claims/{claim_id}")
+            db.collection('direct_claims').document(claim_id).update(update_data)
+            print(f"✅ Firestore update command executed successfully")
+        except Exception as update_error:
+            print(f"❌ CRITICAL ERROR: Firestore update FAILED!")
+            print(f"   Error: {str(update_error)}")
+            print(f"   Error type: {type(update_error).__name__}")
+            return jsonify({
+                'success': False,
+                'error': f'Failed to update claim status: {str(update_error)}',
+            }), 500
+        
+        # Verify the update succeeded
+        print(f"\n{'='*80}")
+        print(f"🔍 Review Request DEBUG: Verifying update...")
+        try:
+            # CRITICAL FIX: Read back using claim_id parameter (same as update)
+            updated_doc = db.collection('direct_claims').document(claim_id).get()
+            if updated_doc.exists:
+                updated_data = updated_doc.to_dict() or {}
+                actual_status = updated_data.get('claim_status', 'NOT_SET')
+                old_review_status = updated_data.get('review_status', 'DELETED')
+                
+                print(f"✅ Review Request DEBUG: Update verification")
+                print(f"  - Document exists: True")
+                print(f"  - Actual claim_status after update: {actual_status}")
+                print(f"  - Old review_status field: {old_review_status}")
+                print(f"  - reviewed_by: {updated_data.get('reviewed_by', 'NOT SET')}")
+                print(f"  - reviewed_at: {updated_data.get('reviewed_at', 'NOT SET')}")
+                
+                if actual_status != new_status:
+                    print(f"\n❌❌❌ CRITICAL ERROR: STATUS MISMATCH! ❌❌❌")
+                    print(f"  - Expected claim_status: '{new_status}'")
+                    print(f"  - Actual claim_status: '{actual_status}'")
+                    print(f"  - This indicates the update DID NOT WORK!")
+                    print(f"{'='*80}\n")
+                    return jsonify({
+                        'success': False,
+                        'error': f'Status update failed. Expected {new_status}, got {actual_status}',
+                    }), 500
+                else:
+                    print(f"  - ✅ Status updated correctly!")
+            else:
+                print(f"❌ Review Request ERROR: Document not found after update!")
+                print(f"  - Document path: direct_claims/{claim_id}")
+                return jsonify({
+                    'success': False,
+                    'error': 'Document not found after update',
+                }), 500
+        except Exception as verify_error:
+            print(f"❌ ERROR during verification: {str(verify_error)}")
+        
+        print(f"{'='*80}\n")
 
+        # CRITICAL FIX: Use claim_id parameter for transaction (consistent with update)
         create_transaction(
-            claim_id=claim_data.get('claim_id') or claim_doc.id,
+            claim_id=claim_id,  # Use the claim_id parameter directly
             transaction_type=transaction_type,
             performed_by=request.user_id,
             performed_by_email=request.user_email,
             performed_by_name=request.user_name,
             performed_by_role='review_request',
-            previous_status=previous_status,
-            new_status=new_status,
+            previous_status=previous_claim_status,  # Use claim_status, not review_status
+            new_status=new_status,  # This is now the claim_status value
             remarks=remarks,
             metadata={
                 'review_action': action,
@@ -840,12 +965,24 @@ def escalate_claim(claim_id: str):
             return jsonify({'success': False, 'error': 'Escalation reason is required'}), 400
 
         db = get_firestore()
-        claim_doc = _get_claim_document(db, claim_id)
-        if not claim_doc:
-            return jsonify({'success': False, 'error': 'Claim not found'}), 404
+        
+        # CRITICAL FIX: Use same pattern as processor (which works!)
+        # First try to get the claim by document ID (most common case)
+        claim_doc = db.collection('direct_claims').document(claim_id).get()
+        
+        if not claim_doc.exists:
+            # If not found by document ID, search by claim_id field
+            claims_query = db.collection('direct_claims').where('claim_id', '==', claim_id)
+            claims_docs = claims_query.get()
+            
+            if not claims_docs:
+                return jsonify({'success': False, 'error': 'Claim not found'}), 404
+            
+            # Get the first matching claim
+            claim_doc = claims_docs[0]
 
         claim_data = claim_doc.to_dict() or {}
-        previous_status = claim_data.get('review_status', REVIEW_STATUS_PENDING)
+        previous_claim_status = claim_data.get('claim_status', 'dispatched')
 
         review_data = claim_data.get('review_data', {}) or {}
         review_data.update({
@@ -860,21 +997,54 @@ def escalate_claim(claim_id: str):
             'escalated_at': firestore.SERVER_TIMESTAMP,
         })
 
-        db.collection('direct_claims').document(claim_doc.id).update({
-            'review_status': REVIEW_STATUS_ESCALATED,
+        # Update the universal claim_status field (same design pattern as processor)
+        update_data_escalate = {
+            'claim_status': 'review_escalated',  # Direct update to claim_status (same as processor)
             'review_data': review_data,
+            'reviewed_by': request.user_id,
+            'reviewed_by_email': request.user_email,
+            'reviewed_by_name': request.user_name,
+            'reviewed_at': firestore.SERVER_TIMESTAMP,
             'updated_at': firestore.SERVER_TIMESTAMP,
-        })
+        }
+        
+        # Remove old review_status field separately if it exists
+        if claim_data.get('review_status'):
+            try:
+                db.collection('direct_claims').document(claim_id).update({
+                    'review_status': firestore.DELETE_FIELD
+                })
+            except Exception:
+                pass  # Ignore if deletion fails
+        
+        print(f"\n{'='*80}")
+        print(f"🔍 Review Request DEBUG: Escalating claim")
+        print(f"  - document path: direct_claims/{claim_id}")
+        print(f"  - setting claim_status to: review_escalated")
+        print(f"{'='*80}\n")
+        
+        # CRITICAL FIX: Update using claim_id parameter (same as processor pattern)
+        try:
+            db.collection('direct_claims').document(claim_id).update(update_data_escalate)
+            print(f"✅ Firestore escalation update executed successfully")
+        except Exception as escalate_error:
+            print(f"❌ CRITICAL ERROR: Escalation update FAILED!")
+            print(f"   Error: {str(escalate_error)}")
+            return jsonify({
+                'success': False,
+                'error': f'Failed to escalate claim: {str(escalate_error)}',
+            }), 500
 
+        # CRITICAL FIX: Use claim_id parameter for transaction (consistent with update)
         create_transaction(
-            claim_id=claim_data.get('claim_id') or claim_doc.id,
+            claim_id=claim_id,  # Use the claim_id parameter directly
             transaction_type=TransactionType.ESCALATED,
             performed_by=request.user_id,
             performed_by_email=request.user_email,
             performed_by_name=request.user_name,
             performed_by_role='review_request',
-            previous_status=previous_status,
-            new_status=REVIEW_STATUS_ESCALATED,
+            previous_status=previous_claim_status,  # Use claim_status
+            new_status='review_escalated',  # This is now the claim_status value
             remarks=escalation_reason,
             metadata={
                 'review_action': 'escalate',
@@ -885,7 +1055,7 @@ def escalate_claim(claim_id: str):
 
         return jsonify({
             'success': True,
-            'new_status': REVIEW_STATUS_ESCALATED,
+            'new_status': 'review_escalated',  # Return claim_status value
             'review_data': review_data,
         }), 200
     except Exception as exc:  # pragma: no cover

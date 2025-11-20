@@ -40,7 +40,7 @@ def get_claim_public(claim_id):
                 'patient_name': form_data.get('patient_name', ''),
                 'uhid': form_data.get('patient_registration_number', '') or form_data.get('uhid', ''),
                 'status': claim_data.get('claim_status', ''),
-                'admission_date': form_data.get('admission_date', '') or form_data.get('service_start_date', ''),
+                'admission_date': form_data.get('admission_date', ''),
                 
                 # Doctor Information (from form_data)
                 'treating_doctor_id': form_data.get('doctor_id', ''),

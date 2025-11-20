@@ -139,7 +139,7 @@ def submit_claim():
             'patient_name', 'gender', 'id_card_type', 'beneficiary_type', 'relationship',
             'payer_patient_id', 'authorization_number', 'total_authorized_amount', 'payer_type', 'payer_name',
             'patient_registration_number', 'specialty', 'doctor', 'treatment_line', 'policy_type', 'claim_type',
-            'service_start_date', 'service_end_date', 'inpatient_number', 'admission_type',
+            'admission_date', 'discharge_date', 'inpatient_number', 'admission_type',
             'hospitalization_type', 'ward_type', 'final_diagnosis', 'treatment_done',
             'bill_number', 'bill_date', 'total_bill_amount', 'claimed_amount'
         ]

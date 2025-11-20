@@ -471,6 +471,7 @@ def process_claim(claim_id):
         remarks = data.get('remarks', '')
         query_details = data.get('query_details')
         approved_amount = data.get('approved_amount')  # For claim_approved status
+        qc_clear_date = data.get('qc_clear_date')  # For qc_clear status (optional, manual date selection)
 
         valid_statuses = ['qc_clear', 'qc_query', 'claim_approved', 'claim_denial', 'need_more_info']
         if status not in valid_statuses:
@@ -709,8 +710,29 @@ def process_claim(claim_id):
         if new_status == 'qc_clear':
             import pytz
             ist = pytz.timezone('Asia/Kolkata')
-            qc_clear_date = datetime.now(ist)
-            update_data['qc_clear_date'] = qc_clear_date
+            # Use manually provided date if available, otherwise use current date
+            if qc_clear_date:
+                try:
+                    # Parse the date string (format: YYYY-MM-DD)
+                    if len(qc_clear_date) == 10:  # Only date, no time (YYYY-MM-DD)
+                        parsed_date = datetime.strptime(qc_clear_date, '%Y-%m-%d')
+                        # Set time to end of day (23:59:59) and ensure IST timezone
+                        parsed_date = ist.localize(parsed_date.replace(hour=23, minute=59, second=59))
+                    else:
+                        # Try parsing with time component
+                        parsed_date = datetime.fromisoformat(qc_clear_date.replace('Z', '+00:00'))
+                        # Ensure it's in IST timezone
+                        if parsed_date.tzinfo is None:
+                            parsed_date = ist.localize(parsed_date)
+                        else:
+                            parsed_date = parsed_date.astimezone(ist)
+                    update_data['qc_clear_date'] = parsed_date
+                except Exception as e:
+                    print(f"⚠️ Warning: Could not parse provided qc_clear_date '{qc_clear_date}': {e}. Using current date.")
+                    update_data['qc_clear_date'] = datetime.now(ist)
+            else:
+                # No date provided, use current date/time
+                update_data['qc_clear_date'] = datetime.now(ist)
         
         # Capture Approved Amount when status is claim_approved
         if new_status == 'claim_approved':
@@ -1080,8 +1102,6 @@ def get_claim_details(claim_id):
                     'ward_type': form_data.get('ward_type', ''),
                     'admission_date': form_data.get('admission_date', ''),
                     'discharge_date': form_data.get('discharge_date', ''),
-                    'service_start_date': form_data.get('service_start_date', ''),
-                    'service_end_date': form_data.get('service_end_date', ''),
                     'inpatient_number': form_data.get('inpatient_number', ''),
                     'patient_id': form_data.get('patient_id', '')
                 },

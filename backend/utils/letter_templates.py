@@ -224,10 +224,10 @@ def _build_patient_info(claim_data: Dict[str, Any]) -> Dict[str, Any]:
     form_data = claim_data.get("form_data", {}) or {}
     patient_data = claim_data.get("patient_details", {}) or {}
 
-    admission_date = form_data.get("service_start_date") or patient_data.get(
+    admission_date = form_data.get("admission_date") or patient_data.get(
         "admission_date"
     )
-    discharge_date = form_data.get("service_end_date") or patient_data.get(
+    discharge_date = form_data.get("discharge_date") or patient_data.get(
         "discharge_date"
     )
 

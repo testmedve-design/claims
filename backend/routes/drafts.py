@@ -426,7 +426,7 @@ def submit_draft(draft_id):
             'patient_name', 'gender', 'id_card_type', 'beneficiary_type', 'relationship',
             'payer_patient_id', 'authorization_number', 'total_authorized_amount', 'payer_type', 'payer_name',
             'patient_registration_number', 'specialty', 'doctor', 'treatment_line', 'policy_type', 'claim_type',
-            'service_start_date', 'service_end_date', 'inpatient_number', 'admission_type',
+            'admission_date', 'discharge_date', 'inpatient_number', 'admission_type',
             'hospitalization_type', 'ward_type', 'final_diagnosis', 'treatment_done',
             'bill_number', 'bill_date', 'total_bill_amount', 'claimed_amount'
         ]
@@ -527,8 +527,8 @@ def submit_draft(draft_id):
                 'treatment_line': form_data.get('treatment_line'),
                 'policy_type': form_data.get('policy_type'),
                 'claim_type': form_data.get('claim_type'),
-                'service_start_date': form_data.get('service_start_date'),
-                'service_end_date': form_data.get('service_end_date'),
+                'admission_date': form_data.get('admission_date'),
+                'discharge_date': form_data.get('discharge_date'),
                 'inpatient_number': form_data.get('inpatient_number'),
                 'admission_type': form_data.get('admission_type'),
                 'hospitalization_type': form_data.get('hospitalization_type'),
