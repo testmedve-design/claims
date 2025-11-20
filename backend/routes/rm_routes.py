@@ -73,19 +73,17 @@ def get_rm_claims():
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         
-        # Build base query - only get dispatched claims for RM
+        # Build base query - RMs work with dispatched AND reviewed claims
         query = db.collection('direct_claims')
         
-        # Filter by claim_status - RMs work with dispatched claims
-        if tab == 'active':
-            # Active claims: not yet settled
-            query = query.where('claim_status', '==', 'dispatched')
-        elif tab == 'settled':
-            # Settled claims: completed by RM
-            query = query.where('claim_status', 'in', SETTLEMENT_STATUSES)
-        # For 'all', don't add status filter
+        # Get RM's assigned payers and hospitals
+        assigned_payers = request.assigned_payers if hasattr(request, 'assigned_payers') else []
+        assigned_hospitals = request.assigned_hospitals if hasattr(request, 'assigned_hospitals') else []
         
-        # Apply date filtering if provided
+        print(f"🔍 RM DEBUG: Tab='{tab}', Assigned payers: {assigned_payers}")
+        print(f"🔍 RM DEBUG: Assigned hospitals: {assigned_hospitals}")
+        
+        # Apply date filtering if provided (before status filter to avoid index issues)
         if start_date:
             start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
             start_datetime = ist.localize(start_datetime)
@@ -97,28 +95,37 @@ def get_rm_claims():
             end_datetime = ist.localize(end_datetime)
             query = query.where('created_at', '<', end_datetime)
         
-        # Execute query
-        claims = query.get()
+        # Execute query - Get all claims first, then filter by status in Python
+        # This avoids Firestore index issues and handles status variations
+        all_claims = query.get()
         
-        print(f"🔍 RM DEBUG: Found {len(claims)} claims from query for tab '{tab}'")
+        print(f"🔍 RM DEBUG: Found {len(all_claims)} claims from base query (before status filter)")
         
-        # Get RM's assigned payers and hospitals
-        assigned_payers = request.assigned_payers if hasattr(request, 'assigned_payers') else []
-        assigned_hospitals = request.assigned_hospitals if hasattr(request, 'assigned_hospitals') else []
-        
-        print(f"🔍 RM DEBUG: Assigned payers: {assigned_payers}")
-        print(f"🔍 RM DEBUG: Assigned hospitals: {assigned_hospitals}")
-        
-        # Filter claims by assigned payer and hospital
+        # Filter claims by status, payer, and hospital in Python
         filtered_claims = []
         
-        for doc in claims:
+        for doc in all_claims:
             claim_data = doc.to_dict()
             
             # Skip drafts
             is_draft = claim_data.get('is_draft', False)
             if is_draft:
                 continue
+            
+            # Canonicalize status for comparison
+            claim_status = claim_data.get('claim_status', '')
+            canonical_status = _canonicalize_status(claim_status)
+            
+            # Filter by status based on tab
+            if tab == 'active':
+                # Active claims: dispatched OR reviewed (both can be processed by RM)
+                if canonical_status not in ['dispatched', 'reviewed']:
+                    continue
+            elif tab == 'settled':
+                # Settled claims: must be in SETTLEMENT_STATUSES
+                if canonical_status not in SETTLEMENT_STATUSES:
+                    continue
+            # For 'all', include all statuses (no filter)
             
             # Get payer and hospital from claim
             form_data = claim_data.get('form_data', {})
@@ -153,8 +160,9 @@ def get_rm_claims():
             # Only include if both payer and hospital match
             if payer_match and hospital_match:
                 filtered_claims.append((doc, claim_data))
+                print(f"✅ RM DEBUG: Included claim {claim_data.get('claim_id', doc.id)} - status: {canonical_status}")
         
-        print(f"🔍 RM DEBUG: Filtered to {len(filtered_claims)} claims after payer/hospital filter")
+        print(f"🔍 RM DEBUG: Filtered to {len(filtered_claims)} claims after status/payer/hospital filter for tab '{tab}'")
         
         # Build response
         claims_list = []
@@ -224,9 +232,11 @@ def get_rm_claim_details(claim_id):
         # Get documents for this claim
         documents = claim_data.get('documents', [])
         detailed_documents = []
+        existing_doc_ids = set()
         
-        print(f"🔍 RM DEBUG: Found {len(documents)} documents in claim")
+        print(f"🔍 RM DEBUG: Found {len(documents)} documents in claim document")
         
+        # First, get documents from claim's documents array
         for doc in documents:
             try:
                 # Handle both string and dict document_ids
@@ -244,7 +254,7 @@ def get_rm_claim_details(claim_id):
                 
                 if doc_detailed.exists:
                     doc_data = doc_detailed.to_dict()
-                    detailed_documents.append({
+                    doc_entry = {
                         'document_id': doc_data.get('document_id', doc_id),
                         'document_type': doc_data.get('document_type', doc_data.get('type', 'Unknown')),
                         'document_name': doc_data.get('document_name', doc_data.get('name', '')),
@@ -254,7 +264,9 @@ def get_rm_claim_details(claim_id):
                         'file_type': doc_data.get('file_type', ''),
                         'uploaded_at': str(doc_data.get('uploaded_at', '')),
                         'status': doc_data.get('status', '')
-                    })
+                    }
+                    detailed_documents.append(doc_entry)
+                    existing_doc_ids.add(doc_data.get('document_id', doc_id))
                     print(f"✅ RM DEBUG: Added document: {doc_data.get('document_type', 'Unknown')}")
                 else:
                     print(f"⚠️ Warning: Document {doc_id} not found in documents collection")
@@ -262,13 +274,62 @@ def get_rm_claim_details(claim_id):
                 print(f"❌ Error processing document: {str(doc_error)}")
                 continue
         
+        # ALSO query documents collection directly by claim_id (in case documents weren't linked to claim document)
+        # This ensures we get all documents even if they weren't properly linked
+        print(f"🔍 RM DEBUG: Querying documents collection by claim_id: {claim_id}")
+        try:
+            documents_query = db.collection('documents').where('claim_id', '==', claim_id).get()
+            print(f"🔍 RM DEBUG: Found {len(documents_query)} documents in documents collection for claim_id: {claim_id}")
+            
+            for doc_doc in documents_query:
+                doc_data = doc_doc.to_dict()
+                doc_id = doc_data.get('document_id', doc_doc.id)
+                
+                # Skip if we already have this document
+                if doc_id in existing_doc_ids:
+                    continue
+                
+                # Generate fresh download URL if needed
+                download_url = doc_data.get('download_url', '')
+                if not download_url and doc_data.get('storage_path'):
+                    try:
+                        from firebase_config import get_storage
+                        bucket = get_storage()
+                        blob = bucket.blob(doc_data.get('storage_path'))
+                        download_url = blob.generate_signed_url(expiration=timedelta(days=7))
+                    except Exception as url_error:
+                        print(f"⚠️ Warning: Could not generate download URL: {str(url_error)}")
+                
+                detailed_documents.append({
+                    'document_id': doc_id,
+                    'document_type': doc_data.get('document_type', 'Unknown'),
+                    'document_name': doc_data.get('document_name', ''),
+                    'original_filename': doc_data.get('original_filename', ''),
+                    'download_url': download_url,
+                    'file_size': doc_data.get('file_size', ''),
+                    'file_type': doc_data.get('file_type', ''),
+                    'uploaded_at': str(doc_data.get('uploaded_at', '')),
+                    'status': doc_data.get('status', '')
+                })
+                existing_doc_ids.add(doc_id)
+                print(f"✅ RM DEBUG: Added document from direct query: {doc_data.get('document_type', 'Unknown')}")
+        except Exception as query_error:
+            print(f"⚠️ Warning: Could not query documents collection: {str(query_error)}")
+        
         print(f"🔍 RM DEBUG: Total detailed documents: {len(detailed_documents)}")
         
         # Get transaction history
         transaction_list = []
         try:
-            transactions_query = db.collection('transactions').where('claim_id', '==', claim_id).order_by('timestamp', direction=firestore.Query.DESCENDING)
+            # Transactions are stored in a subcollection: direct_claims/{claim_id}/transactions
+            # First, get the actual document ID if we searched by claim_id field
+            actual_doc_id = claim_doc.id
+            
+            # Query transactions from the subcollection
+            transactions_query = db.collection('direct_claims').document(actual_doc_id).collection('transactions').order_by('performed_at', direction=firestore.Query.DESCENDING)
             transactions = transactions_query.get()
+            
+            print(f"🔍 RM DEBUG: Found {len(transactions)} transactions in subcollection")
             
             for trans in transactions:
                 trans_data = trans.to_dict()
@@ -278,7 +339,7 @@ def get_rm_claim_details(claim_id):
                     'performed_by': trans_data.get('performed_by_name', ''),
                     'performed_by_email': trans_data.get('performed_by_email', ''),
                     'performed_by_role': trans_data.get('performed_by_role', ''),
-                    'timestamp': str(trans_data.get('timestamp', '')),
+                    'timestamp': str(trans_data.get('performed_at', trans_data.get('timestamp', ''))),
                     'previous_status': trans_data.get('previous_status', ''),
                     'new_status': trans_data.get('new_status', ''),
                     'remarks': trans_data.get('remarks', ''),
@@ -286,6 +347,8 @@ def get_rm_claim_details(claim_id):
                 })
         except Exception as trans_error:
             print(f"⚠️ Warning: Could not fetch transaction history: {str(trans_error)}")
+            import traceback
+            print(f"⚠️ Transaction error traceback: {traceback.format_exc()}")
             # Continue without transaction history
             transaction_list = []
         
@@ -528,17 +591,25 @@ def get_rm_stats():
         assigned_payers = request.assigned_payers if hasattr(request, 'assigned_payers') else []
         assigned_hospitals = request.assigned_hospitals if hasattr(request, 'assigned_hospitals') else []
         
-        # Get all dispatched claims (base for RM)
-        claims_query = db.collection('direct_claims').where('claim_status', '==', 'dispatched')
-        all_claims = claims_query.get()
+        # Get all claims (base for RM) - filter in Python to handle status variations
+        all_claims_query = db.collection('direct_claims')
+        all_claims = all_claims_query.get()
         
-        # Filter by assigned payer and hospital
+        # Filter by assigned payer and hospital, and status
         filtered_claims = []
         for doc in all_claims:
             claim_data = doc.to_dict()
             
             # Skip drafts
             if claim_data.get('is_draft', False):
+                continue
+            
+            # Canonicalize status for comparison
+            claim_status = claim_data.get('claim_status', '')
+            canonical_status = _canonicalize_status(claim_status)
+            
+            # Only include dispatched or reviewed claims for stats (active claims)
+            if canonical_status not in ['dispatched', 'reviewed']:
                 continue
             
             form_data = claim_data.get('form_data', {})
