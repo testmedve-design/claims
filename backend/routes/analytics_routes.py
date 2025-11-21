@@ -449,7 +449,12 @@ def get_processor_analytics():
 
         # Get processor's affiliated hospitals if no specific one selected
         assigned_hospitals = getattr(request, 'assigned_hospitals', [])
-        affiliated_ids = [h['id'] for h in assigned_hospitals] if assigned_hospitals else []
+        affiliated_ids = [h.get('id') if isinstance(h, dict) else h for h in assigned_hospitals] if assigned_hospitals else []
+        
+        # Debug logging
+        print(f"🔍 Processor Analytics DEBUG: Assigned hospitals: {assigned_hospitals}")
+        print(f"🔍 Processor Analytics DEBUG: Affiliated IDs: {affiliated_ids}")
+        print(f"🔍 Processor Analytics DEBUG: Selected hospital_id: {selected_hospital_id}")
         
         # Base Query - use Firestore indexes for filtering
         query = db.collection('direct_claims')
@@ -459,8 +464,15 @@ def get_processor_analytics():
             if affiliated_ids and selected_hospital_id not in affiliated_ids:
                 return jsonify({'success': False, 'error': 'Access denied for this hospital'}), 403
             query = query.where('hospital_id', '==', selected_hospital_id)
-        # Note: If multiple hospitals, we'd need to use 'in' operator (max 10 items) or fetch and filter
-        # For now, if no specific hospital selected, we'll fetch all and filter by affiliation in memory
+        # If no specific hospital selected, filter by assigned hospitals in Firestore query
+        elif affiliated_ids and len(affiliated_ids) > 0:
+            if len(affiliated_ids) == 1:
+                # Single hospital - use == operator
+                query = query.where('hospital_id', '==', affiliated_ids[0])
+            elif len(affiliated_ids) <= 10:
+                # Multiple hospitals (≤10) - use 'in' operator
+                query = query.where('hospital_id', 'in', affiliated_ids)
+            # If more than 10 hospitals, we'll filter in memory (Firestore limit)
         
         # Apply date range filter using Firestore query (uses index: hospital_id + created_at)
         if start_date:
@@ -472,29 +484,44 @@ def get_processor_analytics():
             query = query.where('created_at', '<=', end_timestamp)
         
         # Order by created_at for consistent results
-        if start_date or end_date or selected_hospital_id:
+        if start_date or end_date or selected_hospital_id or (affiliated_ids and len(affiliated_ids) > 0):
             query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
             
         docs = query.get()
         claims = [doc.to_dict() for doc in docs]
         
+        print(f"🔍 Processor Analytics DEBUG: Total claims from Firestore: {len(claims)}")
+        
         # Filter out drafts (drafts have claim_status == 'draft')
         claims = [c for c in claims if c.get('claim_status') != 'draft']
         
-        # Filter by hospital affiliation if multiple hospitals assigned
-        if affiliated_ids and not selected_hospital_id:
+        # Filter by hospital affiliation if more than 10 hospitals (Firestore 'in' limit) or if filtering in memory
+        if affiliated_ids and len(affiliated_ids) > 10 and not selected_hospital_id:
             claims = [c for c in claims if c.get('hospital_id') in affiliated_ids]
+            print(f"🔍 Processor Analytics DEBUG: Claims after memory filter (>10 hospitals): {len(claims)}")
         
         filtered_claims = []
         for claim in claims:
-            # Check affiliation
-            if affiliated_ids and claim.get('hospital_id') not in affiliated_ids:
-                continue
+            # Double-check affiliation (safety check for edge cases)
+            if affiliated_ids and len(affiliated_ids) > 0 and not selected_hospital_id:
+                claim_hosp_id = claim.get('hospital_id')
+                if claim_hosp_id not in affiliated_ids:
+                    continue
             
-            # Check Payer Filter
+            # Check Payer Filters
             if payer_name_filter:
                 payer_name = claim.get('form_data', {}).get('payer_name', '').lower()
                 if payer_name_filter not in payer_name:
+                    continue
+            
+            if payer_type_filter:
+                payer_type = claim.get('form_data', {}).get('payer_type', '').lower()
+                if payer_type_filter != payer_type:
+                    continue
+            
+            if insurer_name_filter:
+                insurer_name = claim.get('form_data', {}).get('insurer_name', '').lower()
+                if insurer_name_filter not in insurer_name:
                     continue
             
             filtered_claims.append(claim)
@@ -1026,7 +1053,7 @@ def get_rm_analytics():
                 if isinstance(disallowance_entries, list) and len(disallowance_entries) > 0:
                     disallowed_amount = sum(float(entry.get('amount', 0) or 0) for entry in disallowance_entries if isinstance(entry, dict))
             if disallowed_amount == 0:
-                disallowed_amount = float(review_data.get('disallowed_amount', 0) or 0)
+            disallowed_amount = float(review_data.get('disallowed_amount', 0) or 0)
             
             settled_amount = float(rm_data.get('settled_amount', 0) or 0)
             
