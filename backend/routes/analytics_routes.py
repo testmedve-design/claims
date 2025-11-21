@@ -138,7 +138,15 @@ def get_hospital_analytics():
             'total_disallowed': 0,
             'status_distribution': {},
             'claims_over_time': {}, # Key: Date (YYYY-MM-DD), Value: Count
-            'payer_performance': {}
+            'payer_performance': {},
+            'tat_metrics': {
+                'discharge_to_qc_pending': [],
+                'qc_pending_to_qc_clear': [],
+                'qc_pending_to_qc_query': [],
+                'qc_clear_to_despatch': [],
+                'despatch_to_settle': []
+            },
+            'disallowance_reasons': {}
         }
         
         # Statuses that indicate settlement
@@ -234,6 +242,95 @@ def get_hospital_analytics():
             stats['payer_performance'][payer]['amount'] += claimed_amount
             if status in ['approved', 'settled', 'claim_approved'] or approved_amount > 0:
                 stats['payer_performance'][payer]['approved'] += 1
+
+            # --- Disallowance Reasons ---
+            d_reasons = []
+            # 1. RM Disallowance Entries
+            d_entries = rm_data.get('disallowance_entries', [])
+            if isinstance(d_entries, list):
+                for entry in d_entries:
+                    reason = entry.get('reason') or entry.get('category')
+                    if reason:
+                        d_reasons.append(reason)
+            
+            # 2. RM Disallowance Reason field
+            if not d_reasons:
+                reason = rm_data.get('disallowance_reason')
+                if reason:
+                     d_reasons.append(reason)
+                     
+            # 3. Review Data Disallowance Reason
+            if not d_reasons:
+                 reason = review_data.get('disallowance_reason')
+                 if reason:
+                     d_reasons.append(reason)
+                     
+            for reason in d_reasons:
+                stats['disallowance_reasons'][reason] = stats['disallowance_reasons'].get(reason, 0) + 1
+
+            # --- TAT Metrics ---
+            def get_dt(val):
+                if not val: return None
+                if hasattr(val, 'timestamp'): return datetime.fromtimestamp(val.timestamp())
+                if isinstance(val, datetime): return val
+                try: return parse(val)
+                except: return None
+
+            def calc_days(start, end):
+                if start and end:
+                    # Ensure naive vs aware compatibility (make both naive)
+                    if start.tzinfo: start = start.replace(tzinfo=None)
+                    if end.tzinfo: end = end.replace(tzinfo=None)
+                    diff = (end - start).days
+                    return diff if diff >= 0 else 0
+                return None
+
+            # Timestamps
+            discharge_date = get_dt(form_data.get('discharge_date') or form_data.get('date_of_discharge'))
+            created_at = get_dt(claim.get('created_at'))
+            
+            qc_clear_at = get_dt(claim.get('qc_clear_date'))
+            if not qc_clear_at and status == 'qc_clear':
+                 qc_clear_at = get_dt(claim.get('processed_at'))
+            
+            qc_query_at = None
+            if status in ['qc_query', 'qc_answered']: # qc_answered implies it was queried
+                 qc_query_at = get_dt(claim.get('processed_at')) # Best effort
+            
+            dispatched_at = get_dt(claim.get('dispatched_at'))
+            
+            settled_at = get_dt(rm_data.get('settled_date') or rm_data.get('settlement_date') or claim.get('rm_status_raised_date'))
+            if not settled_at and status in settled_statuses:
+                 settled_at = get_dt(claim.get('updated_at'))
+
+            # 1. Discharge to QC Pending (Created)
+            d_to_qcp = calc_days(discharge_date, created_at)
+            if d_to_qcp is not None:
+                stats['tat_metrics']['discharge_to_qc_pending'].append(d_to_qcp)
+
+            # 2. QC Pending to QC Clear
+            if created_at and qc_clear_at:
+                 qcp_to_qcc = calc_days(created_at, qc_clear_at)
+                 if qcp_to_qcc is not None:
+                     stats['tat_metrics']['qc_pending_to_qc_clear'].append(qcp_to_qcc)
+            
+            # 3. QC Pending to QC Query
+            if created_at and qc_query_at:
+                 qcp_to_qcq = calc_days(created_at, qc_query_at)
+                 if qcp_to_qcq is not None:
+                     stats['tat_metrics']['qc_pending_to_qc_query'].append(qcp_to_qcq)
+
+            # 4. QC Clear to Despatch
+            if qc_clear_at and dispatched_at:
+                 qcc_to_disp = calc_days(qc_clear_at, dispatched_at)
+                 if qcc_to_disp is not None:
+                     stats['tat_metrics']['qc_clear_to_despatch'].append(qcc_to_disp)
+
+            # 5. Despatch to Settle
+            if dispatched_at and settled_at:
+                 disp_to_settle = calc_days(dispatched_at, settled_at)
+                 if disp_to_settle is not None:
+                     stats['tat_metrics']['despatch_to_settle'].append(disp_to_settle)
 
         return jsonify({'success': True, 'data': stats}), 200
 
