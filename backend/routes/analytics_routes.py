@@ -1053,7 +1053,7 @@ def get_rm_analytics():
                 if isinstance(disallowance_entries, list) and len(disallowance_entries) > 0:
                     disallowed_amount = sum(float(entry.get('amount', 0) or 0) for entry in disallowance_entries if isinstance(entry, dict))
             if disallowed_amount == 0:
-            disallowed_amount = float(review_data.get('disallowed_amount', 0) or 0)
+                disallowed_amount = float(review_data.get('disallowed_amount', 0) or 0)
             
             settled_amount = float(rm_data.get('settled_amount', 0) or 0)
             

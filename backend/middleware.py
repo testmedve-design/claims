@@ -45,6 +45,7 @@ PROCESSOR_ROLES = {
 
 RM_ROLES = {'rm', 'reconciler'}
 HOSPITAL_ROLE = 'hospital_user'
+HOSPITAL_ACCESS_ROLES = ['hospital_user', 'rp', 'employee', 'hospital_admin']  # Roles that can access hospital analytics
 REVIEW_REQUEST_ROLE = 'review_request'
 
 
@@ -221,7 +222,7 @@ def require_processor_access(f):
 
 
 def require_hospital_access(f):
-    """Decorator for hospital users ONLY - strict role checking"""
+    """Decorator for hospital-related roles - allows hospital_user, rp, employee, hospital_admin"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if request.method == 'OPTIONS':
@@ -232,11 +233,11 @@ def require_hospital_access(f):
             user_data = _get_user_record(uid)
             user_role = user_data.get('role', '').lower()
             
-            if user_role != HOSPITAL_ROLE:
+            if user_role not in HOSPITAL_ACCESS_ROLES:
                 return jsonify({
                     'error': 'Access denied',
-                    'message': f'Hospital user access required. Your role: {user_role}',
-                    'required_role': HOSPITAL_ROLE
+                    'message': f'Hospital access required. Your role: {user_role}. Allowed roles: {HOSPITAL_ACCESS_ROLES}',
+                    'required_roles': HOSPITAL_ACCESS_ROLES
                 }), 403
             
             request.user = decoded_token
