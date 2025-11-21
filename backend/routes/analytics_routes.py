@@ -161,11 +161,32 @@ def get_hospital_analytics():
             # Get amounts from review_data if available
             review_data = claim.get('review_data', {})
             approved_amount = float(review_data.get('approved_amount', 0) or 0)
-            disallowed_amount = float(review_data.get('disallowed_amount', 0) or 0)
+            review_disallowed_amount = float(review_data.get('disallowed_amount', 0) or 0)
             
-            # Get settled amount from rm_data if available
+            # Get settled amount from rm_data if available (check multiple possible fields)
             rm_data = claim.get('rm_data', {})
             settled_amount = float(rm_data.get('settled_amount', 0) or 0)
+            if settled_amount == 0:
+                # Check alternative field names
+                settled_amount = float(rm_data.get('settled_amount_without_tds', 0) or 0)
+            if settled_amount == 0:
+                # Check TDS amount field as fallback
+                settled_amount = float(rm_data.get('settled_tds_amount', 0) or 0)
+            
+            # Get disallowed amount from rm_data first (RM processes disallowances)
+            # Then fallback to review_data if not available
+            disallowed_amount = float(rm_data.get('disallowed_amount', 0) or 0)
+            if disallowed_amount == 0:
+                # Check disallowance_total field
+                disallowed_amount = float(rm_data.get('disallowance_total', 0) or 0)
+            if disallowed_amount == 0:
+                # Check disallowance_entries array and sum them
+                disallowance_entries = rm_data.get('disallowance_entries', [])
+                if isinstance(disallowance_entries, list) and len(disallowance_entries) > 0:
+                    disallowed_amount = sum(float(entry.get('amount', 0) or 0) for entry in disallowance_entries if isinstance(entry, dict))
+            if disallowed_amount == 0:
+                # Fallback to review_data disallowed amount
+                disallowed_amount = review_disallowed_amount
             
             # Accumulate totals
             stats['total_amount'] += claimed_amount
@@ -314,8 +335,25 @@ def get_processor_analytics():
             mou_discount = float(form_data.get('mou_discount_amount', 0) or 0)
             total_discount = patient_discount + mou_discount
             approved_amount = float(review_data.get('approved_amount', 0) or 0)
-            disallowed_amount = float(review_data.get('disallowed_amount', 0) or 0)
+            review_disallowed_amount = float(review_data.get('disallowed_amount', 0) or 0)
+            
+            # Get settled amount from rm_data (check multiple possible fields)
             settled_amount = float(rm_data.get('settled_amount', 0) or 0)
+            if settled_amount == 0:
+                settled_amount = float(rm_data.get('settled_amount_without_tds', 0) or 0)
+            if settled_amount == 0:
+                settled_amount = float(rm_data.get('settled_tds_amount', 0) or 0)
+            
+            # Get disallowed amount from rm_data first, then fallback to review_data
+            disallowed_amount = float(rm_data.get('disallowed_amount', 0) or 0)
+            if disallowed_amount == 0:
+                disallowed_amount = float(rm_data.get('disallowance_total', 0) or 0)
+            if disallowed_amount == 0:
+                disallowance_entries = rm_data.get('disallowance_entries', [])
+                if isinstance(disallowance_entries, list) and len(disallowance_entries) > 0:
+                    disallowed_amount = sum(float(entry.get('amount', 0) or 0) for entry in disallowance_entries if isinstance(entry, dict))
+            if disallowed_amount == 0:
+                disallowed_amount = review_disallowed_amount
             
             # Accumulate comprehensive stats
             stats['total_amount'] += claimed_amount
@@ -451,8 +489,25 @@ def get_review_analytics():
             mou_discount = float(form_data.get('mou_discount_amount', 0) or 0)
             total_discount = patient_discount + mou_discount
             approved_amount = float(review_data.get('approved_amount', 0) or 0)
-            disallowed_amount = float(review_data.get('disallowed_amount', 0) or 0)
+            review_disallowed_amount = float(review_data.get('disallowed_amount', 0) or 0)
+            
+            # Get settled amount from rm_data (check multiple possible fields)
             settled_amount = float(rm_data.get('settled_amount', 0) or 0)
+            if settled_amount == 0:
+                settled_amount = float(rm_data.get('settled_amount_without_tds', 0) or 0)
+            if settled_amount == 0:
+                settled_amount = float(rm_data.get('settled_tds_amount', 0) or 0)
+            
+            # Get disallowed amount from rm_data first, then fallback to review_data
+            disallowed_amount = float(rm_data.get('disallowed_amount', 0) or 0)
+            if disallowed_amount == 0:
+                disallowed_amount = float(rm_data.get('disallowance_total', 0) or 0)
+            if disallowed_amount == 0:
+                disallowance_entries = rm_data.get('disallowance_entries', [])
+                if isinstance(disallowance_entries, list) and len(disallowance_entries) > 0:
+                    disallowed_amount = sum(float(entry.get('amount', 0) or 0) for entry in disallowance_entries if isinstance(entry, dict))
+            if disallowed_amount == 0:
+                disallowed_amount = review_disallowed_amount
             
             # Accumulate comprehensive stats
             stats['total_amount'] += claimed_amount
