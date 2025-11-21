@@ -695,6 +695,10 @@ def get_review_claim_details(claim_id: str):
         except Exception as txn_exc:  # pragma: no cover
             print(f"⚠️ Review Request WARN: Failed to fetch transactions: {txn_exc}")
 
+        # Get and sanitize review history
+        review_history = claim_data.get('review_history', []) or []
+        sanitized_history = [_sanitize_review_entry(entry) for entry in review_history]
+
         return jsonify({
             'success': True,
             'claim': {
@@ -707,6 +711,7 @@ def get_review_claim_details(claim_id: str):
                 'submission_date': _to_iso(claim_data.get('submission_date')),
                 'form_data': form_data,
                 'review_data': claim_data.get('review_data', {}),
+                'review_history': sanitized_history,
                 'processor_decision': claim_data.get('processor_decision', {}),
                 'documents': documents_summary,
                 'transactions': transactions,
