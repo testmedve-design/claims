@@ -4,6 +4,7 @@ Handles analytics and reporting for all roles (Hospital User, Processor, Review 
 """
 from flask import Blueprint, request, jsonify
 from firebase_admin import firestore
+from google.cloud.firestore import Timestamp as FirestoreTimestamp
 from firebase_config import get_firestore
 from middleware import (
     require_auth, 
@@ -106,14 +107,12 @@ def get_hospital_analytics():
         # Apply date range filter using Firestore query (uses index: hospital_id + created_at)
         if start_date:
             # Convert datetime to Firestore Timestamp
-            from firebase_admin import firestore as fs
-            start_timestamp = fs.Timestamp.from_datetime(start_date)
+            start_timestamp = FirestoreTimestamp.from_datetime(start_date)
             query = query.where('created_at', '>=', start_timestamp)
         
         if end_date:
             # Convert datetime to Firestore Timestamp
-            from firebase_admin import firestore as fs
-            end_timestamp = fs.Timestamp.from_datetime(end_date)
+            end_timestamp = FirestoreTimestamp.from_datetime(end_date)
             query = query.where('created_at', '<=', end_timestamp)
         
         # Order by created_at for consistent results (uses index: hospital_id + created_at)
@@ -442,13 +441,11 @@ def get_processor_analytics():
         
         # Apply date range filter using Firestore query (uses index: hospital_id + created_at)
         if start_date:
-            from firebase_admin import firestore as fs
-            start_timestamp = fs.Timestamp.from_datetime(start_date)
+            start_timestamp = FirestoreTimestamp.from_datetime(start_date)
             query = query.where('created_at', '>=', start_timestamp)
         
         if end_date:
-            from firebase_admin import firestore as fs
-            end_timestamp = fs.Timestamp.from_datetime(end_date)
+            end_timestamp = FirestoreTimestamp.from_datetime(end_date)
             query = query.where('created_at', '<=', end_timestamp)
         
         # Order by created_at for consistent results
@@ -674,13 +671,11 @@ def get_review_analytics():
         
         # Apply date range filter using Firestore query (uses index: hospital_id + claim_status + created_at)
         if start_date:
-            from firebase_admin import firestore as fs
-            start_timestamp = fs.Timestamp.from_datetime(start_date)
+            start_timestamp = FirestoreTimestamp.from_datetime(start_date)
             query = query.where('created_at', '>=', start_timestamp)
         
         if end_date:
-            from firebase_admin import firestore as fs
-            end_timestamp = fs.Timestamp.from_datetime(end_date)
+            end_timestamp = FirestoreTimestamp.from_datetime(end_date)
             query = query.where('created_at', '<=', end_timestamp)
         
         # Order by created_at for consistent results
@@ -896,13 +891,11 @@ def get_rm_analytics():
         
         # Apply date range filter using Firestore query (uses index: hospital_id + claim_status + created_at)
         if start_date:
-            from firebase_admin import firestore as fs
-            start_timestamp = fs.Timestamp.from_datetime(start_date)
+            start_timestamp = FirestoreTimestamp.from_datetime(start_date)
             query = query.where('created_at', '>=', start_timestamp)
         
         if end_date:
-            from firebase_admin import firestore as fs
-            end_timestamp = fs.Timestamp.from_datetime(end_date)
+            end_timestamp = FirestoreTimestamp.from_datetime(end_date)
             query = query.where('created_at', '<=', end_timestamp)
         
         # Order by created_at for consistent results
