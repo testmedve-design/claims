@@ -1221,6 +1221,7 @@ def submit_review_claim():
             # Payer Details
             'payer_type': data.get('payer_type', '').strip(),
             'payer_name': data.get('payer_name', '').strip(),
+            'authorization_number': data.get('authorization_number', '').strip() or None,
             'insurer_name': data.get('insurer_name', '').strip() if payer_type == 'TPA' else None,
             'ward_type': data.get('ward_type', '').strip(),
             
