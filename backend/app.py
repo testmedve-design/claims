@@ -34,7 +34,7 @@ def create_app():
     
     # Initialize CORS with proper configuration
     CORS(app, 
-         origins=['http://localhost:3000', 'http://localhost:3004', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3004', 'http://127.0.0.1:3001'],
+         origins=['http://localhost:3000', 'http://localhost:3004', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.1:3004', 'http://127.0.0.1:3001', 'http://127.0.0.1:3002'],
          supports_credentials=True,
          allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
