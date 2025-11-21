@@ -1112,3 +1112,213 @@ def get_review_stats():
         return jsonify({'success': False, 'error': str(exc)}), 500
 
 
+@review_request_bp.route('/submit-review-claim', methods=['POST', 'OPTIONS'])
+@require_review_request_access
+def submit_review_claim():
+    """
+    Submit a new claim directly on behalf of a hospital with REVIEWED status.
+    This endpoint allows Review Request users to create claims that bypass normal workflow
+    and go straight to REVIEWED status.
+    """
+    try:
+        if request.method == 'OPTIONS':
+            return '', 204
+
+        data = request.get_json(force=True) or {}
+        db = get_firestore()
+        
+        # Validate required fields based on the specified form fields
+        required_fields = [
+            'patient_name', 'age', 'gender', 'claim_type',
+            'payer_type', 'payer_name', 'ward_type',
+            'admission_date', 'discharge_date',
+            'total_bill_amount', 'claimed_amount', 'approved_amount',
+            'reason_by_payer', 'medverve_review_remarks'
+        ]
+        
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            return jsonify({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+
+        # Validate hospital_id is provided
+        hospital_id = data.get('hospital_id', '').strip()
+        if not hospital_id:
+            return jsonify({
+                'success': False,
+                'error': 'hospital_id is required'
+            }), 400
+
+        # Get hospital name from hospital_id
+        hospital_name = data.get('hospital_name', '')
+        if not hospital_name:
+            # Try to fetch hospital name from Firestore
+            try:
+                hospital_doc = db.collection('hospitals').document(hospital_id).get()
+                if hospital_doc.exists:
+                    hospital_data = hospital_doc.to_dict() or {}
+                    hospital_name = hospital_data.get('name', hospital_id)
+                else:
+                    hospital_name = hospital_id
+            except Exception:
+                hospital_name = hospital_id
+
+        # Generate claim ID using the same pattern as normal claims
+        today = datetime.now().strftime('%Y%m%d')
+        prefix = f'CSHLSIP-{today}-'
+        
+        # Find next sequence number
+        try:
+            claims_today = db.collection('direct_claims').where('claim_id', '>=', prefix).where('claim_id', '<', f'CSHLSIP-{today}-9999').get()
+            sequence_numbers = []
+            for claim in claims_today:
+                claim_id_str = claim.to_dict().get('claim_id', '')
+                if claim_id_str.startswith(prefix):
+                    try:
+                        seq_num = int(claim_id_str.replace(prefix, ''))
+                        sequence_numbers.append(seq_num)
+                    except ValueError:
+                        continue
+            
+            next_seq = max(sequence_numbers) + 1 if sequence_numbers else 0
+            claim_id = f'{prefix}{next_seq}'
+        except Exception as e:
+            claim_id = f'{prefix}{int(datetime.now().timestamp())}'
+
+        # Calculate disallowed amount if not provided
+        total_bill_amount = float(data.get('total_bill_amount', 0))
+        approved_amount = float(data.get('approved_amount', 0))
+        disallowed_amount = data.get('disallowed_amount')
+        
+        if disallowed_amount is None or disallowed_amount == '':
+            disallowed_amount = max(total_bill_amount - approved_amount, 0)
+        else:
+            disallowed_amount = float(disallowed_amount)
+
+        # Prepare form_data with all the fields
+        form_data = {
+            # Patient Demographics
+            'patient_name': data.get('patient_name', '').strip(),
+            'age': int(data.get('age', 0)),
+            'age_unit': data.get('age_unit', 'YRS'),
+            'gender': data.get('gender', '').strip(),
+            'claim_type': data.get('claim_type', '').strip(),
+            
+            # Payer Details
+            'payer_type': data.get('payer_type', '').strip(),
+            'payer_name': data.get('payer_name', '').strip(),
+            'ward_type': data.get('ward_type', '').strip(),
+            
+            # Admission Details
+            'specialty': data.get('specialty', '').strip(),
+            'doctor': data.get('doctor', '').strip(),
+            'admission_date': data.get('admission_date', '').strip(),
+            'discharge_date': data.get('discharge_date', '').strip(),
+            
+            # Billing Details
+            'total_bill_amount': total_bill_amount,
+            'amount_paid_by_patient': float(data.get('amount_paid_by_patient', 0)),
+            'discount_amount': float(data.get('discount_amount', 0)),
+            'claimed_amount': float(data.get('claimed_amount', 0)),
+            'approved_amount': approved_amount,
+            'disallowed_amount': disallowed_amount,
+            'review_request_amount': float(data.get('review_request_amount', 0)) if data.get('review_request_amount') else None,
+            
+            # Remarks
+            'reason_by_payer': data.get('reason_by_payer', '').strip(),
+            'medverve_review_remarks': data.get('medverve_review_remarks', '').strip(),
+        }
+
+        # Create review_data to match the structure expected by reviewed claims
+        review_data = {
+            'reviewer_id': request.user_id,
+            'reviewer_email': request.user_email,
+            'reviewer_name': request.user_name,
+            'review_decision': 'REVIEWED',
+            'review_remarks': data.get('medverve_review_remarks', '').strip(),
+            'reviewed_at': datetime.now(timezone.utc),
+            'total_bill_amount': total_bill_amount,
+            'claimed_amount': float(data.get('claimed_amount', 0)),
+            'approved_amount': approved_amount,
+            'disallowed_amount': disallowed_amount,
+            'review_request_amount': float(data.get('review_request_amount', 0)) if data.get('review_request_amount') else None,
+            'patient_paid_amount': float(data.get('amount_paid_by_patient', 0)),
+            'discount_amount': float(data.get('discount_amount', 0)),
+            'reason_by_payer': data.get('reason_by_payer', '').strip(),
+        }
+
+        # Create review history entry
+        review_history = [{
+            'reviewer_id': request.user_id,
+            'reviewer_email': request.user_email,
+            'reviewer_name': request.user_name,
+            'review_action': 'REVIEWED',
+            'review_remarks': data.get('medverve_review_remarks', '').strip(),
+            'reviewed_at': datetime.now(timezone.utc),
+        }]
+
+        # Prepare claim document with REVIEWED status
+        claim_document = {
+            'claim_id': claim_id,
+            'claim_status': 'reviewed',  # CRITICAL: Hardcoded to REVIEWED
+            'claim_type': 'review_submission',  # Special type to identify these claims
+            'submission_date': firestore.SERVER_TIMESTAMP,
+            'created_at': firestore.SERVER_TIMESTAMP,
+            'updated_at': firestore.SERVER_TIMESTAMP,
+            'created_by': request.user_id,
+            'created_by_email': request.user_email,
+            'created_by_name': request.user_name,
+            'reviewed_by': request.user_id,
+            'reviewed_by_email': request.user_email,
+            'reviewed_by_name': request.user_name,
+            'reviewed_at': firestore.SERVER_TIMESTAMP,
+            'hospital_id': hospital_id,
+            'hospital_name': hospital_name,
+            'created_in_module': 'review_submission',
+            'form_data': form_data,
+            'review_data': review_data,
+            'review_history': review_history,
+        }
+        
+        # Save to Firestore
+        db.collection('direct_claims').document(claim_id).set(claim_document)
+        
+        # Create transaction record
+        create_transaction(
+            claim_id=claim_id,
+            transaction_type=TransactionType.REVIEWED,
+            performed_by=request.user_id,
+            performed_by_email=request.user_email,
+            performed_by_name=request.user_name,
+            performed_by_role='review_request',
+            previous_status=None,
+            new_status='reviewed',
+            remarks='Claim created via Review Submission with REVIEWED status',
+            metadata={
+                'patient_name': form_data.get('patient_name'),
+                'claimed_amount': form_data.get('claimed_amount'),
+                'approved_amount': approved_amount,
+                'payer_name': form_data.get('payer_name'),
+                'submission_type': 'review_submission'
+            }
+        )
+        
+        print(f"✅ Review Submission: Created claim {claim_id} with REVIEWED status")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Review claim submitted successfully',
+            'claim_id': claim_id,
+            'claim_status': 'reviewed'
+        }), 201
+        
+    except Exception as exc:
+        print(f"❌ Review Request ERROR (submit-review-claim): {exc}")
+        return jsonify({
+            'success': False,
+            'error': str(exc)
+        }), 500
+
+
