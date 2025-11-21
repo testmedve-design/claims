@@ -1151,6 +1151,18 @@ def submit_review_claim():
                 'error': 'hospital_id is required'
             }), 400
 
+        # Get payer_type for validation
+        payer_type = (data.get('payer_type') or '').strip().upper()
+        
+        # Validate insurer_name if payer_type is TPA
+        if payer_type == 'TPA':
+            insurer_name = data.get('insurer_name', '').strip()
+            if not insurer_name:
+                return jsonify({
+                    'success': False,
+                    'error': 'insurer_name is required when payer_type is TPA'
+                }), 400
+
         # Get hospital name from hospital_id
         hospital_name = data.get('hospital_name', '')
         if not hospital_name:
@@ -1209,6 +1221,7 @@ def submit_review_claim():
             # Payer Details
             'payer_type': data.get('payer_type', '').strip(),
             'payer_name': data.get('payer_name', '').strip(),
+            'insurer_name': data.get('insurer_name', '').strip() if payer_type == 'TPA' else None,
             'ward_type': data.get('ward_type', '').strip(),
             
             # Admission Details
