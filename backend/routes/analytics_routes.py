@@ -109,6 +109,7 @@ def get_hospital_analytics():
         hospital_id = request.args.get('hospital_id') or getattr(request, 'hospital_id', None)
         payer_name_filter = request.args.get('payer_name', '').strip().lower()
         payer_type_filter = request.args.get('payer_type', '').strip().lower()
+        insurer_name_filter = request.args.get('insurer_name', '').strip().lower()
         
         # Base query - use Firestore indexes for filtering
         query = db.collection('direct_claims')
@@ -143,16 +144,19 @@ def get_hospital_analytics():
         claims = [c for c in claims if c.get('claim_status') != 'draft']
         
         # Apply payer filters in memory (since they are in form_data)
-        if payer_name_filter or payer_type_filter:
+        if payer_name_filter or payer_type_filter or insurer_name_filter:
             filtered_claims = []
             for claim in claims:
                 form_data = claim.get('form_data', {})
                 payer_name = form_data.get('payer_name', '').lower()
                 payer_type = form_data.get('payer_type', '').lower()
+                insurer_name = form_data.get('insurer_name', '').lower()
                 
                 if payer_name_filter and payer_name_filter not in payer_name:
                     continue
                 if payer_type_filter and payer_type_filter != payer_type:
+                    continue
+                if insurer_name_filter and insurer_name_filter not in insurer_name:
                     continue
                 filtered_claims.append(claim)
             claims = filtered_claims
@@ -440,6 +444,8 @@ def get_processor_analytics():
         start_date, end_date = parse_date_range(request.args)
         selected_hospital_id = request.args.get('hospital_id') # For processor to filter by specific hospital
         payer_name_filter = request.args.get('payer_name', '').strip().lower()
+        payer_type_filter = request.args.get('payer_type', '').strip().lower()
+        insurer_name_filter = request.args.get('insurer_name', '').strip().lower()
 
         # Get processor's affiliated hospitals if no specific one selected
         assigned_hospitals = getattr(request, 'assigned_hospitals', [])
