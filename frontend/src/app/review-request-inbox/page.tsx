@@ -8,10 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { RefreshCw } from 'lucide-react'
-import { cn } from '@/lib/utils'
-
-// Removed COMPLETED_REVIEW_STATUSES - using universal claim_status field only
 
 const formatCurrencyINR = (value?: number | null) => {
   if (value === null || value === undefined || Number.isNaN(value)) {
@@ -84,14 +80,6 @@ export default function ReviewRequestInboxPage() {
   const fetchClaims = async () => {
     try {
       setIsFetching(true)
-      // UNIVERSAL: Simple API call - backend handles all filtering
-      const response = await reviewRequestApi.getClaims({
-        status: 'pending',  // Backend queries claim_status='dispatched'
-      })
-
-      if (response.success) {
-        // UNIVERSAL: Display what backend returns (no frontend filtering)
-        setClaims(response.claims)
       } else {
         throw new Error(response.error || 'Failed to fetch review claims')
       }
@@ -115,7 +103,6 @@ export default function ReviewRequestInboxPage() {
       .join(' ')
   }
 
-  // Removed renderReviewStatusBadge - using universal claim_status field only
 
   if (user && user.role !== 'review_request') {
     return (

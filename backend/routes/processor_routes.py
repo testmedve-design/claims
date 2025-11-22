@@ -72,6 +72,14 @@ OPTIONAL_STATUS_FLAG_MAP = {
     'claim_denial': 'claim_denial_option',
 }
 
+# Processor approval limits (in rupees)
+PROCESSOR_APPROVAL_LIMITS = {
+    'claim_processor_l1': 50000,   # Up to 50,000
+    'claim_processor_l2': 100000,  # Up to 1 lakh
+    'claim_processor_l3': 200000,  # Up to 2 lakhs
+    'claim_processor_l4': float('inf')  # All amounts
+}
+
 @processor_bp.route('/test-simple', methods=['GET'])
 @require_processor_access
 def test_simple():
@@ -106,62 +114,6 @@ def test_locks():
                 'claim_status': claim_data.get('claim_status', ''),
                 'hospital_name': claim_data.get('hospital_name', ''),
                 'hospital_id': claim_data.get('hospital_id', ''),
-                # Lock information
-                'locked_by_processor': claim_data.get('locked_by_processor', ''),
-                'locked_by_processor_email': claim_data.get('locked_by_processor_email', ''),
-                'locked_by_processor_name': claim_data.get('locked_by_processor_name', ''),
-                'locked_at': safe_timestamp_to_str(claim_data.get('locked_at')),
-                'lock_expires_at': safe_timestamp_to_str(claim_data.get('lock_expires_at'))
-            })
-        
-        return jsonify({
-            'success': True,
-            'total_claims': len(claims_list),
-            'claims': claims_list
-        }), 200
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@processor_bp.route('/get-claims-to-process-no-auth', methods=['GET'])
-def get_claims_to_process_no_auth():
-    """Get claims for processing WITHOUT authentication - for testing lock data"""
-    try:
-        db = get_firestore()
-        
-        # Get query parameters
-        tab = request.args.get('tab', 'unprocessed')
-        limit = int(request.args.get('limit', 50))
-        
-        # Build query for claims to process
-        query = db.collection('direct_claims')
-        
-        # Filter by status based on tab
-        if tab == 'unprocessed':
-            query = query.where('claim_status', 'in', ['qc_pending', 'need_more_info', 'qc_answered', 'claim_contested'])
-        elif tab == 'processed':
-            query = query.where('claim_status', 'in', ['claim_approved', 'claim_denial'])
-        
-        # Execute query
-        claims = query.limit(limit).get()
-        
-        claims_list = []
-        for doc in claims:
-            claim_data = doc.to_dict()
-            claims_list.append({
-                'claim_id': claim_data.get('claim_id', doc.id),
-                'claim_status': claim_data.get('claim_status', ''),
-                'created_at': safe_timestamp_to_str(claim_data.get('created_at')),
-                'submission_date': safe_timestamp_to_str(claim_data.get('submission_date')),
-                'patient_name': claim_data.get('form_data', {}).get('patient_name', ''),
-                'claimed_amount': claim_data.get('form_data', {}).get('claimed_amount', ''),
-                'payer_name': claim_data.get('form_data', {}).get('payer_name', ''),
-                'specialty': claim_data.get('form_data', {}).get('specialty', ''),
-                'hospital_name': claim_data.get('hospital_name', ''),
-                'created_by_email': claim_data.get('created_by_email', ''),
                 # Lock information
                 'locked_by_processor': claim_data.get('locked_by_processor', ''),
                 'locked_by_processor_email': claim_data.get('locked_by_processor_email', ''),

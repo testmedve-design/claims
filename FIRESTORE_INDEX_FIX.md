@@ -88,6 +88,3 @@ If you need better performance for very large datasets, you can create the compo
 
 However, the current in-memory approach should work fine for most use cases.
 
-
-
-

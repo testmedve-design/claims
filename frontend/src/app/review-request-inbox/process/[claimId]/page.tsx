@@ -200,14 +200,6 @@ export default function ReviewRequestClaimPage() {
   }
 
   const reviewStatusBadgeClass = useMemo(() => {
-    // Use universal claim_status field instead of review_status
-    const status = claim?.claim_status || ''
-    if (!status || status === 'dispatched') return 'bg-yellow-100 text-yellow-800'
-    if (status === 'reviewed') return 'bg-emerald-100 text-emerald-800'
-    if (status === 'review_completed') return 'bg-emerald-100 text-emerald-800'
-    if (status === 'review_not_found') return 'bg-red-100 text-red-800'
-    return 'bg-gray-100 text-gray-800'
-  }, [claim?.claim_status])
 
   const hospitalSummary = useMemo(() => {
     if (!claim) return null
@@ -431,7 +423,6 @@ export default function ReviewRequestClaimPage() {
         <div className="flex flex-col items-end gap-2">
           <div className="flex gap-2">
             <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${reviewStatusBadgeClass}`}>
-              {claim.claim_status ? claim.claim_status.replace('_', ' ').toUpperCase() : 'DISPATCHED'}
             </span>
             <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide bg-gray-100 text-gray-800">
               Claim: {claim.claim_status || 'Unknown'}

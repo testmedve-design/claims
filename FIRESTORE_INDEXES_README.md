@@ -5,9 +5,9 @@ This document describes the comprehensive Firestore composite indexes required f
 
 ## Index Summary
 
-**Total Indexes Created: 30**
+**Total Indexes Created: 30+**
 
-### direct_claims Collection (12 indexes)
+### direct_claims Collection (12+ indexes)
 The main claims collection with the most complex query patterns:
 
 1. **claim_status + created_at (ASC)** - Processor inbox filtering with ascending date order
@@ -21,7 +21,8 @@ The main claims collection with the most complex query patterns:
 9. **claim_status + created_at (DESC) + hospital_id** - Date range queries with hospital filter (descending)
 10. **locked_by_processor + created_at (DESC)** - Lock management system queries
 11. **review_status + created_at (DESC)** - Review request team queries
-12. **claim_id** - Individual claim lookups
+12. **rm_status + created_at (ASC/DESC)** - RM dashboard filtering with date ranges
+13. **claim_id** - Individual claim lookups
 
 ### claims Collection (2 indexes)
 Draft claims collection:
@@ -116,6 +117,16 @@ If you have a `firebase.json` file, ensure it references the indexes file:
     "indexes": "firestore.indexes.json"
   }
 }
+```
+
+### Method 4: Terraform/GCP Deployment
+If using infrastructure as code:
+```bash
+# Using gcloud CLI
+gcloud firestore indexes composite create \
+  --collection-group=claims \
+  --field-config field-path=claim_status,order=ascending \
+  --field-config field-path=created_at,order=ascending
 ```
 
 ## Verification
@@ -251,6 +262,8 @@ If indexes can't be deployed immediately:
 - The application currently uses in-memory filtering as a fallback
 - Performance may be slower but functionality remains
 - Prioritize deploying indexes for most-used endpoints first
+- Reduce query complexity (remove date filters temporarily)
+- Use smaller result sets (limit to 10-20 records) if needed
 
 ## Maintenance
 
