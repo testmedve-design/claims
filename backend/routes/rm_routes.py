@@ -244,8 +244,18 @@ def get_rm_claim_details(claim_id):
         rm_data = claim_data.get('rm_data', {})
         canonical_claim_status = _canonicalize_status(claim_data.get('claim_status'))
         
-        # Get documents for this claim
-        documents = claim_data.get('documents', [])
+        # Get documents for this claim (same comprehensive logic as processor route)
+        documents = claim_data.get('documents', []) or []
+        if not documents:
+            documents = claim_data.get('document_uploads', []) or []
+        if not documents:
+            # Some legacy records keep uploads within form_data
+            form_documents = (claim_data.get('form_data') or {}).get('documents') or []
+            if isinstance(form_documents, list):
+                documents = form_documents
+        if not isinstance(documents, list):
+            documents = []
+        
         detailed_documents = []
         existing_doc_ids = set()
         
@@ -254,11 +264,11 @@ def get_rm_claim_details(claim_id):
         # First, get documents from claim's documents array
         for doc in documents:
             try:
-                # Handle both string and dict document_ids
+                # Handle multiple document ID formats (same as processor route)
                 if isinstance(doc, str):
                     doc_id = doc
                 else:
-                    doc_id = doc.get('document_id') or doc.get('id')
+                    doc_id = doc.get('document_id') or doc.get('id') or doc.get('documentId')
                 
                 if not doc_id:
                     print(f"⚠️ Warning: Document missing ID: {doc}")
@@ -289,12 +299,16 @@ def get_rm_claim_details(claim_id):
                 print(f"❌ Error processing document: {str(doc_error)}")
                 continue
         
-        # ALSO query documents collection directly by claim_id (in case documents weren't linked to claim document)
+        # ALSO query documents collection directly by claim_id (same as processor route)
         # This ensures we get all documents even if they weren't properly linked
-        print(f"🔍 RM DEBUG: Querying documents collection by claim_id: {claim_id}")
+        # We always query this to catch any documents that might have been uploaded but not linked
+        claim_id_for_query = claim_data.get('claim_id', claim_id)
+        print(f"🔍 RM DEBUG: Querying documents collection by claim_id: {claim_id_for_query}")
+        documents_query_count = 0
         try:
-            documents_query = db.collection('documents').where('claim_id', '==', claim_id).get()
-            print(f"🔍 RM DEBUG: Found {len(documents_query)} documents in documents collection for claim_id: {claim_id}")
+            documents_query = db.collection('documents').where('claim_id', '==', claim_id_for_query).get()
+            documents_query_count = len(documents_query)
+            print(f"🔍 RM DEBUG: Found {documents_query_count} documents in documents collection for claim_id: {claim_id_for_query}")
             
             for doc_doc in documents_query:
                 doc_data = doc_doc.to_dict()
@@ -331,7 +345,7 @@ def get_rm_claim_details(claim_id):
         except Exception as query_error:
             print(f"⚠️ Warning: Could not query documents collection: {str(query_error)}")
         
-        print(f"🔍 RM DEBUG: Total detailed documents: {len(detailed_documents)}")
+        print(f"🔍 RM DEBUG: Found {len(detailed_documents)} total documents for claim {claim_id_for_query} (from claim doc: {len(documents)}, from documents collection: {documents_query_count})")
         
         # Get transaction history
         transaction_list = []

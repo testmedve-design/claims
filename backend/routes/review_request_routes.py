@@ -215,34 +215,89 @@ def _build_payer_details(db, claim_data: Dict[str, Any], user_hospital_id: Optio
 
 
 def _build_document_list(db, claim_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-    documents = claim_data.get('documents', []) or claim_data.get('document_uploads', []) or []
+    """Build comprehensive document list (same logic as processor/claims routes)"""
+    # Get documents for this claim (same comprehensive logic as processor route)
+    documents = claim_data.get('documents', []) or []
+    if not documents:
+        documents = claim_data.get('document_uploads', []) or []
+    if not documents:
+        # Some legacy records keep uploads within form_data
+        form_documents = (claim_data.get('form_data') or {}).get('documents') or []
+        if isinstance(form_documents, list):
+            documents = form_documents
+    if not isinstance(documents, list):
+        documents = []
+    
+    # Get detailed document information from documents array
     detailed_documents: List[Dict[str, Any]] = []
+    for doc in documents:
+        doc_id = None
+        if isinstance(doc, dict):
+            doc_id = doc.get('document_id') or doc.get('id') or doc.get('documentId')
+        elif isinstance(doc, str):
+            doc_id = doc
 
-    for entry in documents:
-        if isinstance(entry, str):
-            doc_id = entry
-        else:
-            doc_id = entry.get('document_id') or entry.get('id')
-
-        if not doc_id:
-            continue
-
-        doc_snapshot = db.collection('documents').document(doc_id).get()
-        if not doc_snapshot.exists:
-            continue
-
-        doc_data = doc_snapshot.to_dict() or {}
-        detailed_documents.append({
-            'document_id': doc_data.get('document_id', doc_id),
-            'document_type': doc_data.get('document_type'),
-            'document_name': doc_data.get('document_name'),
-            'original_filename': doc_data.get('original_filename', doc_data.get('filename')),
-            'download_url': doc_data.get('download_url', doc_data.get('url')),
-            'file_size': doc_data.get('file_size'),
-            'file_type': doc_data.get('file_type'),
-            'uploaded_at': _to_iso(doc_data.get('uploaded_at')),
-            'status': doc_data.get('status'),
-        })
+        if doc_id:
+            doc_snapshot = db.collection('documents').document(doc_id).get()
+            if doc_snapshot.exists:
+                doc_data = doc_snapshot.to_dict() or {}
+                detailed_documents.append({
+                    'document_id': doc_data.get('document_id', doc_id),
+                    'document_type': doc_data.get('document_type'),
+                    'document_name': doc_data.get('document_name'),
+                    'original_filename': doc_data.get('original_filename', doc_data.get('filename')),
+                    'download_url': doc_data.get('download_url', doc_data.get('url')),
+                    'file_size': doc_data.get('file_size'),
+                    'file_type': doc_data.get('file_type'),
+                    'uploaded_at': _to_iso(doc_data.get('uploaded_at')),
+                    'status': doc_data.get('status'),
+                })
+    
+    # ALSO query documents collection directly by claim_id (same as processor route)
+    # This ensures we get all documents even if they weren't properly linked
+    claim_id = claim_data.get('claim_id', '')
+    if claim_id:
+        print(f"🔍 Review Request: Querying documents collection by claim_id: {claim_id}")
+        try:
+            documents_query = db.collection('documents').where('claim_id', '==', claim_id).get()
+            existing_doc_ids = {d.get('document_id') for d in detailed_documents if d.get('document_id')}
+            
+            for doc_doc in documents_query:
+                doc_data = doc_doc.to_dict() or {}
+                # Check if we already have this document
+                doc_id = doc_data.get('document_id')
+                if doc_id and doc_id not in existing_doc_ids:
+                    # Regenerate download URL if expired (signed URLs expire after 7 days)
+                    download_url = doc_data.get('download_url', '')
+                    if not download_url:
+                        try:
+                            from datetime import timedelta
+                            from firebase_config import get_storage
+                            storage_path = doc_data.get('storage_path', '')
+                            if storage_path:
+                                bucket = get_storage()
+                                blob = bucket.blob(storage_path)
+                                if blob.exists():
+                                    download_url = blob.generate_signed_url(expiration=timedelta(days=7))
+                        except Exception as e:
+                            print(f"⚠️ Could not regenerate download URL: {e}")
+                    
+                    detailed_documents.append({
+                        'document_id': doc_data.get('document_id'),
+                        'document_type': doc_data.get('document_type'),
+                        'document_name': doc_data.get('document_name'),
+                        'original_filename': doc_data.get('original_filename', doc_data.get('filename')),
+                        'download_url': download_url or doc_data.get('download_url', doc_data.get('url', '')),
+                        'file_size': doc_data.get('file_size'),
+                        'file_type': doc_data.get('file_type'),
+                        'uploaded_at': _to_iso(doc_data.get('uploaded_at')),
+                        'status': doc_data.get('status', 'uploaded')
+                    })
+                    existing_doc_ids.add(doc_id)
+            
+            print(f"🔍 Review Request: Found {len(detailed_documents)} total documents for claim {claim_id}")
+        except Exception as doc_query_error:
+            print(f"⚠️ Warning: Could not query documents collection: {doc_query_error}")
 
     return detailed_documents
 
