@@ -523,9 +523,23 @@ export default function ClaimDetailsPage() {
       console.log('🔍 Token length:', token ? token.length : 0)
       
       const encodedId = encodeURIComponent(claimId)
-      const endpoint = isReviewMode
-        ? `${API_BASE_URL}/review-request/get-claim-full/${encodedId}`
-        : `${API_BASE_URL}/v1/claims/get-claim/${encodedId}`
+      
+      // Determine the correct endpoint based on user role
+      const processorRoles = ['claim_processor', 'claim_processor_l1', 'claim_processor_l2', 'claim_processor_l3', 'claim_processor_l4']
+      const isProcessor = user && processorRoles.includes(user.role as string)
+      
+      let endpoint
+      if (isReviewMode) {
+        endpoint = `${API_BASE_URL}/review-request/get-claim-full/${encodedId}`
+      } else if (isProcessor) {
+        // Use processor-specific endpoint
+        endpoint = `${API_BASE_URL}/processor-routes/get-claim-details/${encodedId}`
+      } else {
+        // Use hospital user endpoint
+        endpoint = `${API_BASE_URL}/v1/claims/get-claim/${encodedId}`
+      }
+      
+      console.log('🔍 Using endpoint:', endpoint, 'for role:', user?.role)
 
       const response = await fetch(endpoint, {
         method: 'GET',
@@ -543,11 +557,21 @@ export default function ClaimDetailsPage() {
           // Fetch transactions after getting claim details
           await fetchTransactions()
         } else {
-          setError(data.error || 'Failed to fetch claim details')
+          const errorMsg = data.error || 'Failed to fetch claim details'
+          console.error('❌ API returned error:', errorMsg)
+          setError(errorMsg)
         }
       } else {
-        const errorData = await response.json()
-        setError(errorData.error || 'Failed to fetch claim details')
+        // Try to get error message from response
+        let errorMsg = `HTTP error! status: ${response.status}`
+        try {
+          const errorData = await response.json()
+          errorMsg = errorData.error || errorData.message || errorMsg
+        } catch (e) {
+          errorMsg = `${errorMsg} - ${response.statusText}`
+        }
+        console.error('❌ Failed to fetch claim details:', errorMsg)
+        setError(errorMsg)
       }
     } catch (error) {
       console.error('Error fetching claim details:', error)

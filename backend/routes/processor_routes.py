@@ -923,22 +923,71 @@ def get_claim_details(claim_id):
         user_role = getattr(request, 'user_role', '').lower()
         processor_limit = PROCESSOR_APPROVAL_LIMITS.get(user_role, float('inf'))
         
-        # First try to get the claim by document ID (most common case)
-        claim_doc = db.collection('direct_claims').document(claim_id).get()
+        # Normalize claim ID (handle URL encoding and variations)
+        import urllib.parse
+        claim_id = urllib.parse.unquote(claim_id)  # Decode URL encoding
         
-        if not claim_doc.exists:
-            # If not found by document ID, search by claim_id field
-            claims_query = db.collection('direct_claims').where('claim_id', '==', claim_id)
-            claims_docs = claims_query.get()
+        # Normalize claim ID format (similar to hospital endpoint)
+        normalized_claim_id = str(claim_id).replace('CSHLSIP ', 'CSHLSIP-').replace('CLS ', 'CLS-').replace('  ', ' ').replace(' ', '-')
+        print(f"🔍 Processor get-claim-details: raw='{claim_id}' normalized='{normalized_claim_id}'")
+        
+        claim_doc = None
+        
+        # Try multiple approaches to find the claim
+        # 1. Try by document ID (original and normalized)
+        for test_id in [claim_id, normalized_claim_id]:
+            claim_doc = db.collection('direct_claims').document(test_id).get()
+            if claim_doc.exists:
+                print(f"🔍 Found claim by document ID: {test_id}")
+                break
+        
+        # 2. If not found by document ID, search by claim_id field (exact match)
+        if not claim_doc or not claim_doc.exists:
+            for test_id in [claim_id, normalized_claim_id]:
+                claims_query = db.collection('direct_claims').where('claim_id', '==', test_id)
+                claims_docs = claims_query.get()
+                if claims_docs:
+                    claim_doc = claims_docs[0]
+                    print(f"🔍 Found claim by claim_id field: {test_id}")
+                    break
+        
+        # 3. Try prefix search (for partial matches)
+        if not claim_doc or not claim_doc.exists:
+            direct_claims = (
+                db.collection('direct_claims')
+                .where('claim_id', '>=', normalized_claim_id)
+                .where('claim_id', '<=', normalized_claim_id + '\uf8ff')
+                .limit(1)
+                .get()
+            )
+            if direct_claims:
+                claim_doc = direct_claims[0]
+                print(f"🔍 Found claim by prefix search: {normalized_claim_id}")
+        
+        # 4. Try fallback IDs (various formats)
+        if not claim_doc or not claim_doc.exists:
+            fallback_ids = {
+                str(claim_id),
+                normalized_claim_id,
+                str(claim_id).replace(' ', '-'),
+                str(claim_id).replace(' ', ''),
+                str(claim_id).upper(),
+                str(claim_id).lower(),
+            }
             
-            if not claims_docs:
-                return jsonify({
-                    'success': False,
-                    'error': 'Claim not found'
-                }), 404
-            
-            # Get the first matching claim
-            claim_doc = claims_docs[0]
+            for fallback_id in fallback_ids:
+                doc_candidate = db.collection('direct_claims').document(fallback_id).get()
+                if doc_candidate.exists:
+                    claim_doc = doc_candidate
+                    print(f"🔍 Found claim by fallback ID: {fallback_id}")
+                    break
+        
+        if not claim_doc or not claim_doc.exists:
+            return jsonify({
+                'success': False,
+                'error': f'Claim not found: {claim_id}',
+                'searched_ids': [claim_id, normalized_claim_id]
+            }), 404
         
         claim_data = claim_doc.to_dict()
 
@@ -1170,9 +1219,15 @@ def get_claim_details(claim_id):
         }), 200
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"❌ Error in get_claim_details for claim_id '{claim_id}': {str(e)}")
+        print(f"❌ Traceback: {error_trace}")
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'claim_id': claim_id
         }), 500
 
 @processor_bp.route('/get-processing-stats', methods=['GET'])
