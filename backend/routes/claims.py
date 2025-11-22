@@ -493,6 +493,32 @@ def _generate_claim_details_response(claim_id: str, *, skip_hospital_check: bool
             # Check if documents stored in nested structure
             documents = claim_data.get('document_uploads', [])
         
+        # Also check in form_data.documents (for hospital user claims)
+        if not documents:
+            form_data = claim_data.get('form_data', {}) or {}
+            form_documents = form_data.get('documents', [])
+            if form_documents:
+                # Convert form_data documents structure to expected format
+                documents = []
+                for doc in form_documents:
+                    if isinstance(doc, dict):
+                        # If it has document_id, use it directly
+                        if doc.get('document_id'):
+                            documents.append(doc)
+                        # If it has id, try to use it as document_id
+                        elif doc.get('id'):
+                            documents.append({'document_id': doc.get('id')})
+        
+        # Also check for documents collection query by claim_id
+        if not documents:
+            try:
+                # Query documents collection for this claim
+                docs_query = db.collection('documents').where('claim_id', '==', claim_data.get('claim_id', claim_id)).get()
+                if docs_query:
+                    documents = [{'document_id': doc.id} for doc in docs_query]
+            except Exception as doc_query_error:
+                print(f"⚠️ Warning: Could not query documents collection: {doc_query_error}")
+        
         # Resolve payer details (address for cover letter)
         payer_details = {}
         form_data = claim_data.get('form_data', {}) or {}
