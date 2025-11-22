@@ -24,6 +24,7 @@ RM_STATUS_OPTIONS = [
     ('approved', 'Approved'),
     ('partially_settled', 'Partially Settled'),
     ('reconciliation', 'Reconciliation'),
+    ('bank_reconciliation', 'Bank Reconciliation'),
     ('in_progress', 'In Progress'),
     ('cancelled', 'Cancelled'),
     ('closed', 'Closed'),
@@ -443,6 +444,15 @@ def update_rm_claim(claim_id):
         
         claim_data = claim_doc.to_dict()
         previous_claim_status = _canonicalize_status(claim_data.get('claim_status'))
+        
+        # Validate: If claim is settled and user is reconciler, only allow bank_reconciliation
+        user_role = getattr(request, 'user_role', '').lower()
+        if previous_claim_status == 'settled' and user_role == 'reconciler':
+            if canonical_status != 'bank_reconciliation':
+                return jsonify({
+                    'success': False,
+                    'error': 'For settled claims, reconcilers can only change status to Bank Reconciliation'
+                }), 400
         
         # Prepare update data
         update_data = {
