@@ -125,7 +125,16 @@ export default function ProcessorInboxPage() {
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        // Try to get error message from response
+        let errorMessage = `HTTP error! status: ${response.status}`
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorData.message || errorMessage
+        } catch (e) {
+          // If response is not JSON, use status text
+          errorMessage = `${errorMessage} - ${response.statusText}`
+        }
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()

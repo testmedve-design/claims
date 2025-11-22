@@ -218,21 +218,38 @@ def get_claims_to_process():
         
         # Get all claims first, then filter by hospital, then apply limit
         # Sort by updated_at descending to show latest updated claims first
+        claims = None
         try:
             # Try to sort by updated_at (most recent first)
-            query = query.order_by('updated_at', direction=firestore.Query.DESCENDING)
-            claims = query.get()
+            query_with_order = query.order_by('updated_at', direction=firestore.Query.DESCENDING)
+            claims = query_with_order.get()
         except Exception as e:
-            # If index doesn't exist, fallback to unsorted query
+            # If index doesn't exist or query fails, fallback to unsorted query
             print(f"⚠️ Processor: Could not sort by updated_at: {e}. Using unsorted query.")
-            claims = query.get()
+            try:
+                # Try to get claims without order_by
+                claims = query.get()
+            except Exception as e2:
+                # If even the base query fails, it might be a missing index issue
+                print(f"⚠️ Processor: Base query also failed: {e2}. Trying simpler query.")
+                # Try a simpler query - just status filter, no date filters
+                simple_query = db.collection('direct_claims')
+                if tab == 'unprocessed':
+                    simple_query = simple_query.where('claim_status', 'in', ['qc_pending', 'need_more_info', 'qc_answered', 'claim_contested'])
+                elif tab == 'processed':
+                    simple_query = simple_query.where('claim_status', 'in', ['qc_query', 'qc_clear', 'claim_approved', 'claim_denial'])
+                else:
+                    simple_query = simple_query.where('claim_status', 'in', ['qc_pending', 'need_more_info', 'qc_answered'])
+                claims = simple_query.get()
+            
             # Sort in Python by updated_at or processed_at
-            claims = sorted(claims, key=lambda doc: (
-                doc.to_dict().get('updated_at') or 
-                doc.to_dict().get('processed_at') or 
-                doc.to_dict().get('created_at') or 
-                datetime.min
-            ), reverse=True)
+            if claims:
+                claims = sorted(claims, key=lambda doc: (
+                    doc.to_dict().get('updated_at') or 
+                    doc.to_dict().get('processed_at') or 
+                    doc.to_dict().get('created_at') or 
+                    datetime.min
+                ), reverse=True)
         
         # Get processor's affiliated hospitals
         processor_hospitals = []
@@ -409,9 +426,14 @@ def get_claims_to_process():
         }), 200
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"❌ Error in get_claims_to_process: {str(e)}")
+        print(f"❌ Traceback: {error_trace}")
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'error_type': type(e).__name__
         }), 500
 
 @processor_bp.route('/get-transition-trail/<claim_id>', methods=['GET'])
