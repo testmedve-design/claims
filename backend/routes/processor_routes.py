@@ -217,7 +217,22 @@ def get_claims_to_process():
             query = query.where('created_at', '<', end_datetime)
         
         # Get all claims first, then filter by hospital, then apply limit
-        claims = query.get()
+        # Sort by updated_at descending to show latest updated claims first
+        try:
+            # Try to sort by updated_at (most recent first)
+            query = query.order_by('updated_at', direction=firestore.Query.DESCENDING)
+            claims = query.get()
+        except Exception as e:
+            # If index doesn't exist, fallback to unsorted query
+            print(f"⚠️ Processor: Could not sort by updated_at: {e}. Using unsorted query.")
+            claims = query.get()
+            # Sort in Python by updated_at or processed_at
+            claims = sorted(claims, key=lambda doc: (
+                doc.to_dict().get('updated_at') or 
+                doc.to_dict().get('processed_at') or 
+                doc.to_dict().get('created_at') or 
+                datetime.min
+            ), reverse=True)
         
         # Get processor's affiliated hospitals
         processor_hospitals = []

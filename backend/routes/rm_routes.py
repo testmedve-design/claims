@@ -98,7 +98,22 @@ def get_rm_claims():
         
         # Execute query - Get all claims first, then filter by status in Python
         # This avoids Firestore index issues and handles status variations
-        all_claims = query.get()
+        # Sort by updated_at descending to show latest updated claims first
+        try:
+            # Try to sort by updated_at (most recent first)
+            query = query.order_by('updated_at', direction=firestore.Query.DESCENDING)
+            all_claims = query.get()
+        except Exception as e:
+            # If index doesn't exist, fallback to unsorted query
+            print(f"⚠️ RM: Could not sort by updated_at: {e}. Using unsorted query.")
+            all_claims = query.get()
+            # Sort in Python by updated_at or rm_updated_at
+            all_claims = sorted(all_claims, key=lambda doc: (
+                doc.to_dict().get('updated_at') or 
+                doc.to_dict().get('rm_updated_at') or 
+                doc.to_dict().get('created_at') or 
+                datetime.min
+            ), reverse=True)
         
         print(f"🔍 RM DEBUG: Found {len(all_claims)} claims from base query (before status filter)")
         

@@ -364,16 +364,47 @@ def get_review_claims():
             for i in range(0, len(completed_statuses), 10):
                 batch = completed_statuses[i:i+10]
                 batch_query = query.where('claim_status', 'in', batch)
+                # Try to sort by updated_at
+                try:
+                    batch_query = batch_query.order_by('updated_at', direction=firestore.Query.DESCENDING)
+                except:
+                    pass  # If index doesn't exist, continue without sorting
                 for doc in batch_query.get():
                     if doc.id not in seen_doc_ids:
                         claim_docs.append(doc)
                         seen_doc_ids.add(doc.id)
+            # Sort in Python if Firestore sorting didn't work
+            claim_docs = sorted(claim_docs, key=lambda doc: (
+                doc.to_dict().get('updated_at') or 
+                doc.to_dict().get('created_at') or 
+                datetime.min
+            ), reverse=True)
         elif status_key == 'all':
             # Get all claims (no status filter)
-            claim_docs = query.get()
+            try:
+                query = query.order_by('updated_at', direction=firestore.Query.DESCENDING)
+                claim_docs = query.get()
+            except:
+                claim_docs = query.get()
+                # Sort in Python
+                claim_docs = sorted(claim_docs, key=lambda doc: (
+                    doc.to_dict().get('updated_at') or 
+                    doc.to_dict().get('created_at') or 
+                    datetime.min
+                ), reverse=True)
         else:
             # Default: pending/dispatched claims only
-            claim_docs = query.where('claim_status', '==', 'dispatched').get()
+            try:
+                query = query.where('claim_status', '==', 'dispatched').order_by('updated_at', direction=firestore.Query.DESCENDING)
+                claim_docs = query.get()
+            except:
+                claim_docs = query.where('claim_status', '==', 'dispatched').get()
+                # Sort in Python
+                claim_docs = sorted(claim_docs, key=lambda doc: (
+                    doc.to_dict().get('updated_at') or 
+                    doc.to_dict().get('created_at') or 
+                    datetime.min
+                ), reverse=True)
 
         claims: List[Dict[str, Any]] = []
 
@@ -1128,15 +1159,24 @@ def submit_review_claim():
         db = get_firestore()
         
         # Validate required fields based on the specified form fields
+        # Note: Numeric fields (age, total_bill_amount, claimed_amount, approved_amount) 
+        # need special handling since 0 is falsy but valid
         required_fields = [
-            'patient_name', 'age', 'gender', 'claim_type',
+            'patient_name', 'gender', 'claim_type',
             'payer_type', 'payer_name', 'ward_type',
             'admission_date', 'discharge_date',
-            'total_bill_amount', 'claimed_amount', 'approved_amount',
             'reason_by_payer', 'medverve_review_remarks'
         ]
+        numeric_required_fields = ['age', 'total_bill_amount', 'claimed_amount', 'approved_amount']
         
+        # Check string/required fields
         missing_fields = [field for field in required_fields if not data.get(field)]
+        
+        # Check numeric fields (must be present and not None, but can be 0)
+        for field in numeric_required_fields:
+            value = data.get(field)
+            if value is None or (isinstance(value, str) and value.strip() == ''):
+                missing_fields.append(field)
         if missing_fields:
             return jsonify({
                 'success': False,

@@ -34,7 +34,21 @@ def _fetch_claims_for_user(status, limit, start_date, end_date, user_hospital_id
         query = query.where('created_at', '<', end_datetime)
         print(f"DEBUG: Filtering to date: {end_date}")
 
-    claims = query.get()
+    # Sort by updated_at descending to show latest updated claims first
+    try:
+        # Try to sort by updated_at (most recent first)
+        query = query.order_by('updated_at', direction=firestore.Query.DESCENDING)
+        claims = query.get()
+    except Exception as e:
+        # If index doesn't exist, fallback to unsorted query
+        print(f"⚠️ Claims: Could not sort by updated_at: {e}. Using unsorted query.")
+        claims = query.get()
+        # Sort in Python by updated_at or created_at
+        claims = sorted(claims, key=lambda doc: (
+            doc.to_dict().get('updated_at') or 
+            doc.to_dict().get('created_at') or 
+            datetime.min
+        ), reverse=True)
 
     claims_list = []
     excluded_count = 0
