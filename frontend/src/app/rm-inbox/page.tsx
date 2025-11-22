@@ -345,6 +345,14 @@ export default function RMInboxPage() {
                       </div>
                     </TableCell>
                     <TableCell>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleProcessClaim(claim.claim_id)}
+                      >
+                        <FileText className="w-4 h-4 mr-1" />
+                        Process
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

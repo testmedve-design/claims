@@ -157,6 +157,8 @@ export default function ReviewedClaimsPage() {
   const fetchReviewedClaims = async () => {
     try {
       setIsFetching(true)
+      const response = await reviewRequestApi.getClaims({ status: 'completed' })
+      if (response.success) {
         setClaims(response.claims)
       } else {
         throw new Error(response.error || 'Failed to fetch reviewed claims')

@@ -64,6 +64,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "claim_status",
           "order": "ASCENDING"
         },
         {
@@ -101,6 +102,7 @@
       ]
     },
     {
+      "collectionGroup": "transactions",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -108,11 +110,24 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "timestamp",
           "order": "DESCENDING"
         }
       ]
     },
     {
+      "collectionGroup": "claim_transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "claim_id",
+          "order": "ASCENDING"
+    },
+        {
+          "fieldPath": "performed_at",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

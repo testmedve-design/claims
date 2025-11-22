@@ -60,6 +60,9 @@ const getNavigationItems = (userRole: string, unreadCount: number): NavItem[] =>
     'claim_processor_l4',
   ]
 
+  const reportsNavItem: NavItem = {
+    title: 'Reports',
+    href: '/reports',
     icon: BarChart3,
     divider: true,
   }
@@ -77,6 +80,7 @@ const getNavigationItems = (userRole: string, unreadCount: number): NavItem[] =>
         href: '/processor-inbox',
         icon: Activity,
       },
+      reportsNavItem,
       {
         title: 'Profile',
         href: '/profile',
@@ -90,6 +94,7 @@ const getNavigationItems = (userRole: string, unreadCount: number): NavItem[] =>
         href: '/rm-inbox',
         icon: Activity,
       },
+      reportsNavItem,
       {
         title: 'Profile',
         href: '/profile',
@@ -109,6 +114,7 @@ const getNavigationItems = (userRole: string, unreadCount: number): NavItem[] =>
         href: '/review-request-inbox/reviewed',
         icon: CheckCircle2,
       },
+      reportsNavItem,
       {
         title: 'Profile',
         href: '/profile',
@@ -133,6 +139,7 @@ const getNavigationItems = (userRole: string, unreadCount: number): NavItem[] =>
         href: '/claims',
         icon: FileText,
       },
+      reportsNavItem,
       {
         title: 'Drafts',
         href: '/drafts',

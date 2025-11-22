@@ -200,6 +200,9 @@ export default function ReviewRequestClaimPage() {
   }
 
   const reviewStatusBadgeClass = useMemo(() => {
+    if (!claim?.review_status) return 'bg-gray-100 text-gray-800'
+    return REVIEW_STATUS_BADGE[claim.review_status] || 'bg-gray-100 text-gray-800'
+  }, [claim?.review_status])
 
   const hospitalSummary = useMemo(() => {
     if (!claim) return null
@@ -423,6 +426,7 @@ export default function ReviewRequestClaimPage() {
         <div className="flex flex-col items-end gap-2">
           <div className="flex gap-2">
             <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${reviewStatusBadgeClass}`}>
+              {claim.review_status || 'Review Pending'}
             </span>
             <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide bg-gray-100 text-gray-800">
               Claim: {claim.claim_status || 'Unknown'}

@@ -8,6 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { RefreshCw, Clock3, AlertTriangle, Activity, CheckCircle2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+const COMPLETED_REVIEW_STATUSES = new Set([
+  'REVIEW APPROVED',
+  'REVIEW REJECTED',
+  'REVIEW COMPLETED',
+])
 
 const formatCurrencyINR = (value?: number | null) => {
   if (value === null || value === undefined || Number.isNaN(value)) {
@@ -80,6 +88,15 @@ export default function ReviewRequestInboxPage() {
   const fetchClaims = async () => {
     try {
       setIsFetching(true)
+      const response = await reviewRequestApi.getClaims({
+        status: 'pending',
+      })
+
+      if (response.success) {
+        const filteredClaims = response.claims.filter(
+          (claim) => !COMPLETED_REVIEW_STATUSES.has((claim.review_status || '').toUpperCase())
+        )
+        setClaims(filteredClaims)
       } else {
         throw new Error(response.error || 'Failed to fetch review claims')
       }
@@ -103,6 +120,81 @@ export default function ReviewRequestInboxPage() {
       .join(' ')
   }
 
+  const renderReviewStatusBadge = (status?: string) => {
+    if (!status) {
+      return <Badge variant="outline">Unknown</Badge>
+    }
+
+    const normalized = status.toUpperCase()
+
+    if (normalized === 'REVIEW PENDING') {
+      return (
+        <Badge variant="outline" className="text-amber-600 bg-amber-50">
+          <Clock3 className="w-3 h-3 mr-1" />
+          Pending
+        </Badge>
+      )
+    }
+
+    if (normalized === 'UNDER REVIEW') {
+      return (
+        <Badge variant="outline" className="text-blue-600 bg-blue-50">
+          <Activity className="w-3 h-3 mr-1" />
+          Under Review
+        </Badge>
+      )
+    }
+
+    if (normalized === 'REVIEW APPROVED') {
+      return (
+        <Badge variant="outline" className="text-emerald-600 bg-emerald-50">
+          <CheckCircle2 className="w-3 h-3 mr-1" />
+          Approved
+        </Badge>
+      )
+    }
+
+    if (normalized === 'REVIEW REJECTED') {
+      return (
+        <Badge variant="outline" className="text-red-600 bg-red-50">
+          <AlertTriangle className="w-3 h-3 mr-1" />
+          Rejected
+        </Badge>
+      )
+    }
+
+    if (normalized === 'ADDITIONAL INFO NEEDED') {
+      return (
+        <Badge variant="outline" className="text-orange-600 bg-orange-50">
+          <AlertTriangle className="w-3 h-3 mr-1" />
+          Info Needed
+        </Badge>
+      )
+    }
+
+    if (normalized === 'ESCALATED') {
+      return (
+        <Badge variant="outline" className="text-purple-600 bg-purple-50">
+          <AlertTriangle className="w-3 h-3 mr-1" />
+          Escalated
+        </Badge>
+      )
+    }
+
+    if (normalized === 'REVIEW COMPLETED') {
+      return (
+        <Badge variant="outline" className="text-slate-600 bg-slate-50">
+          Completed
+        </Badge>
+      )
+    }
+
+    return (
+      <Badge variant="outline" className="text-slate-600 bg-slate-50">
+        {status}
+      </Badge>
+    )
+  }
 
   if (user && user.role !== 'review_request') {
     return (
@@ -209,6 +301,7 @@ export default function ReviewRequestInboxPage() {
                     <TableHead className="whitespace-nowrap">Disallowed Amount</TableHead>
                     <TableHead className="whitespace-nowrap">Review Requested Amount</TableHead>
                     <TableHead className="whitespace-nowrap">Claim Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Review Status</TableHead>
                     <TableHead className="whitespace-nowrap">Reviewed By</TableHead>
                     <TableHead className="whitespace-nowrap">Review Time</TableHead>
                     <TableHead className="whitespace-nowrap">Claim Type</TableHead>
@@ -266,6 +359,7 @@ export default function ReviewRequestInboxPage() {
                             {formatClaimStatus(claim.claim_status)}
                           </Badge>
                       </TableCell>
+                      <TableCell>{renderReviewStatusBadge(claim.review_status)}</TableCell>
                       <TableCell>{displayValue(claim.reviewed_by)}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         {formatDateTime(claim.last_reviewed_at)}
