@@ -12,7 +12,7 @@ import pytz
 from flask import Blueprint, jsonify, request
 from firebase_admin import firestore
 
-from firebase_config import get_firestore
+from firebase_config import get_firestore, get_storage
 from middleware import require_review_request_access
 from utils.transaction_helper import TransactionType, create_transaction
 
@@ -271,8 +271,6 @@ def _build_document_list(db, claim_data: Dict[str, Any]) -> List[Dict[str, Any]]
                     download_url = doc_data.get('download_url', '')
                     if not download_url:
                         try:
-                            from datetime import timedelta
-                            from firebase_config import get_storage
                             storage_path = doc_data.get('storage_path', '')
                             if storage_path:
                                 bucket = get_storage()

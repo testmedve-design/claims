@@ -80,6 +80,9 @@ PROCESSOR_APPROVAL_LIMITS = {
     'claim_processor_l4': float('inf')  # All amounts
 }
 
+# IST timezone constant (initialized once for efficiency)
+IST = pytz.timezone('Asia/Kolkata')
+
 @processor_bp.route('/test-simple', methods=['GET'])
 @require_processor_access
 def test_simple():
@@ -134,21 +137,11 @@ def test_locks():
             'error': str(e)
         }), 500
 
-# Processor approval limits (in rupees)
-PROCESSOR_APPROVAL_LIMITS = {
-    'claim_processor_l1': 50000,   # Up to 50,000
-    'claim_processor_l2': 100000,  # Up to 1 lakh
-    'claim_processor_l3': 200000,  # Up to 2 lakhs
-    'claim_processor_l4': float('inf')  # All amounts
-}
-
 @processor_bp.route('/get-claims-to-process', methods=['GET'])
 @require_processor_access
 def get_claims_to_process():
     """Get claims assigned to processor for processing - PROCESSORS ONLY"""
     try:
-        import pytz
-        ist = pytz.timezone('Asia/Kolkata')
         db = get_firestore()
         
         # Get processor's role and approval limit
@@ -177,19 +170,15 @@ def get_claims_to_process():
         
         # Apply date filtering if provided
         if start_date:
-            import pytz
-            ist = pytz.timezone('Asia/Kolkata')
             start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
-            start_datetime = ist.localize(start_datetime)
+            start_datetime = IST.localize(start_datetime)
             query = query.where('created_at', '>=', start_datetime)
         
         if end_date:
-            import pytz
-            ist = pytz.timezone('Asia/Kolkata')
             end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
             # Add one day to include the entire end date
             end_datetime = end_datetime + timedelta(days=1)
-            end_datetime = ist.localize(end_datetime)
+            end_datetime = IST.localize(end_datetime)
             query = query.where('created_at', '<', end_datetime)
         
         # Get all claims first, then filter by hospital, then apply limit
@@ -318,63 +307,7 @@ def get_claims_to_process():
                 
                 # Check if lock has expired and clear it if needed
                 lock_expires_at = claim_data.get('lock_expires_at', None)
-                # Temporarily disable all lock expiry checks
-                if False and lock_expires_at and claim_data.get('locked_by_processor'):
-                    import pytz
-                    ist = pytz.timezone('Asia/Kolkata')
-                    current_time = datetime.now(ist)
-                    # Handle both datetime objects and Firestore timestamps
-                    if hasattr(lock_expires_at, 'to_pydatetime'):
-                        expires_time = lock_expires_at.to_pydatetime()
-                        # Ensure timezone awareness
-                        if expires_time.tzinfo is None:
-                            expires_time = ist.localize(expires_time)
-                        else:
-                            expires_time = expires_time.astimezone(ist)
-                    elif isinstance(lock_expires_at, str):
-                        # Handle ISO format strings - convert to IST
-                        if 'T' in lock_expires_at:
-                            # Parse ISO format and convert to IST
-                            expires_time = datetime.fromisoformat(lock_expires_at.replace('Z', '+00:00'))
-                            if expires_time.tzinfo is None:
-                                expires_time = ist.localize(expires_time)
-                            else:
-                                expires_time = expires_time.astimezone(ist)
-                        else:
-                            # Handle other string formats
-                            expires_time = datetime.fromisoformat(lock_expires_at)
-                            if expires_time.tzinfo is None:
-                                expires_time = ist.localize(expires_time)
-                    else:
-                        # Handle any other datetime format
-                        if hasattr(lock_expires_at, 'tzinfo'):
-                            expires_time = lock_expires_at
-                            # Ensure timezone awareness
-                            if expires_time.tzinfo is None:
-                                expires_time = ist.localize(expires_time)
-                            else:
-                                expires_time = expires_time.astimezone(ist)
-                        else:
-                            # Skip comparison if we can't handle this format
-                            print(f"🔍 DEBUG: Skipping lock expiry check for unsupported format: {type(lock_expires_at)}")
-                            continue
-                    
-                    if current_time > expires_time:
-                        # Lock expired, clear it
-                        print(f"🔍 DEBUG: Lock expired for claim {claim_data.get('claim_id', doc.id)}, clearing lock")
-                        db.collection('direct_claims').document(doc.id).update({
-                            'locked_by_processor': None,
-                            'locked_by_processor_email': None,
-                            'locked_by_processor_name': None,
-                            'locked_at': None,
-                            'lock_expires_at': None
-                        })
-                        # Update the claim_data for this iteration
-                        claim_data['locked_by_processor'] = None
-                        claim_data['locked_by_processor_email'] = None
-                        claim_data['locked_by_processor_name'] = None
-                        claim_data['locked_at'] = None
-                        claim_data['lock_expires_at'] = None
+                # Lock expiry checks disabled - can be re-enabled in future if needed
                 
                 processed_claims.append((doc, claim_data))
             else:
@@ -601,72 +534,14 @@ def process_claim(claim_id):
         lock_timestamp = claim_data.get('locked_at', None)
         lock_expires_at = claim_data.get('lock_expires_at', None)
         
-        # If claim is locked by another processor, check if lock has expired
+        # If claim is locked by another processor, prevent processing (lock expiry check disabled)
         if current_processor and current_processor != request.user_id:
-            # Check if lock has expired - temporarily disabled
-            if False and lock_expires_at:
-                import pytz
-                # Use Indian Standard Time (IST)
-                ist = pytz.timezone('Asia/Kolkata')
-                current_time = datetime.now(ist)
-                # Handle both datetime objects and Firestore timestamps
-                if hasattr(lock_expires_at, 'to_pydatetime'):
-                    expires_time = lock_expires_at.to_pydatetime()
-                    # Ensure timezone awareness
-                    if expires_time.tzinfo is None:
-                        expires_time = ist.localize(expires_time)
-                    else:
-                        expires_time = expires_time.astimezone(ist)
-                elif isinstance(lock_expires_at, str):
-                    # Handle ISO format strings - convert to IST
-                    if 'T' in lock_expires_at:
-                        # Parse ISO format and convert to IST
-                        expires_time = datetime.fromisoformat(lock_expires_at.replace('Z', '+00:00'))
-                        if expires_time.tzinfo is None:
-                            expires_time = ist.localize(expires_time)
-                        else:
-                            expires_time = expires_time.astimezone(ist)
-                    else:
-                        # Handle other string formats
-                        expires_time = datetime.fromisoformat(lock_expires_at)
-                        if expires_time.tzinfo is None:
-                            expires_time = ist.localize(expires_time)
-                else:
-                    expires_time = lock_expires_at
-                    # Ensure timezone awareness
-                    if expires_time.tzinfo is None:
-                        expires_time = ist.localize(expires_time)
-                    else:
-                        expires_time = expires_time.astimezone(ist)
-                
-                if current_time > expires_time:
-                    # Lock expired, clear it and allow processing
-                    print(f"🔍 DEBUG: Lock expired for claim {claim_id}, clearing lock before processing")
-                    db.collection('direct_claims').document(claim_id).update({
-                        'locked_by_processor': None,
-                        'locked_by_processor_email': None,
-                        'locked_by_processor_name': None,
-                        'locked_at': None,
-                        'lock_expires_at': None
-                    })
-                    # Continue with processing
-                else:
-                    # Lock is still valid
-                    return jsonify({
-                        'success': False,
-                        'error': f'Claim is currently being processed by {current_processor_email}. Please try again later.',
-                        'locked_by': current_processor_email,
-                        'locked_at': str(lock_timestamp) if lock_timestamp else 'Unknown',
-                        'expires_at': str(expires_time)
-                    }), 409  # Conflict status
-            else:
-                # No expiry time set, consider it locked
-                return jsonify({
-                    'success': False,
-                    'error': f'Claim is currently being processed by {current_processor_email}. Please try again later.',
-                    'locked_by': current_processor_email,
-                    'locked_at': str(lock_timestamp) if lock_timestamp else 'Unknown'
-                }), 409  # Conflict status
+            return jsonify({
+                'success': False,
+                'error': f'Claim is currently being processed by {current_processor_email}. Please try again later.',
+                'locked_by': current_processor_email,
+                'locked_at': str(lock_timestamp) if lock_timestamp else 'Unknown'
+            }), 409  # Conflict status
         
         # 🔒 CHECK MAXIMUM LOCK LIMIT - Processors can only lock up to 3 claims at a time
         # Clean up expired locks first
@@ -691,9 +566,7 @@ def process_claim(claim_id):
             }), 400
         
         # 🔒 LOCK THE CLAIM - Set lock before processing
-        import pytz
-        ist = pytz.timezone('Asia/Kolkata')
-        lock_expiry = datetime.now(ist) + timedelta(hours=1)
+        lock_expiry = datetime.now(IST) + timedelta(hours=1)
         lock_data = {
             'locked_by_processor': request.user_id,
             'locked_by_processor_email': request.user_email,
@@ -739,8 +612,6 @@ def process_claim(claim_id):
         
         # Capture QC Clear Date when status is qc_clear
         if new_status == 'qc_clear':
-            import pytz
-            ist = pytz.timezone('Asia/Kolkata')
             # Use manually provided date if available, otherwise use current date
             if qc_clear_date:
                 try:
@@ -754,16 +625,16 @@ def process_claim(claim_id):
                         parsed_date = datetime.fromisoformat(qc_clear_date.replace('Z', '+00:00'))
                         # Ensure it's in IST timezone
                         if parsed_date.tzinfo is None:
-                            parsed_date = ist.localize(parsed_date)
+                            parsed_date = IST.localize(parsed_date)
                         else:
-                            parsed_date = parsed_date.astimezone(ist)
+                            parsed_date = parsed_date.astimezone(IST)
                     update_data['qc_clear_date'] = parsed_date
                 except Exception as e:
                     print(f"⚠️ Warning: Could not parse provided qc_clear_date '{qc_clear_date}': {e}. Using current date.")
-                    update_data['qc_clear_date'] = datetime.now(ist)
+                    update_data['qc_clear_date'] = datetime.now(IST)
             else:
                 # No date provided, use current date/time
-                update_data['qc_clear_date'] = datetime.now(ist)
+                update_data['qc_clear_date'] = datetime.now(IST)
         
         # Capture Approved Amount when status is claim_approved
         if new_status == 'claim_approved':
@@ -1241,77 +1112,13 @@ def lock_claim(claim_id):
         
         # Check if claim is locked by another processor AND not expired
         if current_processor and current_processor != request.user_id:
-            # Check if lock has expired - temporarily disabled
-            if False and lock_expires_at:
-                import pytz
-                # Use Indian Standard Time (IST)
-                ist = pytz.timezone('Asia/Kolkata')
-                current_time = datetime.now(ist)
-                # Handle both datetime objects and Firestore timestamps
-                if hasattr(lock_expires_at, 'to_pydatetime'):
-                    expires_time = lock_expires_at.to_pydatetime()
-                    # Ensure timezone awareness
-                    if expires_time.tzinfo is None:
-                        expires_time = ist.localize(expires_time)
-                    else:
-                        expires_time = expires_time.astimezone(ist)
-                elif isinstance(lock_expires_at, str):
-                    # Handle ISO format strings - convert to IST
-                    if 'T' in lock_expires_at:
-                        # Parse ISO format and convert to IST
-                        expires_time = datetime.fromisoformat(lock_expires_at.replace('Z', '+00:00'))
-                        if expires_time.tzinfo is None:
-                            expires_time = ist.localize(expires_time)
-                        else:
-                            expires_time = expires_time.astimezone(ist)
-                    else:
-                        # Handle other string formats
-                        expires_time = datetime.fromisoformat(lock_expires_at)
-                        if expires_time.tzinfo is None:
-                            expires_time = ist.localize(expires_time)
-                else:
-                    expires_time = lock_expires_at
-                    # Ensure timezone awareness
-                    if expires_time.tzinfo is None:
-                        expires_time = ist.localize(expires_time)
-                    else:
-                        expires_time = expires_time.astimezone(ist)
-                
-                if current_time > expires_time:
-                    # Lock expired, clear it and allow locking
-                    print(f"🔍 DEBUG: Lock expired for claim {claim_id}, clearing lock")
-                    print(f"🔍 DEBUG: Current time: {current_time}")
-                    print(f"🔍 DEBUG: Expires time: {expires_time}")
-                    print(f"🔍 DEBUG: Time difference: {current_time - expires_time}")
-                    db.collection('direct_claims').document(claim_id).update({
-                        'locked_by_processor': None,
-                        'locked_by_processor_email': None,
-                        'locked_by_processor_name': None,
-                        'locked_at': None,
-                        'lock_expires_at': None
-                    })
-                    # Continue with locking process
-                else:
-                    # Lock is still valid
-                    print(f"🔍 DEBUG: Lock still valid for claim {claim_id}")
-                    print(f"🔍 DEBUG: Current time: {current_time}")
-                    print(f"🔍 DEBUG: Expires time: {expires_time}")
-                    print(f"🔍 DEBUG: Time difference: {expires_time - current_time}")
-                    return jsonify({
-                        'success': False,
-                        'error': f'Claim is currently being processed by {current_processor_email}. Please try again later.',
-                        'locked_by': current_processor_email,
-                        'locked_at': str(lock_timestamp) if lock_timestamp else 'Unknown',
-                        'expires_at': str(expires_time)
-                    }), 409  # Conflict status
-            else:
-                # No expiry time set, consider it locked
-                return jsonify({
-                    'success': False,
-                    'error': f'Claim is currently being processed by {current_processor_email}. Please try again later.',
-                    'locked_by': current_processor_email,
-                    'locked_at': str(lock_timestamp) if lock_timestamp else 'Unknown'
-                }), 409  # Conflict status
+            # Lock expiry check disabled - claim is locked by another processor
+            return jsonify({
+                'success': False,
+                'error': f'Claim is currently being processed by {current_processor_email}. Please try again later.',
+                'locked_by': current_processor_email,
+                'locked_at': str(lock_timestamp) if lock_timestamp else 'Unknown'
+            }), 409  # Conflict status
         
         # 🔒 CHECK MAXIMUM LOCK LIMIT - Processors can only lock up to 3 claims at a time
         # Clean up expired locks first
@@ -1336,9 +1143,7 @@ def lock_claim(claim_id):
             }), 400
         
         # Lock the claim for 1 hour
-        import pytz
-        ist = pytz.timezone('Asia/Kolkata')
-        lock_expiry = datetime.now(ist) + timedelta(hours=1)
+        lock_expiry = datetime.now(IST) + timedelta(hours=1)
         lock_data = {
             'locked_by_processor': request.user_id,
             'locked_by_processor_email': request.user_email,
@@ -1461,58 +1266,10 @@ def check_claim_lock(claim_id):
         locked_at = claim_data.get('locked_at', None)
         lock_expires_at = claim_data.get('lock_expires_at', None)
         
-        # Check if lock has expired
+        # Check if lock exists (lock expiry check disabled)
         is_locked = False
         if locked_by and locked_by != request.user_id:
-            # Check if lock has expired - temporarily disabled
-            if False and lock_expires_at:
-                import pytz
-                ist = pytz.timezone('Asia/Kolkata')
-                current_time = datetime.now(ist)
-                # Handle both datetime objects and Firestore timestamps
-                if hasattr(lock_expires_at, 'to_pydatetime'):
-                    expires_time = lock_expires_at.to_pydatetime()
-                    # Ensure timezone awareness
-                    if expires_time.tzinfo is None:
-                        expires_time = ist.localize(expires_time)
-                    else:
-                        expires_time = expires_time.astimezone(ist)
-                elif isinstance(lock_expires_at, str):
-                    # Handle ISO format strings - convert to IST
-                    if 'T' in lock_expires_at:
-                        # Parse ISO format and convert to IST
-                        expires_time = datetime.fromisoformat(lock_expires_at.replace('Z', '+00:00'))
-                        if expires_time.tzinfo is None:
-                            expires_time = ist.localize(expires_time)
-                        else:
-                            expires_time = expires_time.astimezone(ist)
-                    else:
-                        # Handle other string formats
-                        expires_time = datetime.fromisoformat(lock_expires_at)
-                        if expires_time.tzinfo is None:
-                            expires_time = ist.localize(expires_time)
-                else:
-                    expires_time = lock_expires_at
-                    # Ensure timezone awareness
-                    if expires_time.tzinfo is None:
-                        expires_time = ist.localize(expires_time)
-                    else:
-                        expires_time = expires_time.astimezone(ist)
-                
-                if current_time > expires_time:
-                    # Lock expired, clear it
-                    db.collection('direct_claims').document(claim_id).update({
-                        'locked_by_processor': None,
-                        'locked_by_processor_email': None,
-                        'locked_by_processor_name': None,
-                        'locked_at': None,
-                        'lock_expires_at': None
-                    })
-                    is_locked = False
-                else:
-                    is_locked = True
-            else:
-                is_locked = True
+            is_locked = True
         
         return jsonify({
             'success': True,
