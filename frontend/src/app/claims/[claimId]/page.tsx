@@ -518,15 +518,28 @@ export default function ClaimDetailsPage() {
       setError(null)
       
       console.log('🔍 Fetching claim details for:', claimId)
+      console.log('🔍 Current user:', user)
+      console.log('🔍 User role:', user?.role)
+      console.log('🔍 Is review mode:', isReviewMode)
+      
       const token = localStorage.getItem('auth_token')
       console.log('🔍 Token from localStorage:', token ? 'Token exists' : 'No token found')
       console.log('🔍 Token length:', token ? token.length : 0)
+      
+      if (!token) {
+        console.error('❌ No auth token found!')
+        setError('Authentication required. Please login again.')
+        setLoading(false)
+        return
+      }
       
       const encodedId = encodeURIComponent(claimId)
       
       // Determine the correct endpoint based on user role
       const processorRoles = ['claim_processor', 'claim_processor_l1', 'claim_processor_l2', 'claim_processor_l3', 'claim_processor_l4']
       const isProcessor = user && processorRoles.includes(user.role as string)
+      
+      console.log('🔍 Is processor?', isProcessor, 'Role:', user?.role)
       
       let endpoint
       if (isReviewMode) {
@@ -540,6 +553,7 @@ export default function ClaimDetailsPage() {
       }
       
       console.log('🔍 Using endpoint:', endpoint, 'for role:', user?.role)
+      console.log('🔍 API_BASE_URL:', API_BASE_URL)
 
       const response = await fetch(endpoint, {
         method: 'GET',

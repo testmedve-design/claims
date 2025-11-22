@@ -71,7 +71,7 @@ export const DEFAULT_ROLE_PAGES: Record<Role, string> = {
 export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/claims': ['hospital_user'],
   '/claims/new': ['hospital_user'],
-  '/claims/[claimId]': ['hospital_user', 'review_request'],
+  '/claims/[claimId]': ['hospital_user', 'review_request', 'claim_processor', 'claim_processor_l1', 'claim_processor_l2', 'claim_processor_l3', 'claim_processor_l4'],
   '/drafts': ['hospital_user'],
   '/claims-inbox': ['hospital_user'],
   '/claims-inbox/[claimId]': ['hospital_user'],

@@ -931,10 +931,15 @@ def process_claim(claim_id):
 def get_claim_details(claim_id):
     """Get detailed claim information for processing - PROCESSORS ONLY"""
     try:
+        print(f"🔍 Processor get-claim-details endpoint called with claim_id: {claim_id}")
+        print(f"🔍 Request headers: Authorization={bool(request.headers.get('Authorization'))}")
+        
         db = get_firestore()
         
         # Get processor's role and approval limit
         user_role = getattr(request, 'user_role', '').lower()
+        user_email = getattr(request, 'user_email', '')
+        print(f"🔍 Processor role: {user_role}, email: {user_email}")
         processor_limit = PROCESSOR_APPROVAL_LIMITS.get(user_role, float('inf'))
         
         # Normalize claim ID (handle URL encoding and variations)

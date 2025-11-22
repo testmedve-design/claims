@@ -9,4 +9,14 @@ const NORMALIZED_API_HOST = TRIMMED_API_HOST.endsWith('/api')
 export const API_HOST = NORMALIZED_API_HOST
 export const API_BASE_URL = `${NORMALIZED_API_HOST}/api`
 
+// Debug logging (only in development)
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  console.log('🔧 API Configuration:', {
+    'NEXT_PUBLIC_API_URL': process.env.NEXT_PUBLIC_API_URL,
+    'RAW_API_HOST': RAW_API_HOST,
+    'NORMALIZED_API_HOST': NORMALIZED_API_HOST,
+    'API_BASE_URL': API_BASE_URL
+  })
+}
+
 
