@@ -227,12 +227,44 @@ def get_claims_to_process():
             print(f"⚠️ Processor: Could not sort by updated_at: {e}. Using unsorted query.")
             claims = query.get()
             # Sort in Python by updated_at or processed_at
-            claims = sorted(claims, key=lambda doc: (
-                doc.to_dict().get('updated_at') or 
-                doc.to_dict().get('processed_at') or 
-                doc.to_dict().get('created_at') or 
-                datetime.min
-            ), reverse=True)
+            # Helper function to safely extract datetime from Firestore timestamp
+            def get_datetime_for_sorting(doc):
+                claim_data = doc.to_dict()
+                # Try to get datetime from various fields
+                for field in ['updated_at', 'processed_at', 'created_at']:
+                    value = claim_data.get(field)
+                    if value:
+                        try:
+                            # Handle Firestore Timestamp objects
+                            if hasattr(value, 'to_pydatetime'):
+                                dt = value.to_pydatetime()
+                                # Make timezone-naive for consistent comparison
+                                if dt.tzinfo is not None:
+                                    dt = dt.replace(tzinfo=None)
+                                return dt
+                            # Handle datetime objects
+                            elif isinstance(value, datetime):
+                                dt = value
+                                # Make timezone-naive for consistent comparison
+                                if dt.tzinfo is not None:
+                                    dt = dt.replace(tzinfo=None)
+                                return dt
+                            # Handle string timestamps (convert if needed)
+                            elif isinstance(value, str):
+                                try:
+                                    dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                                    # Make timezone-naive for consistent comparison
+                                    if dt.tzinfo is not None:
+                                        dt = dt.replace(tzinfo=None)
+                                    return dt
+                                except:
+                                    continue
+                        except Exception:
+                            continue
+                # Return minimum datetime if no valid timestamp found
+                return datetime.min.replace(tzinfo=None)
+            
+            claims = sorted(claims, key=get_datetime_for_sorting, reverse=True)
         
         # Get processor's affiliated hospitals
         processor_hospitals = []
@@ -409,6 +441,10 @@ def get_claims_to_process():
         }), 200
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"❌ Error in get_claims_to_process: {str(e)}")
+        print(f"❌ Traceback:\n{error_trace}")
         return jsonify({
             'success': False,
             'error': str(e)
