@@ -242,14 +242,28 @@ def get_claims_to_process():
                     simple_query = simple_query.where('claim_status', 'in', ['qc_pending', 'need_more_info', 'qc_answered'])
                 claims = simple_query.get()
             
-            # Sort in Python by updated_at or processed_at
+            # Sort in Python by updated_at or processed_at (latest first)
             if claims:
-                claims = sorted(claims, key=lambda doc: (
-                    doc.to_dict().get('updated_at') or 
-                    doc.to_dict().get('processed_at') or 
-                    doc.to_dict().get('created_at') or 
-                    datetime.min
-                ), reverse=True)
+                def get_sort_time(doc):
+                    data = doc.to_dict()
+                    # Try updated_at first (most recent activity)
+                    time_field = data.get('updated_at') or data.get('processed_at') or data.get('created_at')
+                    if time_field:
+                        # Handle Firestore timestamp objects
+                        if hasattr(time_field, 'timestamp') and callable(getattr(time_field, 'timestamp', None)):
+                            return time_field.timestamp()
+                        # Handle datetime objects
+                        elif isinstance(time_field, datetime):
+                            return time_field.timestamp()
+                        # Handle ISO format strings
+                        elif isinstance(time_field, str):
+                            try:
+                                return datetime.fromisoformat(time_field.replace('Z', '+00:00')).timestamp()
+                            except:
+                                pass
+                    return 0  # Put items without timestamp at the end
+                
+                claims = sorted(claims, key=get_sort_time, reverse=True)
         
         # Get processor's affiliated hospitals
         processor_hospitals = []

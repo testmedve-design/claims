@@ -428,12 +428,21 @@ def get_review_claims():
                     if doc.id not in seen_doc_ids:
                         claim_docs.append(doc)
                         seen_doc_ids.add(doc.id)
-            # Sort in Python if Firestore sorting didn't work
-            claim_docs = sorted(claim_docs, key=lambda doc: (
-                doc.to_dict().get('updated_at') or 
-                doc.to_dict().get('created_at') or 
-                datetime.min
-            ), reverse=True)
+            # Sort in Python if Firestore sorting didn't work (latest first)
+            def get_sort_time(doc):
+                data = doc.to_dict()
+                time_field = data.get('updated_at') or data.get('created_at')
+                if time_field:
+                    if hasattr(time_field, 'timestamp'):
+                        return time_field.timestamp()
+                    if isinstance(time_field, str):
+                        try:
+                            return datetime.fromisoformat(time_field.replace('Z', '+00:00')).timestamp()
+                        except:
+                            pass
+                return 0
+            
+            claim_docs = sorted(claim_docs, key=get_sort_time, reverse=True)
         elif status_key == 'all':
             # Get all claims (no status filter)
             try:
@@ -441,12 +450,26 @@ def get_review_claims():
                 claim_docs = query.get()
             except:
                 claim_docs = query.get()
-                # Sort in Python
-                claim_docs = sorted(claim_docs, key=lambda doc: (
-                    doc.to_dict().get('updated_at') or 
-                    doc.to_dict().get('created_at') or 
-                    datetime.min
-                ), reverse=True)
+                # Sort in Python (latest first)
+                def get_sort_time(doc):
+                    data = doc.to_dict()
+                    time_field = data.get('updated_at') or data.get('created_at')
+                    if time_field:
+                        # Handle Firestore timestamp objects
+                        if hasattr(time_field, 'timestamp') and callable(getattr(time_field, 'timestamp', None)):
+                            return time_field.timestamp()
+                        # Handle datetime objects
+                        elif isinstance(time_field, datetime):
+                            return time_field.timestamp()
+                        # Handle ISO format strings
+                        elif isinstance(time_field, str):
+                            try:
+                                return datetime.fromisoformat(time_field.replace('Z', '+00:00')).timestamp()
+                            except:
+                                pass
+                    return 0
+                
+                claim_docs = sorted(claim_docs, key=get_sort_time, reverse=True)
         else:
             # Default: pending/dispatched claims only
             try:

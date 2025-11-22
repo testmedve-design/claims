@@ -43,12 +43,27 @@ def _fetch_claims_for_user(status, limit, start_date, end_date, user_hospital_id
         # If index doesn't exist, fallback to unsorted query
         print(f"⚠️ Claims: Could not sort by updated_at: {e}. Using unsorted query.")
         claims = query.get()
-        # Sort in Python by updated_at or created_at
-        claims = sorted(claims, key=lambda doc: (
-            doc.to_dict().get('updated_at') or 
-            doc.to_dict().get('created_at') or 
-            datetime.min
-        ), reverse=True)
+        # Sort in Python by updated_at or created_at (latest first)
+        def get_sort_time(doc):
+            data = doc.to_dict()
+            # Try updated_at first (most recent activity)
+            time_field = data.get('updated_at') or data.get('created_at')
+            if time_field:
+                # Handle Firestore timestamp objects
+                if hasattr(time_field, 'timestamp') and callable(getattr(time_field, 'timestamp', None)):
+                    return time_field.timestamp()
+                # Handle datetime objects
+                elif isinstance(time_field, datetime):
+                    return time_field.timestamp()
+                # Handle ISO format strings
+                elif isinstance(time_field, str):
+                    try:
+                        return datetime.fromisoformat(time_field.replace('Z', '+00:00')).timestamp()
+                    except:
+                        pass
+            return 0  # Put items without timestamp at the end
+        
+        claims = sorted(claims, key=get_sort_time, reverse=True)
 
     claims_list = []
     excluded_count = 0
