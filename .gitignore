@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+claims-portal/node_modules/
+
+# Next.js build output
+frontend/.next/
+claims-portal/.next/
+.next/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Environment files
+.env
+.env.local
+.env*.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+ENV/
+
+# Logs
+*.log
+logs/
+
