@@ -16,6 +16,30 @@ from utils.letter_templates import build_processor_letter_metadata
 processor_bp = Blueprint('processor_routes', __name__)
 
 
+def safe_timestamp_to_str(timestamp_value):
+    """Safely convert Firestore Timestamp or datetime to ISO string."""
+    if timestamp_value is None:
+        return ''
+    
+    try:
+        # Handle Firestore Timestamp objects
+        if hasattr(timestamp_value, 'to_pydatetime'):
+            dt = timestamp_value.to_pydatetime()
+            return dt.isoformat()
+        # Handle datetime objects
+        elif isinstance(timestamp_value, datetime):
+            return timestamp_value.isoformat()
+        # Handle string values
+        elif isinstance(timestamp_value, str):
+            return timestamp_value
+        # Fallback to string conversion
+        else:
+            return str(timestamp_value)
+    except Exception as e:
+        print(f"⚠️ Error converting timestamp to string: {e}")
+        return ''
+
+
 def get_processor_status_options(db, hospital_id):
     """Fetch processor status toggles for a hospital."""
     default_options = {
@@ -86,8 +110,8 @@ def test_locks():
                 'locked_by_processor': claim_data.get('locked_by_processor', ''),
                 'locked_by_processor_email': claim_data.get('locked_by_processor_email', ''),
                 'locked_by_processor_name': claim_data.get('locked_by_processor_name', ''),
-                'locked_at': str(claim_data.get('locked_at', '')) if claim_data.get('locked_at') else '',
-                'lock_expires_at': str(claim_data.get('lock_expires_at', '')) if claim_data.get('lock_expires_at') else ''
+                'locked_at': safe_timestamp_to_str(claim_data.get('locked_at')),
+                'lock_expires_at': safe_timestamp_to_str(claim_data.get('lock_expires_at'))
             })
         
         return jsonify({
@@ -130,8 +154,8 @@ def get_claims_to_process_no_auth():
             claims_list.append({
                 'claim_id': claim_data.get('claim_id', doc.id),
                 'claim_status': claim_data.get('claim_status', ''),
-                'created_at': str(claim_data.get('created_at', '')),
-                'submission_date': str(claim_data.get('submission_date', '')),
+                'created_at': safe_timestamp_to_str(claim_data.get('created_at')),
+                'submission_date': safe_timestamp_to_str(claim_data.get('submission_date')),
                 'patient_name': claim_data.get('form_data', {}).get('patient_name', ''),
                 'claimed_amount': claim_data.get('form_data', {}).get('claimed_amount', ''),
                 'payer_name': claim_data.get('form_data', {}).get('payer_name', ''),
@@ -142,8 +166,8 @@ def get_claims_to_process_no_auth():
                 'locked_by_processor': claim_data.get('locked_by_processor', ''),
                 'locked_by_processor_email': claim_data.get('locked_by_processor_email', ''),
                 'locked_by_processor_name': claim_data.get('locked_by_processor_name', ''),
-                'locked_at': str(claim_data.get('locked_at', '')) if claim_data.get('locked_at') else '',
-                'lock_expires_at': str(claim_data.get('lock_expires_at', '')) if claim_data.get('lock_expires_at') else ''
+                'locked_at': safe_timestamp_to_str(claim_data.get('locked_at')),
+                'lock_expires_at': safe_timestamp_to_str(claim_data.get('lock_expires_at'))
             })
         
         return jsonify({
@@ -415,8 +439,8 @@ def get_claims_to_process():
             claims_list.append({
                 'claim_id': claim_data.get('claim_id', doc.id),
                 'claim_status': claim_data.get('claim_status', ''),
-                'created_at': str(claim_data.get('created_at', '')),
-                'submission_date': str(claim_data.get('submission_date', '')),
+                'created_at': safe_timestamp_to_str(claim_data.get('created_at')),
+                'submission_date': safe_timestamp_to_str(claim_data.get('submission_date')),
                 'patient_name': claim_data.get('form_data', {}).get('patient_name', ''),
                 'claimed_amount': claim_data.get('form_data', {}).get('claimed_amount', ''),
                 'payer_name': claim_data.get('form_data', {}).get('payer_name', ''),
@@ -427,8 +451,14 @@ def get_claims_to_process():
                 'locked_by_processor': claim_data.get('locked_by_processor', ''),
                 'locked_by_processor_email': claim_data.get('locked_by_processor_email', ''),
                 'locked_by_processor_name': claim_data.get('locked_by_processor_name', ''),
-                'locked_at': str(claim_data.get('locked_at', '')) if claim_data.get('locked_at') else '',
-                'lock_expires_at': str(claim_data.get('lock_expires_at', '')) if claim_data.get('lock_expires_at') else ''
+                'locked_at': safe_timestamp_to_str(claim_data.get('locked_at')),
+                'lock_expires_at': safe_timestamp_to_str(claim_data.get('lock_expires_at')),
+                # Processing information
+                'processed_by': claim_data.get('processed_by', ''),
+                'processed_by_email': claim_data.get('processed_by_email', ''),
+                'processed_by_name': claim_data.get('processed_by_name', ''),
+                'processed_at': safe_timestamp_to_str(claim_data.get('processed_at')),
+                'processing_remarks': claim_data.get('processing_remarks', '')
             })
         
         # Apply limit after filtering
