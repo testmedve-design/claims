@@ -157,8 +157,10 @@ export default function ReviewedClaimsPage() {
   const fetchReviewedClaims = async () => {
     try {
       setIsFetching(true)
+      // UNIVERSAL: Simple API call - backend handles all filtering
       const response = await reviewRequestApi.getClaims({ status: 'completed' })
       if (response.success) {
+        // UNIVERSAL: Display what backend returns (no frontend filtering)
         setClaims(response.claims)
       } else {
         throw new Error(response.error || 'Failed to fetch reviewed claims')

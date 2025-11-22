@@ -60,9 +60,9 @@ const getNavigationItems = (userRole: string, unreadCount: number): NavItem[] =>
     'claim_processor_l4',
   ]
 
-  const reportsNavItem: NavItem = {
-    title: 'Reports',
-    href: '/reports',
+  const analyticsNavItem: NavItem = {
+    title: 'Analytics',
+    href: '/analytics',
     icon: BarChart3,
     divider: true,
   }
@@ -80,7 +80,7 @@ const getNavigationItems = (userRole: string, unreadCount: number): NavItem[] =>
         href: '/processor-inbox',
         icon: Activity,
       },
-      reportsNavItem,
+      analyticsNavItem,
       {
         title: 'Profile',
         href: '/profile',
@@ -90,11 +90,17 @@ const getNavigationItems = (userRole: string, unreadCount: number): NavItem[] =>
   } else if (userRole === 'rm' || userRole === 'reconciler') {
     return [
       {
+        title: 'Notifications',
+        href: '/notifications',
+        icon: Bell,
+        badge: notificationsBadge,
+      },
+      {
         title: 'RM Inbox',
         href: '/rm-inbox',
         icon: Activity,
       },
-      reportsNavItem,
+      analyticsNavItem,
       {
         title: 'Profile',
         href: '/profile',
@@ -114,7 +120,7 @@ const getNavigationItems = (userRole: string, unreadCount: number): NavItem[] =>
         href: '/review-request-inbox/reviewed',
         icon: CheckCircle2,
       },
-      reportsNavItem,
+      analyticsNavItem,
       {
         title: 'Profile',
         href: '/profile',
@@ -139,7 +145,7 @@ const getNavigationItems = (userRole: string, unreadCount: number): NavItem[] =>
         href: '/claims',
         icon: FileText,
       },
-      reportsNavItem,
+      analyticsNavItem,
       {
         title: 'Drafts',
         href: '/drafts',

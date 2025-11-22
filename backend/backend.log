@@ -1,0 +1,2950 @@
+🔧 Using Firebase credentials from file
+✅ Firebase Admin SDK initialized successfully
+🧹 Background lock cleanup thread started
+✅ Background lock cleanup scheduler started (runs every 5 minutes)
+🚀 Starting Hospital Claims Management System...
+📍 Server: http://0.0.0.0:5002
+🔧 Debug Mode: False
+📊 Environment: development
+ * Serving Flask app 'app'
+ * Debug mode: off
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/cloud/firestore_v1/base_collection.py:304: UserWarning: Detected filter using positional arguments. Prefer using the 'filter' keyword argument instead.
+  return query.where(field_path, op_string, value)
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5002
+ * Running on http://192.168.29.122:5002
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:14:41] "OPTIONS /api/v1/claims/get-all-claims HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:14:41] "OPTIONS /api/v1/claims/get-all-claims HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:14:42] "GET /api/v1/claims/get-all-claims HTTP/1.1" 200 -
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+
+================================================================================
+🚀 GET-ALL-CLAIMS ENDPOINT CALLED
+  URL: http://localhost:5002/api/v1/claims/get-all-claims
+  Method: GET
+  Headers: {'Host': 'localhost:5002', 'Connection': 'keep-alive', 'Pragma': 'no-cache', 'Cache-Control': 'no-cache', 'Sec-Ch-Ua-Platform': '"macOS"', 'Authorization': 'Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJraWQiOiAiMTNiOThhNDNjODg4MjQyNWQyZTNiYzdhMzNlNTE4ODQyMDIxYTkwYSJ9.eyJpc3MiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJzdWIiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJhdWQiOiAiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCAidWlkIjogIlpEeEZ4dlZWbzZOTVZYTkJxTW5TbkVsOWVnbDEiLCAiaWF0IjogMTc2MjIzNzg1OSwgImV4cCI6IDE3NjIyNDE0NTl9.gRMEuR7BW9_kool7bUYB_0ek1hhrMTRgVJVYn4tUpOSeY45_L-67GFxLhAA2b2y1l5gc5c8LVTqm1jqZu8m6WYitha-5Sj4tAYt1BaWZz0YRcQMToI68vrbZcL-68qFfRFVM8sTmf11qcMTcDV8MsUj9l5eG2YdO1Ilt5GzJc_Lv-Mk7gz-4sK4-uFOFNn0wmQaVLvkY4thsvGmXdOMRTKxejzwnkPAt8d9_I0zUQiu8viSflM3TvAH1MSKdGkMJcc1ieSfuwBE7vnQZ0RIayAniCKzJj4v6gUtLmpjUI-eExyXLVTmM_v15EFuWMQH-gTJXaFg7iZ2wtpEaiUxU8w', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', 'Sec-Ch-Ua': '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"', 'Content-Type': 'application/json', 'Sec-Ch-Ua-Mobile': '?0', 'Accept': '*/*', 'Origin': 'http://localhost:3000', 'Sec-Fetch-Site': 'same-site', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Dest': 'empty', 'Referer': 'http://localhost:3000/', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9'}
+================================================================================
+
+
+================================================================================
+OPTIMIZED GET-ALL-CLAIMS: User Info
+  Email: testmedverve1@gmail.com
+  Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  Hospital Name: 'KASTRUBHA HOSPITAL'
+  Limit: 50
+================================================================================
+
+✓ Using simple query approach (no filters) to avoid index requirements
+✓ All filtering will be done in-memory:
+  - Hospital filter: kfKMVepryag5VK2jJwLv
+  - Status filter: all
+  - Date filter: None to None
+  - Draft exclusion: Yes
+✓ Applied Firestore limit: 500 (will filter in memory)
+⚡ Executing simple Firestore query (no filters)...
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+
+================================================================================
+🚀 GET-ALL-CLAIMS ENDPOINT CALLED
+  URL: http://localhost:5002/api/v1/claims/get-all-claims
+  Method: GET
+  Headers: {'Host': 'localhost:5002', 'Connection': 'keep-alive', 'Pragma': 'no-cache', 'Cache-Control': 'no-cache', 'Sec-Ch-Ua-Platform': '"macOS"', 'Authorization': 'Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJraWQiOiAiMTNiOThhNDNjODg4MjQyNWQyZTNiYzdhMzNlNTE4ODQyMDIxYTkwYSJ9.eyJpc3MiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJzdWIiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJhdWQiOiAiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCAidWlkIjogIlpEeEZ4dlZWbzZOTVZYTkJxTW5TbkVsOWVnbDEiLCAiaWF0IjogMTc2MjIzNzg1OSwgImV4cCI6IDE3NjIyNDE0NTl9.gRMEuR7BW9_kool7bUYB_0ek1hhrMTRgVJVYn4tUpOSeY45_L-67GFxLhAA2b2y1l5gc5c8LVTqm1jqZu8m6WYitha-5Sj4tAYt1BaWZz0YRcQMToI68vrbZcL-68qFfRFVM8sTmf11qcMTcDV8MsUj9l5eG2YdO1Ilt5GzJc_Lv-Mk7gz-4sK4-uFOFNn0wmQaVLvkY4thsvGmXdOMRTKxejzwnkPAt8d9_I0zUQiu8viSflM3TvAH1MSKdGkMJcc1ieSfuwBE7vnQZ0RIayAniCKzJj4v6gUtLmpjUI-eExyXLVTmM_v15EFuWMQH-gTJXaFg7iZ2wtpEaiUxU8w', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', 'Sec-Ch-Ua': '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"', 'Content-Type': 'application/json', 'Sec-Ch-Ua-Mobile': '?0', 'Accept': '*/*', 'Origin': 'http://localhost:3000', 'Sec-Fetch-Site': 'same-site', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Dest': 'empty', 'Referer': 'http://localhost:3000/', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9'}
+================================================================================
+
+
+================================================================================
+OPTIMIZED GET-ALL-CLAIMS: User Info
+  Email: testmedverve1@gmail.com
+  Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  Hospital Name: 'KASTRUBHA HOSPITAL'
+  Limit: 50
+================================================================================
+
+✓ Using simple query approach (no filters) to avoid index requirements
+✓ All filtering will be done in-memory:
+  - Hospital filter: kfKMVepryag5VK2jJwLv
+  - Status filter: all
+  - Date filter: None to None
+  - Draft exclusion: Yes
+✓ Applied Firestore limit: 500 (will filter in memory)
+⚡ Executing simple Firestore query (no filters)...
+⚡ Fetched 219 claims from Firestore (will filter in memory)
+🔍 Processing 219 claims...
+
+================================================================================
+FILTERING SUMMARY:
+  Total claims queried from Firestore: 219
+  Filtered by prefix (not CSHLSIP/CLS): 0
+  Filtered by hospital name mismatch: 194
+  Filtered by draft status: 8
+  Final claims returned: 17
+================================================================================
+
+⚡ Fetched 219 claims from Firestore (will filter in memory)
+🔍 Processing 219 claims...
+
+================================================================================
+FILTERING SUMMARY:
+  Total claims queried from Firestore: 219
+  Filtered by prefix (not CSHLSIP/CLS): 0
+  Filtered by hospital name mismatch: 194
+  Filtered by draft status: 8
+  Final claims returned: 17
+================================================================================
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:14:42] "GET /api/v1/claims/get-all-claims HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:24] "OPTIONS /api/auth/login HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:25] "POST /api/auth/login HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:25] "OPTIONS /api/processor-routes/get-claims-to-process?tab=unprocessed HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:25] "OPTIONS /api/processor-routes/get-claims-to-process?tab=processed HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:26] "GET /api/processor-routes/get-claims-to-process?tab=unprocessed HTTP/1.1" 200 -
+
+🔍 DEBUG: FIREBASE_WEB_API_KEY = AIzaSyAaqgkXJXkntZBs7QQyss7Hy_HECyMXE2c
+🔍 DEBUG: API key length = 39
+🔍 DEBUG: Using Firebase API key: AIzaSyAaqg...
+🔍 DEBUG: Auth URL: https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyAaqgkXJXkntZBs7QQyss7Hy_HECyMXE2c
+🔍 DEBUG: Auth payload: {'email': 'testmedve@gmail.com', 'password': 'Medverve@123', 'returnSecureToken': True}
+🔍 DEBUG: Auth response status: 200
+🔍 DEBUG: Auth response body: {
+  "kind": "identitytoolkit#VerifyPasswordResponse",
+  "localId": "iUEMPv4EC0fj1qye6043G8cT4072",
+  "email": "testmedve@gmail.com",
+  "displayName": "medverve",
+  "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjU0NTEzMjA5OWFkNmJmNjEzODJiNmI0Y2RlOWEyZGZlZDhjYjMwZjAiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoibWVkdmVydmUiLCJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vbXYyMC1hMWEwOSIsImF1ZCI6Im12MjAtYTFhMDkiLCJhdXRoX3RpbWUiOjE3NjIyNTAwNjQsInVzZXJfaWQiOiJpVUVNUHY0RUMwZmoxcXllNjA0M0c4Y1Q0MDcyIiwic3ViIjoiaVVFTVB2NEVDMGZqMXF5ZTYwNDNHOGNUNDA3MiIsImlhdCI6MTc2MjI1MDA2NCwiZXhwIjoxNzYyMjUzNjY0LCJlbWFpbCI6InRlc3RtZWR2ZUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJ0ZXN0bWVkdmVAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoicGFzc3dvcmQifX0.B9pkGbFmZGxVpbp6UzUlkwtb_t360En7tYsm6yrY-jjdj6pr3c2fjgfkfjBNnmJFhqWFD9Ha6BS_qkENZ_bo9bLisB9EqY6LioDf3YD5OxlZvkgr79shUxStMWpvOsklpI5WWgZI4eHY0dUwECV2N-LuqmAxycaXf9sfzmkQ_JQzS00LK8JjXKWgrzSaWSmlr6Ujp_Gs41gjZ-nk1sTfTB9pGHqvnTT5Bc7jsZKwhRl-gf78Tv-D15qnGpq8kjKtpITG304LFRn2nh1dMg3afIisFqt3xv-EhtCaHCBG6AxZQ8KQlA8Murxcl-NnEMDMxsUKE-LyadPEG3rVr01lYA",
+  "registered": true,
+  "refreshToken": "AMf-vBxhSfI1x6pNxpxJKrroCRoZyjm3waI2durpoktJutFHVpHzT4-OyV4AwkYQz8URyGZVaD1VXRvAFdMh6RBkFRB2v5j0MfusglpjS2PwSleMy6KFvS_9CDj_g4c-SxJqx66807rQPngLtA9uXHgXAPLvIzSJa2QhcywzepG6AvAI5Klnf8yDRmOkmkSXkIk-wavr-r7GdcfNYSYwbz8Jcr7HnPl7UQ",
+  "expiresIn": "3600"
+}
+
+🔍 User data fields: ['created_at', 'uid', 'hospital_id', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'hospital_name', 'mobile', 'email', 'password_setup_required']
+🔍 User name field: medverve
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'medverve'
+🔍 User data fields: ['created_at', 'uid', 'hospital_id', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'hospital_name', 'mobile', 'email', 'password_setup_required']
+🔍 User name field: medverve
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'medverve'
+🔍 Processor approval limit check: Role=claim_processor_l2, Limit=₹100000
+🔍 DEBUG: Processing tab 'unprocessed' for processor inbox
+🔍 DEBUG: Filtering for unprocessed claims: qc_pending, need_more_info, qc_answered
+🔍 Processor approval limit check: Role=claim_processor_l2, Limit=₹100000
+🔍 DEBUG: Processing tab 'processed' for processor inbox
+🔍 DEBUG: Filtering for processed claims: qc_query, qc_clear, claim_approved, claim_denial
+🔍 DEBUG: Found 8 claims from query for tab 'unprocessed'
+  1. CSHLSIP-20251011-1 - Status: qc_pending
+  2. CSHLSIP-20251011-2 - Status: qc_pending
+  3. CSHLSIP-20251021-3 - Status: qc_pending
+  4. CSHLSIP-20251021-4 - Status: qc_pending
+  5. CSHLSIP-20251023-0 - Status: qc_pending
+  6. CSHLSIP-20251023-1 - Status: qc_pending
+  7. CSHLSIP-20251025-2 - Status: qc_pending
+  8. CSHLSIP-20251104-0 - Status: qc_pending
+DEBUG: Processor hospitals: [{'id': 'kfKMVepryag5VK2jJwLv', 'name': 'KASTRUBHA HOSPITAL', 'code': 'KAST'}]
+DEBUG: Processor user ID: iUEMPv4EC0fj1qye6043G8cT4072
+DEBUG: Processor email: testmedve@gmail.com
+DEBUG: Processing claim CSHLSIP-20251011-1 - status: qc_pending, hospital: DEMO Hospital
+DEBUG: Skipping claim CSHLSIP-20251011-1 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251011-2 - status: qc_pending, hospital: DEMO Hospital
+DEBUG: Skipping claim CSHLSIP-20251011-2 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251021-3 - status: qc_pending, hospital: NANO HOSPITAL
+DEBUG: Skipping claim CSHLSIP-20251021-3 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251021-4 - status: qc_pending, hospital: NANO HOSPITAL
+DEBUG: Skipping claim CSHLSIP-20251021-4 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251023-0 - status: qc_pending, hospital: NANO HOSPITAL
+DEBUG: Skipping claim CSHLSIP-20251023-0 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251023-1 - status: qc_pending, hospital: NANO HOSPITAL
+DEBUG: Skipping claim CSHLSIP-20251023-1 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251025-2 - status: qc_pending, hospital: KASTRUBHA HOSPITAL
+DEBUG: Claim CSHLSIP-20251025-2 matches hospital KASTRUBHA HOSPITAL (ID: kfKMVepryag5VK2jJwLv)
+DEBUG: Added claim CSHLSIP-20251025-2 to results
+DEBUG: Lock info for added claim CSHLSIP-20251025-2:
+  locked_by_processor: None
+  locked_by_processor_email: None
+  locked_by_processor_name: None
+  locked_at: None
+  lock_expires_at: None
+DEBUG: Processing claim CSHLSIP-20251104-0 - status: qc_pending, hospital: KASTRUBHA HOSPITAL
+DEBUG: Claim CSHLSIP-20251104-0 matches hospital KASTRUBHA HOSPITAL (ID: kfKMVepryag5VK2jJwLv)
+DEBUG: Added claim CSHLSIP-20251104-0 to results
+DEBUG: Lock info for added claim CSHLSIP-20251104-0:
+  locked_by_processor: NOT_FOUND
+  locked_by_processor_email: NOT_FOUND
+  locked_by_processor_name: NOT_FOUND
+  locked_at: NOT_FOUND
+  lock_expires_at: NOT_FOUND
+🔍 DEBUG: Claim CSHLSIP-20251025-2 lock data:
+  Document ID: CSHLSIP-20251025-2
+  All claim_data keys: ['submission_date', 'locked_by_processor_name', 'documents', 'hospital_name', 'created_at', 'show_in_preauth', 'hospital_id', 'show_in_reimb', 'form_data', 'updated_at', 'show_in_claims', 'locked_by_processor_email', 'created_in_module', 'claim_type', 'locked_at', 'is_draft', 'locked_by_processor', 'created_by', 'created_by_name', 'created_by_email', 'claim_id', 'lock_expires_at', 'claim_status']
+  locked_by_processor: None
+  locked_by_processor_email: None
+  locked_by_processor_name: None
+  locked_at: None
+  lock_expires_at: None
+🔍 DEBUG: Claim CSHLSIP-20251104-0 lock data:
+  Document ID: CSHLSIP-20251104-0
+  All claim_data keys: ['submission_date', 'created_at', 'hospital_id', 'show_in_preauth', 'show_in_reimb', 'form_data', 'updated_at', 'submission_type', 'show_in_claims', 'created_in_module', 'claim_type', 'is_draft', 'claim_status', 'hospital_name', 'created_by_email', 'claim_id', 'created_by_name', 'created_by']
+  locked_by_processor: NOT_FOUND
+  locked_by_processor_email: NOT_FOUND
+  locked_by_processor_name: NOT_FOUND
+  locked_at: NOT_FOUND
+  lock_expires_at: NOT_FOUND
+🔍 DEBUG: Found 1 claims from query for tab 'processed'
+  1. CSHLSIP-20251023-3 - Status: qc_query
+DEBUG: Processor hospitals: [{'id': 'kfKMVepryag5VK2jJwLv', 'name': 'KASTRUBHA HOSPITAL', 'code': 'KAST'}]
+DEBUG: Processor user ID: iUEMPv4EC0fj1qye6043G8cT4072
+DEBUG: Processor email: testmedve@gmail.com
+DEBUG: Processing claim CSHLSIP-20251023-3 - status: qc_query, hospital: KASTRUBHA HOSPITAL
+DEBUG: Claim CSHLSIP-20251023-3 matches hospital KASTRUBHA HOSPITAL (ID: kfKMVepryag5VK2jJwLv)
+DEBUG: Added claim CSHLSIP-20251023-3 to results
+DEBUG: Lock info for added claim CSHLSIP-20251023-3:
+  locked_by_processor: None
+  locked_by_processor_email: None
+  locked_by_processor_name: None
+  locked_at: None
+  lock_expires_at: None
+🔍 DEBUG: Claim CSHLSIP-20251023-3 lock data:
+  Document ID: CSHLSIP-20251023-3
+  All claim_data keys: ['created_at', 'hospital_id', 'query_answered_by_email', 'form_data', 'updated_at', 'processed_at', 'locked_by_processor_email', 'created_in_module', 'is_draft', 'locked_by_processor', 'claim_status', 'hospital_name', 'processed_by', 'lock_expires_at', 'processed_by_name', 'submission_date', 'locked_by_processor_name', 'query_answered_by_name', 'show_in_preauth', 'processed_by_email', 'show_in_reimb', 'processing_remarks', 'show_in_claims', 'query_answered_by', 'claim_type', 'locked_at', 'created_by', 'query_answered_at', 'claim_id', 'query_response', 'created_by_email']INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:26] "GET /api/processor-routes/get-claims-to-process?tab=processed HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:28] "OPTIONS /api/processor-routes/lock-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:29] "POST /api/processor-routes/lock-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:33] "OPTIONS /api/processor-routes/get-claim-details/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:33] "OPTIONS /api/processor-routes/get-claim-details/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:33] "GET /api/processor-routes/get-claim-details/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:33] "OPTIONS /api/v1/claims/transactions/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:34] "GET /api/v1/claims/transactions/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:34] "GET /api/processor-routes/get-claim-details/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:34] "GET /api/v1/claims/transactions/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:38] "OPTIONS /api/processor-routes/process-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:39] "POST /api/processor-routes/process-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:39] "OPTIONS /api/processor-routes/get-claims-to-process?tab=unprocessed HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:39] "OPTIONS /api/processor-routes/get-claims-to-process?tab=processed HTTP/1.1" 200 -
+
+  locked_by_processor: None
+  locked_by_processor_email: None
+  locked_by_processor_name: None
+  locked_at: None
+  lock_expires_at: None
+🔍 User data fields: ['created_at', 'uid', 'hospital_id', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'hospital_name', 'mobile', 'email', 'password_setup_required']
+🔍 User name field: medverve
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'medverve'
+🔍 User data fields: ['created_at', 'uid', 'hospital_id', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'hospital_name', 'mobile', 'email', 'password_setup_required']
+🔍 User name field: medverve
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'medverve'
+🔍 DEBUG: Creator info for claim CSHLSIP-20251025-2:
+  created_by: ZDxFxvVVo6NMVXNBqMnSnEl9egl1
+  created_by_email: testmedverve1@gmail.com
+  created_by_name: CORP HOSPITAL USER
+  submitted_by: NOT_FOUND
+  submitted_by_email: NOT_FOUND
+  submitted_by_name: NOT_FOUND
+🔍 DEBUG: Processor info for claim CSHLSIP-20251025-2:
+  processed_by: NOT_FOUND
+  processed_by_email: NOT_FOUND
+  processed_by_name: NOT_FOUND
+  processing_remarks: NOT_FOUND
+  processed_at: NOT_FOUND
+🔍 DEBUG: Lock info for claim CSHLSIP-20251025-2:
+  locked_by_processor: iUEMPv4EC0fj1qye6043G8cT4072
+  locked_by_processor_email: testmedve@gmail.com
+  locked_by_processor_name: medverve
+  locked_at: 2025-11-04 09:54:29.527000+00:00
+  lock_expires_at: 2025-11-04T16:24:29.389017+05:30
+🔍 User data fields: ['created_at', 'uid', 'hospital_id', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'hospital_name', 'mobile', 'email', 'password_setup_required']
+🔍 User name field: medverve
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'medverve'
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedve@gmail.com
+  User Role: claim_processor_l2
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'hospital_id', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'hospital_name', 'mobile', 'email', 'password_setup_required']
+🔍 User name field: medverve
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'medverve'
+🔍 DEBUG: Creator info for claim CSHLSIP-20251025-2:
+  created_by: ZDxFxvVVo6NMVXNBqMnSnEl9egl1
+  created_by_email: testmedverve1@gmail.com
+  created_by_name: CORP HOSPITAL USER
+  submitted_by: NOT_FOUND
+  submitted_by_email: NOT_FOUND
+  submitted_by_name: NOT_FOUND
+🔍 DEBUG: Processor info for claim CSHLSIP-20251025-2:
+  processed_by: NOT_FOUND
+  processed_by_email: NOT_FOUND
+  processed_by_name: NOT_FOUND
+  processing_remarks: NOT_FOUND
+  processed_at: NOT_FOUND
+🔍 DEBUG: Lock info for claim CSHLSIP-20251025-2:
+  locked_by_processor: iUEMPv4EC0fj1qye6043G8cT4072
+  locked_by_processor_email: testmedve@gmail.com
+  locked_by_processor_name: medverve
+  locked_at: 2025-11-04 09:54:29.527000+00:00
+  lock_expires_at: 2025-11-04T16:24:29.389017+05:30
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedve@gmail.com
+  User Role: claim_processor_l2
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'hospital_id', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'hospital_name', 'mobile', 'email', 'password_setup_required']
+🔍 User name field: medverve
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'medverve'
+🔍 User data fields: ['created_at', 'uid', 'hospital_id', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'hospital_name', 'mobile', 'email', 'password_setup_required']
+🔍 User name field: medverve
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'medverve'
+🔍 DEBUG: Processing claim CSHLSIP-20251025-2 by processor:
+  user_id: iUEMPv4EC0fj1qye6043G8cT4072
+  user_email: testmedve@gmail.com
+  user_name: medverve
+  status: qc_clear
+  remarks: ...
+🔍 User data fields: ['created_at', 'uid', 'hospital_id', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'hospital_name', 'mobile', 'email', 'password_setup_required']
+🔍 User name field: medverve
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'medverve'
+🔍 User data fields: ['created_at', 'uid', 'hospital_id', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'hospital_name', 'mobile', 'email', 'password_setup_required']
+🔍 User name field: medverve
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'medverve'
+🔍 Processor approval limit check: Role=claim_processor_l2, Limit=₹100000
+🔍 DEBUG: Processing tab 'unprocessed' for processor inbox
+🔍 DEBUG: Filtering for unprocessed claims: qc_pending, need_more_info, qc_answered
+🔍 Processor approval limit check: Role=claim_processor_l2, Limit=₹100000
+🔍 DEBUG: Processing tab 'processed' for processor inbox
+🔍 DEBUG: Filtering for processed claims: qc_query, qc_clear, claim_approved, claim_denial
+🔍 DEBUG: Found 7 claims from query for tab 'unprocessed'
+  1. CSHLSIP-20251011-1 - Status: qc_pending
+  2. CSHLSIP-20251011-2 - Status: qc_pending
+  3. CSHLSIP-20251021-3 - Status: qc_pending
+  4. CSHLSIP-20251021-4 - Status: qc_pending
+  5. CSHLSIP-20251023-0 - Status: qc_pending
+  6. CSHLSIP-20251023-1 - Status: qc_pending
+  7. CSHLSIP-20251104-0 - Status: qc_pending
+DEBUG: Processor hospitals: [{'id': 'kfKMVepryag5VK2jJwLv', 'name': 'KASTRUBHA HOSPITAL', 'code': 'KAST'}]
+DEBUG: Processor user ID: iUEMPv4EC0fj1qye6043G8cT4072
+DEBUG: Processor email: testmedve@gmail.com
+DEBUG: Processing claim CSHLSIP-20251011-1 - status: qc_pending, hospital: DEMO HospitalINFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:40] "GET /api/processor-routes/get-claims-to-process?tab=unprocessed HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:40] "GET /api/processor-routes/get-claims-to-process?tab=processed HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:49] "OPTIONS /api/auth/login HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:50] "POST /api/auth/login HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:50] "OPTIONS /api/processor-routes/get-claims-to-process?tab=unprocessed HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:50] "OPTIONS /api/processor-routes/get-claims-to-process?tab=processed HTTP/1.1" 200 -
+
+DEBUG: Skipping claim CSHLSIP-20251011-1 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251011-2 - status: qc_pending, hospital: DEMO Hospital
+DEBUG: Skipping claim CSHLSIP-20251011-2 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251021-3 - status: qc_pending, hospital: NANO HOSPITAL
+DEBUG: Skipping claim CSHLSIP-20251021-3 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251021-4 - status: qc_pending, hospital: NANO HOSPITAL
+DEBUG: Skipping claim CSHLSIP-20251021-4 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251023-0 - status: qc_pending, hospital: NANO HOSPITAL
+DEBUG: Skipping claim CSHLSIP-20251023-0 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251023-1 - status: qc_pending, hospital: NANO HOSPITAL
+DEBUG: Skipping claim CSHLSIP-20251023-1 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251104-0 - status: qc_pending, hospital: KASTRUBHA HOSPITAL
+DEBUG: Claim CSHLSIP-20251104-0 matches hospital KASTRUBHA HOSPITAL (ID: kfKMVepryag5VK2jJwLv)
+DEBUG: Added claim CSHLSIP-20251104-0 to results
+DEBUG: Lock info for added claim CSHLSIP-20251104-0:
+  locked_by_processor: NOT_FOUND
+  locked_by_processor_email: NOT_FOUND
+  locked_by_processor_name: NOT_FOUND
+  locked_at: NOT_FOUND
+  lock_expires_at: NOT_FOUND
+🔍 DEBUG: Claim CSHLSIP-20251104-0 lock data:
+  Document ID: CSHLSIP-20251104-0
+  All claim_data keys: ['submission_date', 'created_at', 'hospital_id', 'show_in_preauth', 'show_in_reimb', 'form_data', 'updated_at', 'submission_type', 'show_in_claims', 'created_in_module', 'claim_type', 'is_draft', 'claim_status', 'hospital_name', 'created_by_email', 'claim_id', 'created_by_name', 'created_by']
+  locked_by_processor: NOT_FOUND
+  locked_by_processor_email: NOT_FOUND
+  locked_by_processor_name: NOT_FOUND
+  locked_at: NOT_FOUND
+  lock_expires_at: NOT_FOUND
+🔍 DEBUG: Found 2 claims from query for tab 'processed'
+  1. CSHLSIP-20251023-3 - Status: qc_query
+  2. CSHLSIP-20251025-2 - Status: qc_clear
+DEBUG: Processor hospitals: [{'id': 'kfKMVepryag5VK2jJwLv', 'name': 'KASTRUBHA HOSPITAL', 'code': 'KAST'}]
+DEBUG: Processor user ID: iUEMPv4EC0fj1qye6043G8cT4072
+DEBUG: Processor email: testmedve@gmail.com
+DEBUG: Processing claim CSHLSIP-20251023-3 - status: qc_query, hospital: KASTRUBHA HOSPITAL
+DEBUG: Claim CSHLSIP-20251023-3 matches hospital KASTRUBHA HOSPITAL (ID: kfKMVepryag5VK2jJwLv)
+DEBUG: Added claim CSHLSIP-20251023-3 to results
+DEBUG: Lock info for added claim CSHLSIP-20251023-3:
+  locked_by_processor: None
+  locked_by_processor_email: None
+  locked_by_processor_name: None
+  locked_at: None
+  lock_expires_at: None
+DEBUG: Processing claim CSHLSIP-20251025-2 - status: qc_clear, hospital: KASTRUBHA HOSPITAL
+DEBUG: Claim CSHLSIP-20251025-2 matches hospital KASTRUBHA HOSPITAL (ID: kfKMVepryag5VK2jJwLv)
+DEBUG: Added claim CSHLSIP-20251025-2 to results
+DEBUG: Lock info for added claim CSHLSIP-20251025-2:
+  locked_by_processor: None
+  locked_by_processor_email: None
+  locked_by_processor_name: None
+  locked_at: None
+  lock_expires_at: None
+🔍 DEBUG: Claim CSHLSIP-20251023-3 lock data:
+  Document ID: CSHLSIP-20251023-3
+  All claim_data keys: ['created_at', 'hospital_id', 'query_answered_by_email', 'form_data', 'updated_at', 'processed_at', 'locked_by_processor_email', 'created_in_module', 'is_draft', 'locked_by_processor', 'claim_status', 'hospital_name', 'processed_by', 'lock_expires_at', 'processed_by_name', 'submission_date', 'locked_by_processor_name', 'query_answered_by_name', 'show_in_preauth', 'processed_by_email', 'show_in_reimb', 'processing_remarks', 'show_in_claims', 'query_answered_by', 'claim_type', 'locked_at', 'created_by', 'query_answered_at', 'claim_id', 'query_response', 'created_by_email']
+  locked_by_processor: None
+  locked_by_processor_email: None
+  locked_by_processor_name: None
+  locked_at: None
+  lock_expires_at: None
+🔍 DEBUG: Claim CSHLSIP-20251025-2 lock data:
+  Document ID: CSHLSIP-20251025-2
+  All claim_data keys: ['created_at', 'hospital_id', 'form_data', 'updated_at', 'processed_at', 'locked_by_processor_email', 'created_in_module', 'is_draft', 'locked_by_processor', 'claim_status', 'hospital_name', 'created_by_name', 'processed_by', 'lock_expires_at', 'processed_by_name', 'submission_date', 'locked_by_processor_name', 'show_in_preauth', 'processed_by_email', 'show_in_reimb', 'processing_remarks', 'show_in_claims', 'claim_type', 'locked_at', 'created_by', 'documents', 'claim_id', 'created_by_email']
+  locked_by_processor: None
+  locked_by_processor_email: None
+  locked_by_processor_name: None
+  locked_at: None
+  lock_expires_at: None
+🔍 DEBUG: FIREBASE_WEB_API_KEY = AIzaSyAaqgkXJXkntZBs7QQyss7Hy_HECyMXE2c
+🔍 DEBUG: API key length = 39
+🔍 DEBUG: Using Firebase API key: AIzaSyAaqg...
+🔍 DEBUG: Auth URL: https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyAaqgkXJXkntZBs7QQyss7Hy_HECyMXE2c
+🔍 DEBUG: Auth payload: {'email': 'testmedve@gmail.com', 'password': 'Medverve@123', 'returnSecureToken': True}
+🔍 DEBUG: Auth response status: 200
+🔍 DEBUG: Auth response body: {
+  "kind": "identitytoolkit#VerifyPasswordResponse",
+  "localId": "iUEMPv4EC0fj1qye6043G8cT4072",
+  "email": "testmedve@gmail.com",
+  "displayName": "medverve",
+  "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjU0NTEzMjA5OWFkNmJmNjEzODJiNmI0Y2RlOWEyZGZlZDhjYjMwZjAiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoibWVkdmVydmUiLCJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vbXYyMC1hMWEwOSIsImF1ZCI6Im12MjAtYTFhMDkiLCJhdXRoX3RpbWUiOjE3NjIyNTAwODksInVzZXJfaWQiOiJpVUVNUHY0RUMwZmoxcXllNjA0M0c4Y1Q0MDcyIiwic3ViIjoiaVVFTVB2NEVDMGZqMXF5ZTYwNDNHOGNUNDA3MiIsImlhdCI6MTc2MjI1MDA4OSwiZXhwIjoxNzYyMjUzNjg5LCJlbWFpbCI6InRlc3RtZWR2ZUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJlbWFpbCI6WyJ0ZXN0bWVkdmVAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoicGFzc3dvcmQifX0.j3oX4AHZ7ZqMkwMwaA7B_X_0PpkxlYESH7v9ZBJkJqfX8P7CDXHjeQ8pUitGz2c64icAsWL8QsEsye9mjV5edWVZZiHjxXDFJ1iZ0MM3tIz2tBjvrINbEnEruTgc7K_Q4pEr2pMW-btW8gZdHxo-uPhBRFJbReuDG-Gx2wBVOoJFHmsyeSJZ7wAJdBTHSsUd4Y_BqNdov-FtrSDD0ZXBLkZzSZpALCcAC8e9kExWK9uOaVlcp08dKBlex-mGLdSwxatd7x2tOkWXttREjCPIv7XNw4D2Vl1buWkzUNdif28POEwaUuLL4rIQLAGJj2brIOAcBwDCAkbnIKy28P3_Cg",
+  "registered": true,
+  "refreshToken": "AMf-vBzjD8xNlFyapcDSPUla2UptmwvybMa3nDbd0Jl6hu-wdsXV1rriDvCKu-vceZr6cG-zDn-zhDtf9UgC3y1N2Dmki247RDk8V4-v8m9Ugzns4NYULVUeOxYBiOisry2iYypPWnD3ZzUn4O39mHjq86ansQAdHnLltvQWI2bomHhypb-gFiibcjb8FpSifzJBv1R-7XPjmiLsmuEPaXNE0AeX4qDmVQ",
+  "expiresIn": "3600"
+}
+
+🔍 User data fields: ['created_at', 'uid', 'hospital_id', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'hospital_name', 'mobile', 'email', 'password_setup_required']
+🔍 User name field: medverve
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'medverve'
+🔍 User data fields: ['created_at', 'uid', 'hospital_id', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'hospital_name', 'mobile', 'email', 'password_setup_required']
+🔍 User name field: medverve
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'medverve'
+🔍 Processor approval limit check: Role=claim_processor_l2, Limit=₹100000
+🔍 DEBUG: Processing tab 'unprocessed' for processor inbox
+🔍 DEBUG: Filtering for unprocessed claims: qc_pending, need_more_info, qc_answered
+🔍 Processor approval limit check: Role=claim_processor_l2, Limit=₹100000
+🔍 DEBUG: Processing tab 'processed' for processor inbox
+🔍 DEBUG: Filtering for processed claims: qc_query, qc_clear, claim_approved, claim_denial
+🔍 DEBUG: Found 7 claims from query for tab 'unprocessed'
+  1. CSHLSIP-20251011-1 - Status: qc_pending
+  2. CSHLSIP-20251011-2 - Status: qc_pendingINFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:50] "GET /api/processor-routes/get-claims-to-process?tab=unprocessed HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:50] "GET /api/processor-routes/get-claims-to-process?tab=processed HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:58] "OPTIONS /api/auth/login HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "POST /api/auth/login HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "OPTIONS /api/resources/specialties?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "OPTIONS /api/resources/payers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "OPTIONS /api/resources/insurers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "OPTIONS /api/resources/ward-types HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "OPTIONS /api/resources/hospital-config/kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "OPTIONS /api/resources/specialties?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "OPTIONS /api/resources/payers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "OPTIONS /api/resources/insurers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "OPTIONS /api/resources/ward-types HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "OPTIONS /api/resources/hospital-config/kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "GET /api/resources/payers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "GET /api/resources/specialties?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "GET /api/resources/hospital-config/kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "GET /api/resources/insurers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "GET /api/resources/ward-types HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "GET /api/resources/payers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "GET /api/resources/specialties?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+
+  3. CSHLSIP-20251021-3 - Status: qc_pending
+  4. CSHLSIP-20251021-4 - Status: qc_pending
+  5. CSHLSIP-20251023-0 - Status: qc_pending
+  6. CSHLSIP-20251023-1 - Status: qc_pending
+  7. CSHLSIP-20251104-0 - Status: qc_pending
+DEBUG: Processor hospitals: [{'id': 'kfKMVepryag5VK2jJwLv', 'name': 'KASTRUBHA HOSPITAL', 'code': 'KAST'}]
+DEBUG: Processor user ID: iUEMPv4EC0fj1qye6043G8cT4072
+DEBUG: Processor email: testmedve@gmail.com
+DEBUG: Processing claim CSHLSIP-20251011-1 - status: qc_pending, hospital: DEMO Hospital
+DEBUG: Skipping claim CSHLSIP-20251011-1 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251011-2 - status: qc_pending, hospital: DEMO Hospital
+DEBUG: Skipping claim CSHLSIP-20251011-2 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251021-3 - status: qc_pending, hospital: NANO HOSPITAL
+DEBUG: Skipping claim CSHLSIP-20251021-3 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251021-4 - status: qc_pending, hospital: NANO HOSPITAL
+DEBUG: Skipping claim CSHLSIP-20251021-4 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251023-0 - status: qc_pending, hospital: NANO HOSPITAL
+DEBUG: Skipping claim CSHLSIP-20251023-0 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251023-1 - status: qc_pending, hospital: NANO HOSPITAL
+DEBUG: Skipping claim CSHLSIP-20251023-1 - doesn't belong to processor's hospitals
+DEBUG: Processing claim CSHLSIP-20251104-0 - status: qc_pending, hospital: KASTRUBHA HOSPITAL
+DEBUG: Claim CSHLSIP-20251104-0 matches hospital KASTRUBHA HOSPITAL (ID: kfKMVepryag5VK2jJwLv)
+DEBUG: Added claim CSHLSIP-20251104-0 to results
+DEBUG: Lock info for added claim CSHLSIP-20251104-0:
+  locked_by_processor: NOT_FOUND
+  locked_by_processor_email: NOT_FOUND
+  locked_by_processor_name: NOT_FOUND
+  locked_at: NOT_FOUND
+  lock_expires_at: NOT_FOUND
+🔍 DEBUG: Claim CSHLSIP-20251104-0 lock data:
+  Document ID: CSHLSIP-20251104-0
+  All claim_data keys: ['submission_date', 'created_at', 'hospital_id', 'show_in_preauth', 'show_in_reimb', 'form_data', 'updated_at', 'submission_type', 'show_in_claims', 'created_in_module', 'claim_type', 'is_draft', 'claim_status', 'hospital_name', 'created_by_email', 'claim_id', 'created_by_name', 'created_by']
+  locked_by_processor: NOT_FOUND
+  locked_by_processor_email: NOT_FOUND
+  locked_by_processor_name: NOT_FOUND
+  locked_at: NOT_FOUND
+  lock_expires_at: NOT_FOUND
+🔍 DEBUG: Found 2 claims from query for tab 'processed'
+  1. CSHLSIP-20251023-3 - Status: qc_query
+  2. CSHLSIP-20251025-2 - Status: qc_clear
+DEBUG: Processor hospitals: [{'id': 'kfKMVepryag5VK2jJwLv', 'name': 'KASTRUBHA HOSPITAL', 'code': 'KAST'}]
+DEBUG: Processor user ID: iUEMPv4EC0fj1qye6043G8cT4072
+DEBUG: Processor email: testmedve@gmail.com
+DEBUG: Processing claim CSHLSIP-20251023-3 - status: qc_query, hospital: KASTRUBHA HOSPITAL
+DEBUG: Claim CSHLSIP-20251023-3 matches hospital KASTRUBHA HOSPITAL (ID: kfKMVepryag5VK2jJwLv)
+DEBUG: Added claim CSHLSIP-20251023-3 to results
+DEBUG: Lock info for added claim CSHLSIP-20251023-3:
+  locked_by_processor: None
+  locked_by_processor_email: None
+  locked_by_processor_name: None
+  locked_at: None
+  lock_expires_at: None
+DEBUG: Processing claim CSHLSIP-20251025-2 - status: qc_clear, hospital: KASTRUBHA HOSPITAL
+DEBUG: Claim CSHLSIP-20251025-2 matches hospital KASTRUBHA HOSPITAL (ID: kfKMVepryag5VK2jJwLv)
+DEBUG: Added claim CSHLSIP-20251025-2 to results
+DEBUG: Lock info for added claim CSHLSIP-20251025-2:
+  locked_by_processor: None
+  locked_by_processor_email: None
+  locked_by_processor_name: None
+  locked_at: None
+  lock_expires_at: None
+🔍 DEBUG: Claim CSHLSIP-20251023-3 lock data:
+  Document ID: CSHLSIP-20251023-3
+  All claim_data keys: ['created_at', 'hospital_id', 'query_answered_by_email', 'form_data', 'updated_at', 'processed_at', 'locked_by_processor_email', 'created_in_module', 'is_draft', 'locked_by_processor', 'claim_status', 'hospital_name', 'processed_by', 'lock_expires_at', 'processed_by_name', 'submission_date', 'locked_by_processor_name', 'query_answered_by_name', 'show_in_preauth', 'processed_by_email', 'show_in_reimb', 'processing_remarks', 'show_in_claims', 'query_answered_by', 'claim_type', 'locked_at', 'created_by', 'query_answered_at', 'claim_id', 'query_response', 'created_by_email']
+  locked_by_processor: None
+  locked_by_processor_email: None
+  locked_by_processor_name: None
+  locked_at: None
+  lock_expires_at: None
+🔍 DEBUG: Claim CSHLSIP-20251025-2 lock data:
+  Document ID: CSHLSIP-20251025-2
+  All claim_data keys: ['created_at', 'hospital_id', 'form_data', 'updated_at', 'processed_at', 'locked_by_processor_email', 'created_in_module', 'is_draft', 'locked_by_processor', 'claim_status', 'hospital_name', 'created_by_name', 'processed_by', 'lock_expires_at', 'processed_by_name', 'submission_date', 'locked_by_processor_name', 'show_in_preauth', 'processed_by_email', 'show_in_reimb', 'processing_remarks', 'show_in_claims', 'claim_type', 'locked_at', 'created_by', 'documents', 'claim_id', 'created_by_email']
+  locked_by_processor: None
+  locked_by_processor_email: None
+  locked_by_processor_name: None
+  locked_at: None
+  lock_expires_at: None
+🔍 DEBUG: FIREBASE_WEB_API_KEY = AIzaSyAaqgkXJXkntZBs7QQyss7Hy_HECyMXE2c
+🔍 DEBUG: API key length = 39
+🔍 DEBUG: Using Firebase API key: AIzaSyAaqg...
+🔍 DEBUG: Auth URL: https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyAaqgkXJXkntZBs7QQyss7Hy_HECyMXE2c
+🔍 DEBUG: Auth payload: {'email': 'testmedverve1@gmail.com', 'password': 'Medverve@123', 'returnSecureToken': True}
+🔍 DEBUG: Auth response status: 200
+🔍 DEBUG: Auth response body: {
+  "kind": "identitytoolkit#VerifyPasswordResponse",
+  "localId": "ZDxFxvVVo6NMVXNBqMnSnEl9egl1",
+  "email": "testmedverve1@gmail.com",
+  "displayName": "CORP HOSPITAL USER",
+  "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjU0NTEzMjA5OWFkNmJmNjEzODJiNmI0Y2RlOWEyZGZlZDhjYjMwZjAiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiQ09SUCBIT1NQSVRBTCBVU0VSIiwiaXNzIjoiaHR0cHM6Ly9zZWN1cmV0b2tlbi5nb29nbGUuY29tL212MjAtYTFhMDkiLCJhdWQiOiJtdjIwLWExYTA5IiwiYXV0aF90aW1lIjoxNzYyMjUwMDk4LCJ1c2VyX2lkIjoiWkR4Rnh2VlZvNk5NVlhOQnFNblNuRWw5ZWdsMSIsInN1YiI6IlpEeEZ4dlZWbzZOTVZYTkJxTW5TbkVsOWVnbDEiLCJpYXQiOjE3NjIyNTAwOTgsImV4cCI6MTc2MjI1MzY5OCwiZW1haWwiOiJ0ZXN0bWVkdmVydmUxQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7ImVtYWlsIjpbInRlc3RtZWR2ZXJ2ZTFAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoicGFzc3dvcmQifX0.Wjo-lsA8ebheBDLPV4sLqiO2WIu6081NjHl52JKWdu4vmbO9Xw9g7khjAUBZg67miS9RBzHKKiyZJp9TXdM4fcDBlO8vNrfwXAxFBslPoElpXhtZs5CG9SBtcRNXCNTacdSrHhBjELi0tnInStJ2mxnOf-HnJPqwPNTNY9aptoF-2dN0NOqXSBOrS_j1eBqer3MILW2Z-2U1pQmAIs--tPVz8qUeXZtlZDZ5NuuooWl38s7UG2nN3VOceSc3pcgNfJS_44tprN9MEvr8SuOORwSXHhLITOpD6RgVHOBq_i3OMlCNxPNTM4Ta_c8sTbeXsS3ow_T5AvJwhkmM7EimNA",
+  "registered": true,
+  "refreshToken": "AMf-vBwFDdd3H_o7-fC3BLj1iH4BJlMrjYbTr5Zg1NQmH6JGfiQ1y19RBT6rdtO3sEleuFhK4hkv2lrxVbpxbCdswARsUGbSJ_KXhVKztatdSl2KVcFtfB_WtJfUbpEWm24t15tci1r-H-J4pOeiRYWOkRv0Fcw355PD_GF2GTLBV_KBcckPiY-T_QbzKWRrtP3bojV1waEB3IX-_79IWZzJSlwNAevFkCRF3Iw8Ch0ONI8OnWiTRiI",
+  "expiresIn": "3600"
+}
+
+🔍 Hospital Config Debug for kfKMVepryag5VK2jJwLv:
+   All hospital fields: ['created_at', 'submit_option', 'contact_person', 'accreditations', 'code', 'region', 'status', 'contact_email', 'city', 'updated_at', 'name', 'hospital_names', 'proceed_for_qc_option', 'auto_id', 'address', 'contact_phone', 'hospital_name']
+   ✅ Found 'submit_option': True (type: <class 'bool'>) -> True
+   ✅ Found 'proceed_for_qc_option': False (type: <class 'bool'>) -> False
+   📤 Final values: direct_submit=True, qc_submit=False
+🔍 Hospital Config Debug for kfKMVepryag5VK2jJwLv:
+   All hospital fields: ['created_at', 'submit_option', 'contact_person', 'accreditations', 'code', 'region', 'status', 'contact_email', 'city', 'updated_at', 'name', 'hospital_names', 'proceed_for_qc_option', 'auto_id', 'address', 'contact_phone', 'hospital_name']
+   ✅ Found 'submit_option': True (type: <class 'bool'>) -> True
+   ✅ Found 'proceed_for_qc_option': False (type: <class 'bool'>) -> False
+   📤 Final values: direct_submit=True, qc_submit=FalseINFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "GET /api/resources/hospital-config/kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "GET /api/resources/insurers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:24:59] "GET /api/resources/ward-types HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:01] "OPTIONS /api/v1/claims/get-all-claims HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:01] "OPTIONS /api/v1/claims/get-all-claims HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:01] "GET /api/v1/claims/get-all-claims HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:02] "GET /api/v1/claims/get-all-claims HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:11] "OPTIONS /api/v1/claims/get-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:11] "OPTIONS /api/v1/claims/get-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+
+================================================================================
+🚀 GET-ALL-CLAIMS ENDPOINT CALLED
+  URL: http://localhost:5002/api/v1/claims/get-all-claims
+  Method: GET
+  Headers: {'Host': 'localhost:5002', 'Connection': 'keep-alive', 'Sec-Ch-Ua-Platform': '"macOS"', 'Authorization': 'Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJraWQiOiAiMTNiOThhNDNjODg4MjQyNWQyZTNiYzdhMzNlNTE4ODQyMDIxYTkwYSJ9.eyJpc3MiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJzdWIiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJhdWQiOiAiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCAidWlkIjogIlpEeEZ4dlZWbzZOTVZYTkJxTW5TbkVsOWVnbDEiLCAiaWF0IjogMTc2MjI1MDA5OSwgImV4cCI6IDE3NjIyNTM2OTl9.dDghVh5oQxWUhHlmS0WAfG2Mby45HCYnJbuAJSIDf_icZEslmnsN8eGQpD1CY2XsDUGOZauV3yhS2Bld8-_SUA11LGHmH3ktI4toaSDIvZmHdV9EoXNurP1soo_mqUR21d3EaxgJFkv9BBtRaWoGCeaGxQ9DhWbyyY141ldHLfKnuVvcyjkLFUkDoSzPYGQinD0BqFzkbUaUccFjGz1sMhkODkyXa5NkayJd0vZitEpq9yXUd1cJ6HZqdHuknsZHwPVIllQJR9ju65RdVdCRf_iE1oaJOyNaAzT5j32Ykf41PReFi6C2CVYki9iDkpJ_ZkpngIc9iMdrXydTfuKx5g', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', 'Sec-Ch-Ua': '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"', 'Content-Type': 'application/json', 'Sec-Ch-Ua-Mobile': '?0', 'Accept': '*/*', 'Origin': 'http://localhost:3000', 'Sec-Fetch-Site': 'same-site', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Dest': 'empty', 'Referer': 'http://localhost:3000/', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9'}
+================================================================================
+
+
+================================================================================
+OPTIMIZED GET-ALL-CLAIMS: User Info
+  Email: testmedverve1@gmail.com
+  Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  Hospital Name: 'KASTRUBHA HOSPITAL'
+  Limit: 50
+================================================================================
+
+✓ Using simple query approach (no filters) to avoid index requirements
+✓ All filtering will be done in-memory:
+  - Hospital filter: kfKMVepryag5VK2jJwLv
+  - Status filter: all
+  - Date filter: None to None
+  - Draft exclusion: Yes
+✓ Applied Firestore limit: 500 (will filter in memory)
+⚡ Executing simple Firestore query (no filters)...
+⚡ Fetched 219 claims from Firestore (will filter in memory)
+🔍 Processing 219 claims...
+
+================================================================================
+FILTERING SUMMARY:
+  Total claims queried from Firestore: 219
+  Filtered by prefix (not CSHLSIP/CLS): 0
+  Filtered by hospital name mismatch: 194
+  Filtered by draft status: 8
+  Final claims returned: 17
+================================================================================
+
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+
+================================================================================
+🚀 GET-ALL-CLAIMS ENDPOINT CALLED
+  URL: http://localhost:5002/api/v1/claims/get-all-claims
+  Method: GET
+  Headers: {'Host': 'localhost:5002', 'Connection': 'keep-alive', 'Sec-Ch-Ua-Platform': '"macOS"', 'Authorization': 'Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJraWQiOiAiMTNiOThhNDNjODg4MjQyNWQyZTNiYzdhMzNlNTE4ODQyMDIxYTkwYSJ9.eyJpc3MiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJzdWIiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJhdWQiOiAiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCAidWlkIjogIlpEeEZ4dlZWbzZOTVZYTkJxTW5TbkVsOWVnbDEiLCAiaWF0IjogMTc2MjI1MDA5OSwgImV4cCI6IDE3NjIyNTM2OTl9.dDghVh5oQxWUhHlmS0WAfG2Mby45HCYnJbuAJSIDf_icZEslmnsN8eGQpD1CY2XsDUGOZauV3yhS2Bld8-_SUA11LGHmH3ktI4toaSDIvZmHdV9EoXNurP1soo_mqUR21d3EaxgJFkv9BBtRaWoGCeaGxQ9DhWbyyY141ldHLfKnuVvcyjkLFUkDoSzPYGQinD0BqFzkbUaUccFjGz1sMhkODkyXa5NkayJd0vZitEpq9yXUd1cJ6HZqdHuknsZHwPVIllQJR9ju65RdVdCRf_iE1oaJOyNaAzT5j32Ykf41PReFi6C2CVYki9iDkpJ_ZkpngIc9iMdrXydTfuKx5g', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', 'Sec-Ch-Ua': '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"', 'Content-Type': 'application/json', 'Sec-Ch-Ua-Mobile': '?0', 'Accept': '*/*', 'Origin': 'http://localhost:3000', 'Sec-Fetch-Site': 'same-site', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Dest': 'empty', 'Referer': 'http://localhost:3000/', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9'}
+================================================================================
+
+
+================================================================================
+OPTIMIZED GET-ALL-CLAIMS: User Info
+  Email: testmedverve1@gmail.com
+  Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  Hospital Name: 'KASTRUBHA HOSPITAL'
+  Limit: 50
+================================================================================
+
+✓ Using simple query approach (no filters) to avoid index requirements
+✓ All filtering will be done in-memory:
+  - Hospital filter: kfKMVepryag5VK2jJwLv
+  - Status filter: all
+  - Date filter: None to None
+  - Draft exclusion: Yes
+✓ Applied Firestore limit: 500 (will filter in memory)
+⚡ Executing simple Firestore query (no filters)...
+⚡ Fetched 219 claims from Firestore (will filter in memory)
+🔍 Processing 219 claims...
+
+================================================================================
+FILTERING SUMMARY:
+  Total claims queried from Firestore: 219
+  Filtered by prefix (not CSHLSIP/CLS): 0
+  Filtered by hospital name mismatch: 194
+  Filtered by draft status: 8
+  Final claims returned: 17
+================================================================================
+
+
+================================================================================INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:12] "GET /api/v1/claims/get-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:12] "OPTIONS /api/v1/claims/transactions/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:12] "GET /api/v1/claims/transactions/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:12] "GET /api/v1/claims/get-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:12] "GET /api/v1/claims/transactions/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:15] "OPTIONS /api/resources/couriers HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:15] "GET /api/resources/couriers HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:28] "OPTIONS /api/v1/claims/dispatch-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:29] "POST /api/v1/claims/dispatch-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:29] "OPTIONS /api/v1/claims/get-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:30] "GET /api/v1/claims/get-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:30] "OPTIONS /api/v1/claims/transactions/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:30] "GET /api/v1/claims/transactions/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "OPTIONS /api/resources/insurers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "OPTIONS /api/resources/specialties?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "OPTIONS /api/resources/payers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "OPTIONS /api/resources/ward-types HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "OPTIONS /api/resources/hospital-config/kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "OPTIONS /api/resources/specialties?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "OPTIONS /api/resources/payers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "OPTIONS /api/resources/insurers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "OPTIONS /api/resources/ward-types HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "OPTIONS /api/resources/hospital-config/kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "GET /api/resources/specialties?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "GET /api/resources/insurers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+🔍 DEBUG: Authorization header: Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJ...
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+🔍 DEBUG: Authorization header: Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJ...
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+✅ Auto-generated dispatch letter saved: doc_bb07557b
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+🔍 DEBUG: Authorization header: Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJ...
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+🔍 Hospital Config Debug for kfKMVepryag5VK2jJwLv:INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "GET /api/resources/hospital-config/kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "GET /api/resources/payers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "GET /api/resources/ward-types HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "GET /api/resources/hospital-config/kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "GET /api/resources/specialties?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "GET /api/resources/insurers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "GET /api/resources/payers?hospital_id=kfKMVepryag5VK2jJwLv HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:33] "GET /api/resources/ward-types HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:34] "OPTIONS /api/v1/claims/get-all-claims HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:34] "OPTIONS /api/v1/claims/get-all-claims HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:35] "GET /api/v1/claims/get-all-claims HTTP/1.1" 200 -
+
+   All hospital fields: ['created_at', 'submit_option', 'contact_person', 'accreditations', 'code', 'region', 'status', 'contact_email', 'city', 'updated_at', 'name', 'hospital_names', 'proceed_for_qc_option', 'auto_id', 'address', 'contact_phone', 'hospital_name']
+   ✅ Found 'submit_option': True (type: <class 'bool'>) -> True
+   ✅ Found 'proceed_for_qc_option': False (type: <class 'bool'>) -> False
+   📤 Final values: direct_submit=True, qc_submit=False
+🔍 Hospital Config Debug for kfKMVepryag5VK2jJwLv:
+   All hospital fields: ['created_at', 'submit_option', 'contact_person', 'accreditations', 'code', 'region', 'status', 'contact_email', 'city', 'updated_at', 'name', 'hospital_names', 'proceed_for_qc_option', 'auto_id', 'address', 'contact_phone', 'hospital_name']
+   ✅ Found 'submit_option': True (type: <class 'bool'>) -> True
+   ✅ Found 'proceed_for_qc_option': False (type: <class 'bool'>) -> False
+   📤 Final values: direct_submit=True, qc_submit=False
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+
+================================================================================
+🚀 GET-ALL-CLAIMS ENDPOINT CALLED
+  URL: http://localhost:5002/api/v1/claims/get-all-claims
+  Method: GET
+  Headers: {'Host': 'localhost:5002', 'Connection': 'keep-alive', 'Sec-Ch-Ua-Platform': '"macOS"', 'Authorization': 'Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJraWQiOiAiMTNiOThhNDNjODg4MjQyNWQyZTNiYzdhMzNlNTE4ODQyMDIxYTkwYSJ9.eyJpc3MiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJzdWIiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJhdWQiOiAiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCAidWlkIjogIlpEeEZ4dlZWbzZOTVZYTkJxTW5TbkVsOWVnbDEiLCAiaWF0IjogMTc2MjI1MDA5OSwgImV4cCI6IDE3NjIyNTM2OTl9.dDghVh5oQxWUhHlmS0WAfG2Mby45HCYnJbuAJSIDf_icZEslmnsN8eGQpD1CY2XsDUGOZauV3yhS2Bld8-_SUA11LGHmH3ktI4toaSDIvZmHdV9EoXNurP1soo_mqUR21d3EaxgJFkv9BBtRaWoGCeaGxQ9DhWbyyY141ldHLfKnuVvcyjkLFUkDoSzPYGQinD0BqFzkbUaUccFjGz1sMhkODkyXa5NkayJd0vZitEpq9yXUd1cJ6HZqdHuknsZHwPVIllQJR9ju65RdVdCRf_iE1oaJOyNaAzT5j32Ykf41PReFi6C2CVYki9iDkpJ_ZkpngIc9iMdrXydTfuKx5g', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', 'Sec-Ch-Ua': '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"', 'Content-Type': 'application/json', 'Sec-Ch-Ua-Mobile': '?0', 'Accept': '*/*', 'Origin': 'http://localhost:3000', 'Sec-Fetch-Site': 'same-site', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Dest': 'empty', 'Referer': 'http://localhost:3000/', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9'}
+================================================================================
+
+
+================================================================================
+OPTIMIZED GET-ALL-CLAIMS: User Info
+  Email: testmedverve1@gmail.com
+  Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  Hospital Name: 'KASTRUBHA HOSPITAL'
+  Limit: 50
+================================================================================
+
+✓ Using simple query approach (no filters) to avoid index requirements
+✓ All filtering will be done in-memory:
+  - Hospital filter: kfKMVepryag5VK2jJwLv
+  - Status filter: all
+  - Date filter: None to None
+  - Draft exclusion: Yes
+✓ Applied Firestore limit: 500 (will filter in memory)
+⚡ Executing simple Firestore query (no filters)...
+⚡ Fetched 219 claims from Firestore (will filter in memory)
+🔍 Processing 219 claims...
+
+================================================================================
+FILTERING SUMMARY:
+  Total claims queried from Firestore: 219
+  Filtered by prefix (not CSHLSIP/CLS): 0
+  Filtered by hospital name mismatch: 194
+  Filtered by draft status: 8
+  Final claims returned: 17
+================================================================================
+
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+
+================================================================================
+🚀 GET-ALL-CLAIMS ENDPOINT CALLED
+  URL: http://localhost:5002/api/v1/claims/get-all-claims
+  Method: GET
+  Headers: {'Host': 'localhost:5002', 'Connection': 'keep-alive', 'Sec-Ch-Ua-Platform': '"macOS"', 'Authorization': 'Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJraWQiOiAiMTNiOThhNDNjODg4MjQyNWQyZTNiYzdhMzNlNTE4ODQyMDIxYTkwYSJ9.eyJpc3MiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJzdWIiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJhdWQiOiAiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCAidWlkIjogIlpEeEZ4dlZWbzZOTVZYTkJxTW5TbkVsOWVnbDEiLCAiaWF0IjogMTc2MjI1MDA5OSwgImV4cCI6IDE3NjIyNTM2OTl9.dDghVh5oQxWUhHlmS0WAfG2Mby45HCYnJbuAJSIDf_icZEslmnsN8eGQpD1CY2XsDUGOZauV3yhS2Bld8-_SUA11LGHmH3ktI4toaSDIvZmHdV9EoXNurP1soo_mqUR21d3EaxgJFkv9BBtRaWoGCeaGxQ9DhWbyyY141ldHLfKnuVvcyjkLFUkDoSzPYGQinD0BqFzkbUaUccFjGz1sMhkODkyXa5NkayJd0vZitEpq9yXUd1cJ6HZqdHuknsZHwPVIllQJR9ju65RdVdCRf_iE1oaJOyNaAzT5j32Ykf41PReFi6C2CVYki9iDkpJ_ZkpngIc9iMdrXydTfuKx5g', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', 'Sec-Ch-Ua': '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"', 'Content-Type': 'application/json', 'Sec-Ch-Ua-Mobile': '?0', 'Accept': '*/*', 'Origin': 'http://localhost:3000', 'Sec-Fetch-Site': 'same-site', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Dest': 'empty', 'Referer': 'http://localhost:3000/', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9'}
+================================================================================
+
+
+================================================================================
+OPTIMIZED GET-ALL-CLAIMS: User Info
+  Email: testmedverve1@gmail.com
+  Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  Hospital Name: 'KASTRUBHA HOSPITAL'INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:35] "GET /api/v1/claims/get-all-claims HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:39] "OPTIONS /api/v1/claims/get-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:39] "OPTIONS /api/v1/claims/get-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:39] "GET /api/v1/claims/get-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:39] "OPTIONS /api/v1/claims/transactions/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:39] "GET /api/v1/claims/transactions/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:39] "GET /api/v1/claims/get-claim/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:40] "GET /api/v1/claims/transactions/CSHLSIP-20251025-2 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:50] "[31m[1mGET /api/v1/documents/proxy/doc_bb07557b HTTP/1.1[0m" 401 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:25:50] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:26:31] "[33mGET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1[0m" 404 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:27:17] "[31m[1mGET /api/v1/documents/proxy/doc_bb07557b HTTP/1.1[0m" 401 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:37:30] "[31m[1mGET /api/v1/documents/proxy/doc_bb07557b HTTP/1.1[0m" 401 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 15:37:43] "[31m[1mGET /api/v1/documents/proxy/doc_bb07557b?token=eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJraWQiOiAiMTNiOThhNDNjODg4MjQyNWQyZTNiYzdhMzNlNTE4ODQyMDIxYTkwYSJ9.eyJpc3MiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJzdWIiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJhdWQiOiAiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCAidWlkIjogIlpEeEZ4dlZWbzZOTVZYTkJxTW5TbkVsOWVnbDEiLCAiaWF0IjogMTc2MjI1MDA5OSwgImV4cCI6IDE3NjIyNTM2OTl9.dDghVh5oQxWUhHlmS0WAfG2Mby45HCYnJbuAJSIDf_icZEslmnsN8eGQpD1CY2XsDUGOZauV3yhS2Bld8-_SUA11LGHmH3ktI4toaSDIvZmHdV9EoXNurP1soo_mqUR21d3EaxgJFkv9BBtRaWoGCeaGxQ9DhWbyyY141ldHLfKnuVvcyjkLFUkDoSzPYGQinD0BqFzkbUaUccFjGz1sMhkODkyXa5NkayJd0vZitEpq9yXUd1cJ6HZqdHuknsZHwPVIllQJR9ju65RdVdCRf_iE1oaJOyNaAzT5j32Ykf41PReFi6C2CVYki9iDkpJ_ZkpngIc9iMdrXydTfuKx5g HTTP/1.1[0m" 401 -
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 300, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+                             " response")
+http.client.RemoteDisconnected: Remote end closed connection without response
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 38, in reraise
+    raise value.with_traceback(tb)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 300, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+                             " response")
+urllib3.exceptions.ProtocolError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 501, in send
+    raise ConnectionError(err, request=request)
+requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:26:56] "[31m[1mGET /api/v1/documents/proxy/doc_bb07557b?token=eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJraWQiOiAiMTNiOThhNDNjODg4MjQyNWQyZTNiYzdhMzNlNTE4ODQyMDIxYTkwYSJ9.eyJpc3MiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJzdWIiOiAiZmlyZWJhc2UtYWRtaW5zZGstZmJzdmNAbXYyMC1hMWEwOS5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsICJhdWQiOiAiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCAidWlkIjogIlpEeEZ4dlZWbzZOTVZYTkJxTW5TbkVsOWVnbDEiLCAiaWF0IjogMTc2MjI1MDA5OSwgImV4cCI6IDE3NjIyNTM2OTl9.dDghVh5oQxWUhHlmS0WAfG2Mby45HCYnJbuAJSIDf_icZEslmnsN8eGQpD1CY2XsDUGOZauV3yhS2Bld8-_SUA11LGHmH3ktI4toaSDIvZmHdV9EoXNurP1soo_mqUR21d3EaxgJFkv9BBtRaWoGCeaGxQ9DhWbyyY141ldHLfKnuVvcyjkLFUkDoSzPYGQinD0BqFzkbUaUccFjGz1sMhkODkyXa5NkayJd0vZitEpq9yXUd1cJ6HZqdHuknsZHwPVIllQJR9ju65RdVdCRf_iE1oaJOyNaAzT5j32Ykf41PReFi6C2CVYki9iDkpJ_ZkpngIc9iMdrXydTfuKx5g HTTP/1.1[0m" 401 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:03] "OPTIONS /api/v1/claims/get-claim/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:03] "OPTIONS /api/v1/claims/get-claim/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:03] "GET /api/v1/claims/get-claim/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:03] "OPTIONS /api/v1/claims/transactions/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+
+  Limit: 50
+================================================================================
+
+✓ Using simple query approach (no filters) to avoid index requirements
+✓ All filtering will be done in-memory:
+  - Hospital filter: kfKMVepryag5VK2jJwLv
+  - Status filter: all
+  - Date filter: None to None
+  - Draft exclusion: Yes
+✓ Applied Firestore limit: 500 (will filter in memory)
+⚡ Executing simple Firestore query (no filters)...
+⚡ Fetched 219 claims from Firestore (will filter in memory)
+🔍 Processing 219 claims...
+
+================================================================================
+FILTERING SUMMARY:
+  Total claims queried from Firestore: 219
+  Filtered by prefix (not CSHLSIP/CLS): 0
+  Filtered by hospital name mismatch: 194
+  Filtered by draft status: 8
+  Final claims returned: 17
+================================================================================
+
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+🔍 DEBUG: Authorization header: Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJ...
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+🔍 DEBUG: Authorization header: Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJ...
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+🔍 DEBUG: Authorization header: Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJ...
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.com
+  User Role: hospital_user
+  Entity Assignments: {'hospitals': [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]}
+  Hospitals: [{'name': 'KASTRUBHA HOSPITAL', 'id': 'kfKMVepryag5VK2jJwLv', 'city': 'BANGLORE', 'code': 'KAST'}]
+  ✓ Extracted Hospital ID: 'kfKMVepryag5VK2jJwLv'
+  ✓ Extracted Hospital Name: 'KASTRUBHA HOSPITAL'
+================================================================================
+
+🔍 User data fields: ['created_at', 'uid', 'password_setup_email_sent', 'status', 'updated_at', 'name', 'entity_assignments', 'auto_id', 'role', 'password_setup_email_sent_at', 'roles', 'designation', 'email', 'mobile', 'password_setup_required']
+🔍 User name field: CORP HOSPITAL USER
+🔍 User display_name field: NOT_FOUND
+🔍 User full_name field: NOT_FOUND
+🔍 User first_name field: NOT_FOUND
+🔍 User last_name field: NOT_FOUND
+🔍 Extracted user name: 'CORP HOSPITAL USER'
+🔍 DEBUG: Authorization header: Bearer eyJhbGciOiAiUlMyNTYiLCAidHlwIjogIkpXVCIsICJ...
+
+================================================================================
+MIDDLEWARE (require_claims_access): Extracting hospital info
+  User Email: testmedverve1@gmail.comINFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:03] "GET /api/v1/claims/transactions/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:04] "GET /api/v1/claims/get-claim/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:04] "GET /api/v1/claims/transactions/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:15] "OPTIONS /api/v1/claims/get-claim/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:15] "GET /api/v1/claims/get-claim/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:15] "OPTIONS /api/v1/claims/transactions/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:15] "GET /api/v1/claims/transactions/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:15] "GET /api/v1/claims/get-claim/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [04/Nov/2025 16:27:16] "GET /api/v1/claims/transactions/CSHLSIP-20251025-1 HTTP/1.1" 200 -
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: [Errno 60] Operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 538, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 370, in _raise_timeout
+    raise ReadTimeoutError(
+        self, url, f"Read timed out. (read timeout={timeout_value})"
+    ) from err
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: [Errno 60] Operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 538, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 370, in _raise_timeout
+    raise ReadTimeoutError(
+        self, url, f"Read timed out. (read timeout={timeout_value})"
+    ) from err
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: [Errno 60] Operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 538, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 370, in _raise_timeout
+    raise ReadTimeoutError(
+        self, url, f"Read timed out. (read timeout={timeout_value})"
+    ) from err
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 538, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 370, in _raise_timeout
+    raise ReadTimeoutError(
+        self, url, f"Read timed out. (read timeout={timeout_value})"
+    ) from err
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: [Errno 60] Operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 538, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 370, in _raise_timeout
+    raise ReadTimeoutError(
+        self, url, f"Read timed out. (read timeout={timeout_value})"
+    ) from err
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 65] No route to host
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 38, in reraise
+    raise value.with_traceback(tb)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+urllib3.exceptions.ProtocolError: ('Connection aborted.', OSError(65, 'No route to host'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 501, in send
+    raise ConnectionError(err, request=request)
+requests.exceptions.ConnectionError: ('Connection aborted.', OSError(65, 'No route to host'))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: ('Connection aborted.', OSError(65, 'No route to host'))
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: [Errno 60] Operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 538, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 370, in _raise_timeout
+    raise ReadTimeoutError(
+        self, url, f"Read timed out. (read timeout={timeout_value})"
+    ) from err
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 65] No route to host
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 38, in reraise
+    raise value.with_traceback(tb)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+urllib3.exceptions.ProtocolError: ('Connection aborted.', OSError(65, 'No route to host'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 501, in send
+    raise ConnectionError(err, request=request)
+requests.exceptions.ConnectionError: ('Connection aborted.', OSError(65, 'No route to host'))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: ('Connection aborted.', OSError(65, 'No route to host'))
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: [Errno 60] Operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 538, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 370, in _raise_timeout
+    raise ReadTimeoutError(
+        self, url, f"Read timed out. (read timeout={timeout_value})"
+    ) from err
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: [Errno 60] Operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 538, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 370, in _raise_timeout
+    raise ReadTimeoutError(
+        self, url, f"Read timed out. (read timeout={timeout_value})"
+    ) from err
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TimeoutError: [Errno 60] Operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 538, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 370, in _raise_timeout
+    raise ReadTimeoutError(
+        self, url, f"Read timed out. (read timeout={timeout_value})"
+    ) from err
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Read timed out. (read timeout=120)
+ERROR:grpc._plugin_wrapping:AuthMetadataPluginCallback "<google.auth.transport.grpc.AuthMetadataPlugin object at 0x105aedd30>" raised exception!
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 65] No route to host
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/util/util.py", line 38, in reraise
+    raise value.with_traceback(tb)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 1430, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 331, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/http/client.py", line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/socket.py", line 719, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+urllib3.exceptions.ProtocolError: ('Connection aborted.', OSError(65, 'No route to host'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 187, in __call__
+    response = self.session.request(
+        method, url, data=body, headers=headers, timeout=timeout, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/requests/adapters.py", line 501, in send
+    raise ConnectionError(err, request=request)
+requests.exceptions.ConnectionError: ('Connection aborted.', OSError(65, 'No route to host'))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/grpc/_plugin_wrapping.py", line 105, in __call__
+    self._metadata_plugin(
+    ~~~~~~~~~~~~~~~~~~~~~^
+        context, _AuthMetadataPluginCallback(callback_state, callback)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 95, in __call__
+    callback(self._get_authorization_headers(context), None)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/grpc.py", line 81, in _get_authorization_headers
+    self._credentials.before_request(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self._request, context.method_name, context.service_url, headers
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 239, in before_request
+    self._blocking_refresh(request)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/credentials.py", line 202, in _blocking_refresh
+    self.refresh(request)
+    ~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/service_account.py", line 448, in refresh
+    access_token, expiry, _ = _client.jwt_grant(
+                              ~~~~~~~~~~~~~~~~~^
+        request, self._token_uri, assertion
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 299, in jwt_grant
+    response_data = _token_endpoint_request(
+        request,
+    ...<5 lines>...
+        },
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 259, in _token_endpoint_request
+    response_status_ok, response_data, retryable_error = _token_endpoint_request_no_throw(
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/oauth2/_client.py", line 192, in _token_endpoint_request_no_throw
+    response = request(
+        method="POST", url=token_uri, headers=headers_to_use, body=body, **kwargs
+    )
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/auth/transport/requests.py", line 194, in __call__
+    raise new_exc from caught_exc
+google.auth.exceptions.TransportError: ('Connection aborted.', OSError(65, 'No route to host'))

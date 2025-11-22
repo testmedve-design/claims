@@ -1,0 +1,14 @@
+🔧 Using Firebase credentials from file
+✅ Firebase Admin SDK initialized successfully
+🚀 Starting Hospital Claims Management System...
+📍 Server: http://0.0.0.0:5002
+🔧 Debug Mode: False
+📊 Environment: development
+ * Serving Flask app 'app'
+ * Debug mode: off
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5002
+ * Running on http://192.168.29.122:5002
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:127.0.0.1 - - [07/Nov/2025 11:07:16] "GET /api/health HTTP/1.1" 200 -

@@ -115,6 +115,24 @@ export default function RMInboxPage() {
     router.push(`/rm-inbox/process/${claimId}`)
   }
 
+  // Determine if a claim can be processed
+  // Only back_reconciliation status should NOT show Process button
+  // All other statuses (including settled, partially_settled, reconciliation) can be processed
+  // Note: settled, partially_settled, and reconciliation statuses allow bank reconciliation
+  const canProcessClaim = (status?: string): boolean => {
+    if (!status) return true // Allow processing if status is missing
+    const normalizedStatus = status.toLowerCase().trim()
+    
+    // Only back_reconciliation should NOT show Process button
+    // All other statuses (settled, partially_settled, reconciliation, etc.) can be processed
+    if (normalizedStatus === 'back_reconciliation') {
+      return false
+    }
+    
+    // All other statuses can be processed (including settlement statuses for bank recon)
+    return true
+  }
+
   // Show access denied for non-RM/Reconciler users
   if (user && user.role !== 'rm' && user.role !== 'reconciler') {
     return (
@@ -345,14 +363,18 @@ export default function RMInboxPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleProcessClaim(claim.claim_id)}
-                      >
-                        <FileText className="w-4 h-4 mr-1" />
-                        Process
-                      </Button>
+                      {canProcessClaim(claim.claim_status) ? (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleProcessClaim(claim.claim_id)}
+                        >
+                          <FileText className="w-4 h-4 mr-1" />
+                          Process
+                        </Button>
+                      ) : (
+                        <span className="text-sm text-gray-400">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

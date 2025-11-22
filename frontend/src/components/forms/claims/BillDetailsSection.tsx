@@ -173,52 +173,6 @@ export function BillDetailsSection({ form }: BillDetailsSectionProps) {
 
         <FormField
           control={form.control}
-          name="total_patient_paid_amount"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Total Patient Paid</FormLabel>
-              <FormControl>
-                <Input 
-                  type="number" 
-                  step="0.01" 
-                  placeholder="0.00"
-                  disabled
-                  className="bg-muted/50 cursor-not-allowed"
-                  {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                />
-              </FormControl>
-              <FormDescription>Auto: Patient Discount + Amount Paid By Patient</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="amount_charged_to_payer"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Amount Charged to Payer</FormLabel>
-              <FormControl>
-                <Input 
-                  type="number" 
-                  step="0.01" 
-                  placeholder="0.00"
-                  disabled
-                  className="bg-muted/50 cursor-not-allowed"
-                  {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                />
-              </FormControl>
-              <FormDescription>Auto: Total Bill - Total Patient Paid</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
           name="mou_discount_amount"
           render={({ field }) => (
             <FormItem>
@@ -242,11 +196,35 @@ export function BillDetailsSection({ form }: BillDetailsSectionProps) {
           name="claimed_amount"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Claimed Amount <span className="text-destructive">*</span></FormLabel>
+              <FormLabel>
+                Claimed Amount <span className="text-destructive">*</span>
+              </FormLabel>
               <FormControl>
-                <Input 
-                  type="number" 
-                  step="0.01" 
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  {...field}
+                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                  readOnly={claimType === 'DIALYSIS'}
+                  className={claimType === 'DIALYSIS' ? 'bg-muted/50 cursor-not-allowed' : undefined}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="total_patient_paid_amount"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Total Patient Paid</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.01"
                   placeholder="0.00"
                   disabled
                   className="bg-muted/50 cursor-not-allowed"
@@ -254,7 +232,28 @@ export function BillDetailsSection({ form }: BillDetailsSectionProps) {
                   onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                 />
               </FormControl>
-              <FormDescription>Auto: Amount Charged to Payer - MOU Discount</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="amount_charged_to_payer"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Amount Charged to Payer</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  disabled
+                  className="bg-muted/50 cursor-not-allowed"
+                  {...field}
+                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

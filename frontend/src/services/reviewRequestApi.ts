@@ -3,7 +3,6 @@ import { API_BASE_URL } from '@/lib/apiConfig'
 export interface ReviewClaim {
   claim_id: string
   document_id: string
-  review_status: string
   claim_status: string
   created_at?: string | null
   submission_date?: string | null

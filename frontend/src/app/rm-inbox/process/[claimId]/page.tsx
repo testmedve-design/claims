@@ -1520,17 +1520,23 @@ const [disallowanceEntries, setDisallowanceEntries] = useState<DisallowanceEntry
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-900">
-                          {doc.document_name || doc.document_type || 'Document'}
+                          {doc.document_type || doc.original_filename || doc.document_name || 'Document'}
                         </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {doc.original_filename || 'Unnamed file'}
-                        </p>
+                        {(doc.original_filename &&
+                          doc.original_filename !== doc.document_type) ||
+                        (doc.document_name &&
+                          doc.document_name !== doc.document_type &&
+                          doc.document_name !== doc.original_filename) ? (
+                          <p className="truncate text-xs text-muted-foreground">
+                            {doc.original_filename || doc.document_name}
+                          </p>
+                        ) : null}
                       </div>
                       <span className="rounded-full bg-green-100 px-2 py-1 text-[11px] font-medium text-green-700">
                         {doc.status || 'uploaded'}
                       </span>
                     </div>
-                    {doc.document_type && (
+                    {doc.document_type && doc.original_filename && (
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">
                         {doc.document_type}
                       </p>
